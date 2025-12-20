@@ -22,8 +22,8 @@ The application MUST be designed and built as a Progressive Web App (PWA) with a
 ### II. Historical Fidelity
 The core features (Profiles, Chat Rooms, Forums/Feed, Galleries) MUST functionally replicate the experience of the original BGCLive.com while adapting the interface for modern standards. We preserve the "spirit" of the community interactions (e.g., directness, specific demographic focus) even if the exact pixel-perfect UI is updated.
 
-### III. Modern Tech Stack (T3)
-Development MUST adhere to the T3 Stack architecture: Next.js (React) for frontend/backend, Tailwind CSS for styling, PostgreSQL (via Supabase) for data, and Prisma for ORM. This ensures type safety, performance, and maintainability. Deviations from this stack require explicit architectural justification.
+### III. Modern Tech Stack (FastAPI + Next.js)
+Development MUST adhere to the established architecture: Next.js (React) for the frontend, FastAPI (Python) for the backend, Tailwind CSS for styling, PostgreSQL (via Supabase) for primary data, SQLAlchemy for ORM, and Redis for caching and high-performance indexing. This polyglot approach ensures high-performance async APIs and a modern, responsive UI. Deviations require explicit architectural justification.
 
 ### IV. Community Safety & Moderation
 Given the social nature of the application, safety features (blocking, reporting, moderation tools) are NOT optional add-ons but core requirements. Every interactive feature (chat, posts, comments) MUST have a corresponding safety mechanism designed alongside it.

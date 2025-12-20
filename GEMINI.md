@@ -1,4 +1,4 @@
-# BGCLive Replica Project Context
+﻿# BGCLive Replica Project Context
 
 ## Current Status: Phase 1 Complete (Auth & Foundation)
 The project has successfully transitioned from the planning phase to active development. The core infrastructure, authentication system, and frontend/backend integration are established.
