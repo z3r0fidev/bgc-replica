@@ -1,4 +1,4 @@
-# BGCLive Replica Project Context
+﻿# BGCLive Replica Project Context
 
 ## Current Status: Phase 3 Complete (Real-Time Chat & Messaging) ✅
 The project has established a robust real-time communication foundation. Users can now engage in Direct Messaging and participate in dynamic Public Chat Rooms with sub-second latency and persistent history.
