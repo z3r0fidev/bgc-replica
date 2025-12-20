@@ -3,13 +3,25 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
 # If using asyncpg, ensure the URL starts with postgresql+asyncpg://
-SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL.replace(
+    "postgresql://", "postgresql+asyncpg://"
+)
 
-engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
-SessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
+engine = create_async_engine(
+    SQLALCHEMY_DATABASE_URL,
+    echo=settings.DEBUG,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+)
+SessionLocal = async_sessionmaker(
+    autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
+)
+
 
 class Base(DeclarativeBase):
     pass
+
 
 async def get_db():
     async with SessionLocal() as session:
