@@ -11,7 +11,11 @@ interface FeedItemProps {
   style?: React.CSSProperties;
 }
 
+import { useGestures } from "@/hooks/useGestures";
+
 export function FeedItem({ post, style }: FeedItemProps) {
+  const { handleDragEnd, swipeDirection, resetSwipe } = useGestures();
+
   return (
     <motion.div
       layout
@@ -19,8 +23,14 @@ export function FeedItem({ post, style }: FeedItemProps) {
       animate={{ opacity: 1, y: 0 }}
       style={style}
       className="py-2"
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      onDragEnd={handleDragEnd}
+      whileTap={{ scale: 0.98 }}
     >
-      <Card className="hover:bg-muted/5 transition-colors border-primary/5 shadow-sm">
+      <Card className={`hover:bg-muted/5 transition-colors border-primary/5 shadow-sm ${
+        swipeDirection === "right" ? "bg-green-50/50" : swipeDirection === "left" ? "bg-red-50/50" : ""
+      }`}>
         <CardHeader className="flex flex-row items-center gap-4 p-4">
           <Avatar>
             <AvatarFallback className="bg-primary/10 text-primary">
@@ -45,13 +55,13 @@ export function FeedItem({ post, style }: FeedItemProps) {
           )}
         </CardContent>
         <CardFooter className="flex gap-4 p-4 border-t mt-4">
-          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground">
+          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" aria-label="Like post">
             <Heart className="mr-2 h-4 w-4" /> Like
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground">
+          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" aria-label="Comment on post">
             <MessageSquare className="mr-2 h-4 w-4" /> Comment
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground ml-auto">
+          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground ml-auto" aria-label="Share post">
             <Share2 className="mr-2 h-4 w-4" /> Share
           </Button>
         </CardFooter>

@@ -115,6 +115,16 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@layer utilities {
+  .glass {
+    @apply bg-background/60 backdrop-blur-md border border-white/10 shadow-lg;
+  }
+  
+  .neo-brutal {
+    @apply border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
