@@ -12,3 +12,6 @@ redis
 httpx
 pytest
 pytest-asyncio
+python-socketio[asyncio]
+supabase
+asyncpg
