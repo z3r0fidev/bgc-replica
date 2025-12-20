@@ -21,14 +21,17 @@ class FeedService:
             # Optional: Trim feed to last 500 items to save memory
             await redis.zremrangebyrank(f"feed:user:{follower_id}", 0, -501)
 
-    async def get_feed(self, user_id: Optional[uuid.UUID] = None, limit: int = 20, offset: int = 0) -> List[str]:
+    async def get_feed(self, user_id: Optional[uuid.UUID] = None, limit: int = 20, cursor: Optional[float] = None) -> List[str]:
         """
-        Retrieve post IDs from either personalized feed or global feed.
+        Retrieve post IDs using score-based (timestamp) cursor pagination.
         """
         redis = await get_redis()
         key = f"feed:user:{user_id}" if user_id else "feed:global"
         
-        # ZREVRANGE for reverse chronological order
-        return await redis.zrevrange(key, offset, offset + limit - 1)
+        # If no cursor, use +inf (latest)
+        max_score = cursor if cursor is not None else "+inf"
+        
+        # Fetch limit + 1 to detect has_next
+        return await redis.zrevrangebyscore(key, max_score, "-inf", start=0, num=limit + 1)
 
 feed_service = FeedService()

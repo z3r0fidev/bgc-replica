@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+    MEDIA_BUCKET_NAME: str = "bgclive-media"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

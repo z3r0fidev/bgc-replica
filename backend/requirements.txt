@@ -14,4 +14,4 @@ pytest
 pytest-asyncio
 python-socketio[asyncio]
 supabase
-asyncpg
+asyncpgprometheus-fastapi-instrumentator

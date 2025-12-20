@@ -5,13 +5,20 @@ import uuid
 
 class StorageService:
     def __init__(self):
-        self.supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        self.supabase: Optional[Client] = None
+        if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+            try:
+                self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            except Exception:
+                pass
         self.bucket_name = settings.MEDIA_BUCKET_NAME
 
     async def upload_file(self, file_content: bytes, filename: str, content_type: str) -> dict:
         """
         Uploads a file to Supabase Storage and returns the public URL.
         """
+        if not self.supabase:
+            raise Exception("Supabase client not initialized. Check credentials.")
         # Generate a unique path: user_id/uuid_filename
         ext = filename.split(".")[-1]
         unique_name = f"{uuid.uuid4()}.{ext}"

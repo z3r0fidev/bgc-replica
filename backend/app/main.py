@@ -15,7 +15,26 @@ from app.core.database import SessionLocal
 from app.core.redis import get_redis
 from sqlalchemy import text
 
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from app.core.exceptions import BaseAppException
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
 app = FastAPI(title="BGCLive Replica API")
+
+# Instrument Prometheus
+Instrumentator().instrument(app).expose(app)
+
+@app.exception_handler(BaseAppException)
+async def app_exception_handler(request: Request, exc: BaseAppException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "code": exc.code
+        }
+    )
 
 app.add_middleware(
     CORSMiddleware,
