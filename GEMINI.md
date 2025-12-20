@@ -1,31 +1,26 @@
-﻿# BGCLive Replica Project Context
+# BGCLive Replica Project Context
 
-## Current Status: Phase 1 Complete (Auth & Foundation)
-The project has successfully transitioned from the planning phase to active development. The core infrastructure, authentication system, and frontend/backend integration are established.
+## Current Status: Phase 3 Complete (Real-Time Chat & Messaging) ✅
+The project has established a robust real-time communication foundation. Users can now engage in Direct Messaging and participate in dynamic Public Chat Rooms with sub-second latency and persistent history.
 
 ## Monorepo Directory Overview
-- **`frontend/`**: Next.js 14+ (App Router) project with TypeScript, Tailwind CSS, shadcn/ui, and Framer Motion. Handles the PWA mobile-first UI.
-- **`backend/`**: FastAPI (Python 3.11+) backend with SQLAlchemy (PostgreSQL via Supabase) and Redis caching. Manages authentication, user data, and core APIs.
-- **`specs/`**: Contains architectural blueprints, specifications, implementation plans, and completed task lists for each feature.
-- **`assets/`**: Repository for branding assets, icons, and placeholder images.
+- **`frontend/`**: Next.js 14+ application.
+  - **New in Phase 3**: `SocketProvider`, `useChat` hook, and modular `ChatWindow` component.
+  - **Pages**: `/chat` (DMs), `/rooms` (Discovery), `/rooms/[id]` (Active Chat).
+- **`backend/`**: FastAPI application.
+  - **New in Phase 3**: Socket.io server with Redis Manager, `PresenceService`, and `ChatService`.
+  - **Persistence**: PostgreSQL models for Messages, Rooms, and Conversations.
+- **`specs/`**: Blueprints for all features.
+  - `001-setup-auth-foundation`: Core infrastructure.
+  - `002-user-profiles-social`: Profile and Social Graph.
+  - `003-chat-messaging`: Real-time engine.
 
 ## Key Completed Features
-- **PWA Foundation**: Responsive landing page and PWA manifest configured.
-- **Unified Authentication**: JWT-based login and registration with session management.
-- **Scalable Data Layer**: SQLAlchemy models for Users, Accounts, and Sessions with PostgreSQL and Redis.
-- **Premium UI Baseline**: Initial layout and auth pages built using shadcn/ui and animations.
-
-## Key Reference Files
-### `RESEARCH_SUMMARY.md`
-Historical analysis of the original `bgclive.com` to ensure fidelity in demographics and features.
-
-### `REPLICATION_GUIDE.md`
-The master technical roadmap for the project modernization.
-
-### `AGENTS.md`
-Runtime guidance for AI agents, including build, lint, and test commands.
+- **Bi-directional Messaging**: Real-time DMs and Chat Rooms using Socket.io and Redis.
+- **Online Presence**: Heartbeat-based status tracking (Online/Offline/Idle) with < 2s propagation.
+- **Media Support**: Integrated HTTP upload flow for sharing photos and videos in chat.
+- **Social Safety**: Rate limiting and block-list awareness integrated into the WebSocket layer.
 
 ## Next Steps
-1. **Phase 2: User Profiles**: Implement detailed profile management, photo galleries, and social graph (friends/favorites).
-2. **Phase 3: Real-time Chat**: Develop direct messaging and location-based chat rooms.
-3. **Phase 4: Community Features**: Build discussion boards and social feeds.
+1. **Phase 4: Community Features**: Implement threaded forum boards, social feeds for status updates, and user-led groups.
+2. **Phase 5: Modernization & Optimization**: PWA deep-linking, infinite scroll optimization, and edge caching.
