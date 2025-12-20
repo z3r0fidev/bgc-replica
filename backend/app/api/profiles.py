@@ -13,12 +13,18 @@ import uuid
 
 router = APIRouter()
 
+from sqlalchemy.orm import selectinload
+
 @router.get("/me", response_model=Profile)
 async def get_my_profile(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    result = await db.execute(select(ProfileModel).where(ProfileModel.id == current_user.id))
+    result = await db.execute(
+        select(ProfileModel)
+        .where(ProfileModel.id == current_user.id)
+        .options(selectinload(ProfileModel.user))
+    )
     profile = result.scalars().first()
     if not profile:
         # Create default profile if not exists
@@ -44,15 +50,33 @@ async def update_my_profile(
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
+    
+    # Invalidate cache
+    await profile_cache.invalidate(str(current_user.id))
+    
     return profile
+
+from app.services.cache import profile_cache
 
 @router.get("/{user_id}", response_model=Profile)
 async def get_user_profile(
     user_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    result = await db.execute(select(ProfileModel).where(ProfileModel.id == user_id))
-    profile = result.scalars().first()
+    async def fetch_from_db():
+        result = await db.execute(
+            select(ProfileModel)
+            .where(ProfileModel.id == user_id)
+            .options(selectinload(ProfileModel.user))
+        )
+        return result.scalars().first()
+
+    profile = await profile_cache.get_or_set(
+        str(user_id),
+        Profile,
+        fetch_from_db
+    )
+    
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile

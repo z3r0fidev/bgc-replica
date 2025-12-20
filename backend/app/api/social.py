@@ -91,15 +91,33 @@ async def accept_friend_request(
     await db.refresh(rel)
     return rel
 
-@router.get("/relationships", response_model=List[RelationshipSchema])
+from typing import List, Annotated, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_, or_
+from app.core.database import get_db
+from app.api import deps
+from app.models.user import User, Relationship
+from app.schemas.social import Relationship as RelationshipSchema, RelationshipBase
+from app.schemas.common import PaginatedResponse
+from app.core.pagination import paginate_query
+import uuid
+
+router = APIRouter()
+
+@router.get("/relationships", response_model=PaginatedResponse[RelationshipSchema])
 async def get_my_relationships(
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 20,
+    cursor: Optional[str] = None
 ):
-    result = await db.execute(select(Relationship).where(
+    query = select(Relationship).where(
         or_(
             Relationship.from_user_id == current_user.id,
             Relationship.to_user_id == current_user.id
         )
-    ))
-    return result.scalars().all()
+    )
+    return await paginate_query(db, query, Relationship, limit, cursor)
+
+@router.post("/favorite/{user_id}", response_model=RelationshipSchema)

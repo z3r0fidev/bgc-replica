@@ -13,29 +13,69 @@ from app.schemas.community import (
 from app.services.feed_service import feed_service
 import uuid
 
+from app.schemas.common import PaginatedResponse
+from app.core.pagination import encode_cursor, decode_cursor
+import time
+
 router = APIRouter()
 
-@router.get("/", response_model=List[StatusUpdateSchema])
+@router.get("/", response_model=PaginatedResponse[StatusUpdateSchema])
 async def get_feed(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     feed_type: str = Query("global", pattern="^(global|following)$"),
     limit: int = 20,
-    offset: int = 0
+    cursor: Optional[str] = None
 ):
     user_id = current_user.id if feed_type == "following" else None
-    post_ids = await feed_service.get_feed(user_id=user_id, limit=limit, offset=offset)
+    
+    # Decode cursor (it's a base64 encoded ISO timestamp, but for Redis we want float)
+    dt_cursor = decode_cursor(cursor)
+    float_cursor = dt_cursor.timestamp() if dt_cursor else None
+    
+    post_ids = await feed_service.get_feed(user_id=user_id, limit=limit, cursor=float_cursor)
     
     if not post_ids:
-        return []
+        return {
+            "items": [],
+            "metadata": {"has_next": False, "next_cursor": None, "count": 0}
+        }
+    
+    has_next = len(post_ids) > limit
+    page_ids = post_ids[:limit]
     
     # Convert string IDs back to UUIDs
-    post_uuids = [uuid.UUID(pid) for pid in post_ids]
+    post_uuids = [uuid.UUID(pid) for pid in page_ids]
     
     # Fetch actual objects from DB
-    stmt = select(StatusUpdate).where(StatusUpdate.id.in_(post_uuids)).order_by(desc(StatusUpdate.created_at))
+    # We want to maintain the order from Redis
+    stmt = (
+        select(StatusUpdate)
+        .where(StatusUpdate.id.in_(post_uuids))
+        .options(selectinload(StatusUpdate.author))
+    )
     result = await db.execute(stmt)
-    return result.scalars().all()
+    updates = {u.id: u for u in result.scalars().all()}
+    
+    # Re-order
+    items = [updates[pid] for pid in post_uuids if pid in updates]
+    
+    # Get next cursor from the last item
+    next_cursor = None
+    if has_next and items:
+        # We need the score of the LAST item in page_ids to use as next cursor
+        # But wait, Redis returned them in order.
+        # I'll just use the created_at of the last item in 'items'
+        next_cursor = encode_cursor(items[-1].created_at)
+
+    return {
+        "items": items,
+        "metadata": {
+            "has_next": has_next,
+            "next_cursor": next_cursor,
+            "count": len(items)
+        }
+    }
 
 @router.post("/", response_model=StatusUpdateSchema)
 async def create_status_update(

@@ -12,29 +12,25 @@ from app.services.chat import chat_service
 import uuid
 from sqlalchemy import select, desc, or_, and_
 
+from app.schemas.common import PaginatedResponse
+from app.core.pagination import paginate_query
+
 router = APIRouter()
 
-@router.get("/rooms", response_model=List[ChatRoomSchema])
+@router.get("/rooms", response_model=PaginatedResponse[ChatRoomSchema])
 async def get_rooms(
     db: Annotated[AsyncSession, Depends(get_db)],
-    category: Optional[str] = Query(None)
+    category: Optional[str] = Query(None),
+    limit: int = 20,
+    cursor: Optional[str] = None
 ):
     stmt = select(ChatRoom)
     if category:
         stmt = stmt.where(ChatRoom.category == category)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    return await paginate_query(db, stmt, ChatRoom, limit, cursor)
 
-@router.get("/rooms/{room_id}/history", response_model=List[MessageSchema])
-async def get_room_history(
-    room_id: uuid.UUID,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 50,
-    offset: int = 0
-):
-    stmt = select(Message).where(Message.room_id == room_id).order_by(desc(Message.created_at)).limit(limit).offset(offset)
-    result = await db.execute(stmt)
-    return result.scalars().all()[::-1] # Reverse to get chronological order
+    stmt = select(Message).where(Message.room_id == room_id).options(selectinload(Message.sender))
+    return await paginate_query(db, stmt, Message, limit, cursor)
 
 @router.post("/media", response_model=dict)
 async def upload_chat_media(
@@ -45,16 +41,18 @@ async def upload_chat_media(
     upload_result = await storage_service.upload_file(content, file.filename, file.content_type)
     return upload_result
 
-@router.get("/conversations", response_model=List[ConversationSchema])
+@router.get("/conversations", response_model=PaginatedResponse[ConversationSchema])
 async def get_conversations(
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 20,
+    cursor: Optional[str] = None
 ):
     stmt = select(Conversation).where(
         or_(Conversation.user_one_id == current_user.id, Conversation.user_two_id == current_user.id)
-    ).order_by(desc(Conversation.last_message_at))
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    )
+    # Using last_message_at as cursor
+    return await paginate_query(db, stmt, Conversation, limit, cursor, cursor_attribute="last_message_at")
 
 @router.post("/conversations", response_model=ConversationSchema)
 async def get_or_create_conversation(
@@ -64,13 +62,12 @@ async def get_or_create_conversation(
 ):
     return await chat_service.get_or_create_conversation(db, current_user.id, recipient_id)
 
-@router.get("/conversations/{conv_id}/history", response_model=List[MessageSchema])
+@router.get("/conversations/{conv_id}/history", response_model=PaginatedResponse[MessageSchema])
 async def get_conversation_history(
     conv_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = 50,
-    offset: int = 0
+    cursor: Optional[str] = None
 ):
-    stmt = select(Message).where(Message.conversation_id == conv_id).order_by(desc(Message.created_at)).limit(limit).offset(offset)
-    result = await db.execute(stmt)
-    return result.scalars().all()[::-1]
+    stmt = select(Message).where(Message.conversation_id == conv_id).options(selectinload(Message.sender))
+    return await paginate_query(db, stmt, Message, limit, cursor)
