@@ -5,16 +5,40 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { Toaster } from "@/components/ui/sonner";
+import { SocketProvider } from "@/providers/socket-provider";
 
 const inter = Inter({ subsets: ["latin"] });
-...<15 lines>...
+
+export const metadata: Metadata = {
+  title: "BGCLive Replica",
+  description: "A modern social network.",
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "white" },
+    { media: "(prefers-color-scheme: dark)", color: "black" },
+  ],
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.className)}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <SocketProvider>
+            {children}
+          </SocketProvider>
           <Toaster />
           <InstallPrompt />
         </ThemeProvider>
