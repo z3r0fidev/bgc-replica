@@ -17,5 +17,30 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+bgclive",
+      "url": "/pwa-handler?url=%s"
+    }
+  ],
+  "share_target": {
+    "action": "/api/feed/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "file",
+          "accept": [
+            "image/*",
+            "video/*"
+          ]
+        }
+      ]
+    }
+  }
 }
