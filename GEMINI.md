@@ -18,6 +18,30 @@ The project has achieved production-grade performance and deep OS integration. T
 - **Edge Caching**: Standardized headers for media assets ensure sub-100ms TTFB across regions.
 - **Offline Resilience**: Automatic failover to IndexedDB storage when network connectivity is lost.
 
-## Next Steps
-1. **Phase 6: Final Polish**: Performance benchmarking (Locust), accessibility (WCAG) audit, and final UX refinements.
-2. **Phase 7: Production Readiness**: CI/CD pipeline configuration, Sentry integration, and automated vulnerability scanning.
+## Upcoming Enhancements & Production Roadmap
+
+### Phase 6: Final Polish & Advanced Features (In Progress)
+- **Frontend & UX**:
+  - Implement shared layout transitions and gesture-based interactions (Framer Motion).
+  - Integrate Web Speech API for voice command support.
+  - Apply "Liquid Glass" and "Neo-brutalist" design refinements for a premium aesthetic.
+- **Backend & API**:
+  - Implement consistent cursor-based pagination across all list endpoints.
+  - Add comprehensive error handling with custom exception classes and actionable error codes.
+  - Optimize database queries to eliminate N+1 problems using advanced loading strategies.
+- **Database**:
+  - Implement advanced caching (Cache-aside pattern) for profiles and sessions using Redis.
+  - Add GIN indexes for JSONB metadata and BRIN indexes for time-series data.
+
+### Phase 7: Production Readiness & SecOps
+- **Security Hardening**:
+  - Unify authentication (NextAuth.js & Backend JWT integration).
+  - Restrict CORS and implement comprehensive security headers (HSTS, CSP).
+  - Implement distributed rate limiting and request deduplication.
+- **Scalability**:
+  - Set up background processing with Celery for expensive operations.
+  - Implement table partitioning and read replicas for horizontal database scaling.
+- **Monitoring & Quality**:
+  - Configure Sentry for error tracking and OpenTelemetry for distributed tracing.
+  - Automated WCAG 2.1 AA accessibility audits and performance regression testing.
+  - Load testing (Locust) to verify 10k+ concurrent user support.
