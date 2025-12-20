@@ -3,19 +3,21 @@
 This guide outlines the step-by-step process to clone the core functionality of BGCLive.com while utilizing a modern, high-performance tech stack.
 
 ## 1. Tech Stack Recommendation
-To modernize the application for performance, scalability, and developer experience, we recommend the **T3 Stack** (or similar) approach:
+To modernize the application for performance, scalability, and developer experience, we recommend an updated stack based on agent reviews:
 
-- **Frontend:** **Next.js (React)**
-    - *Why:* Server-Side Rendering (SSR) for SEO, fast initial load, and seamless API integration.
+- **Frontend:** **Next.js (React)** with **shadcn/ui**, **Framer Motion**, **Zustand**
+    - *Why:* SSR for SEO, premium UI with animations and state management.
 - **Styling:** **Tailwind CSS**
     - *Why:* Utility-first CSS for rapid UI development and easy mobile responsiveness.
-- **Backend:** **Next.js API Routes** (for serverless) or **Node.js with NestJS/Express** (if a dedicated custom server is preferred for heavy WebSockets).
-- **Database:** **PostgreSQL** (via **Supabase** or **Neon**)
-    - *Why:* Relational data integrity for users and relationships. Supabase offers built-in Auth and Realtime subscriptions.
-- **ORM:** **Prisma**
-    - *Why:* Type-safe database access.
-- **Real-Time Communication:** **Socket.io** (if using custom Node server) or **Supabase Realtime**.
+- **Backend:** **FastAPI (Python)** with **SQLAlchemy**, **Better Auth**
+    - *Why:* High-performance async APIs, type-safe auth with WebAuthn support.
+- **Database:** **PostgreSQL** (via **Supabase**) with **Redis** for caching
+    - *Why:* Relational data integrity with caching for scalability.
+- **ORM:** **SQLAlchemy 2.x**
+    - *Why:* Async-native, optimized for complex queries.
+- **Real-Time Communication:** **Supabase Realtime** or **Redis pub/sub**.
 - **Storage:** **AWS S3** or **Supabase Storage** for user photos/videos.
+- **Security:** **next-helmet**, **express-rate-limit**, **@sentry/nextjs**, **Zod**.
 
 ---
 
@@ -34,21 +36,13 @@ Before coding, define the core data models.
 
 ## 3. Step-by-Step Implementation Guide
 
-### Phase 1: Setup & Authentication
-1.  **Initialize Project:**
-    ```bash
-    npx create-next-app@latest bgc-replica --typescript --tailwind --eslint
-    ```
-2.  **Database Setup:**
-    - Spin up a PostgreSQL instance (e.g., on Supabase).
-    - Initialize Prisma: `npx prisma init`.
-    - Define schema in `schema.prisma`.
-3.  **Authentication:**
-    - Implement **Clerk** or **NextAuth.js** (now Auth.js).
-    - Configure providers (Email/Password, Google).
-    - *Modern Twist:* Add biometric login (Passkeys) for mobile users.
+### Phase 1: Setup & Authentication (COMPLETED ✅)
+1.  **Initialize Monorepo:** Created `frontend/` (Next.js) and `backend/` (FastAPI) structure.
+2.  **Database & Caching:** Configured SQLAlchemy (PostgreSQL) and Redis integration.
+3.  **Authentication:** Implemented JWT-based login/register with route protection.
+4.  **PWA:** Configured manifest and responsive landing page.
 
-### Phase 2: User Profiles & Social Graph
+### Phase 2: User Profiles & Social Graph (NEXT UP 🚀)
 1.  **Profile API:** Create API endpoints (GET/PUT) to fetch and update user details.
 2.  **Image Upload:**
     - Integrate an S3-compatible storage SDK.

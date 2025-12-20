@@ -1,29 +1,31 @@
 # BGCLive Replica Project Context
 
-## Directory Overview
-This directory serves as the initialization and planning hub for the **BGCLive Replica** project. The goal is to clone and modernize the functionality of the historical `bgclive.com` social networking platform, adapting it for modern web standards and mobile-first experiences.
+## Current Status: Phase 1 Complete (Auth & Foundation)
+The project has successfully transitioned from the planning phase to active development. The core infrastructure, authentication system, and frontend/backend integration are established.
 
-## Key Files
+## Monorepo Directory Overview
+- **`frontend/`**: Next.js 14+ (App Router) project with TypeScript, Tailwind CSS, shadcn/ui, and Framer Motion. Handles the PWA mobile-first UI.
+- **`backend/`**: FastAPI (Python 3.11+) backend with SQLAlchemy (PostgreSQL via Supabase) and Redis caching. Manages authentication, user data, and core APIs.
+- **`specs/`**: Contains architectural blueprints, specifications, implementation plans, and completed task lists for each feature.
+- **`assets/`**: Repository for branding assets, icons, and placeholder images.
 
+## Key Completed Features
+- **PWA Foundation**: Responsive landing page and PWA manifest configured.
+- **Unified Authentication**: JWT-based login and registration with session management.
+- **Scalable Data Layer**: SQLAlchemy models for Users, Accounts, and Sessions with PostgreSQL and Redis.
+- **Premium UI Baseline**: Initial layout and auth pages built using shadcn/ui and animations.
+
+## Key Reference Files
 ### `RESEARCH_SUMMARY.md`
-Contains a detailed historical analysis of the original `bgclive.com` website.
-*   **Demographics:** Focus on LGBTQ+ Black and Latino communities.
-*   **Features:** Profiles, chat rooms, forums, and media galleries.
-*   **Context:** Understanding the "Web 2.0" era features to modernize.
+Historical analysis of the original `bgclive.com` to ensure fidelity in demographics and features.
 
 ### `REPLICATION_GUIDE.md`
-A comprehensive technical guide for building the new application.
-*   **Tech Stack:** Next.js (React), Tailwind CSS, PostgreSQL (Supabase), Prisma.
-*   **Architecture:** Mobile-first PWA approach.
-*   **Implementation Plan:** Phased approach starting with setup & auth, then profiles, chat, and community features.
+The master technical roadmap for the project modernization.
 
-## Usage & Next Steps
-This directory currently contains the *blueprint* for the project. The actual code implementation has not yet begun.
+### `AGENTS.md`
+Runtime guidance for AI agents, including build, lint, and test commands.
 
-**To start development:**
-1.  Refer to `REPLICATION_GUIDE.md` for the specific initialization commands.
-2.  The recommended first step is to initialize the Next.js project:
-    ```bash
-    npx create-next-app@latest bgc-replica --typescript --tailwind --eslint
-    ```
-    *(Note: You may need to move the current documentation files into the new project folder or initialize the project in the current directory).*
+## Next Steps
+1. **Phase 2: User Profiles**: Implement detailed profile management, photo galleries, and social graph (friends/favorites).
+2. **Phase 3: Real-time Chat**: Develop direct messaging and location-based chat rooms.
+3. **Phase 4: Community Features**: Build discussion boards and social feeds.
