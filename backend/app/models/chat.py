@@ -44,4 +44,4 @@ class Message(Base):
     sender: Mapped["User"] = relationship("User")
 
 # Additional Indices for performance
-Index("ix_messages_created_at_desc", Message.created_at.desc())
+Index("ix_messages_created_at_brin", Message.created_at, postgresql_using="brin")

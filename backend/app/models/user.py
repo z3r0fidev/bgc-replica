@@ -179,3 +179,11 @@ class ProfileRating(Base):
     
     from_user: Mapped["User"] = relationship("User", foreign_keys=[from_user_id], back_populates="ratings_sent")
     to_user: Mapped["User"] = relationship("User", foreign_keys=[to_user_id], back_populates="ratings_received")
+
+# Additional Indices for performance
+
+Index("ix_users_metadata_gin", User.metadata_json, postgresql_using="gin")
+
+Index("ix_profiles_roles_gin", Profile.roles, postgresql_using="gin")
+
+Index("ix_profiles_interests_gin", Profile.interests, postgresql_using="gin")
