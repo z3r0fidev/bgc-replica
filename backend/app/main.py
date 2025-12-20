@@ -6,6 +6,10 @@ from app.api.auth import router as auth_router
 from app.api.profiles import router as profile_router
 from app.api.social import router as social_router
 from app.api.search import router as search_router
+from app.api.forums import router as forums_router
+from app.api.feed import router as feed_router
+from app.api.groups import router as groups_router
+from app.api.moderation import router as moderation_router
 from app.core.database import SessionLocal
 from app.core.redis import get_redis
 from sqlalchemy import text
@@ -52,6 +56,10 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
 app.include_router(social_router, prefix="/api/social", tags=["social"])
 app.include_router(search_router, prefix="/api/search", tags=["search"])
+app.include_router(forums_router, prefix="/api/forums", tags=["forums"])
+app.include_router(feed_router, prefix="/api/feed", tags=["feed"])
+app.include_router(groups_router, prefix="/api/groups", tags=["groups"])
+app.include_router(moderation_router, prefix="/api/moderation", tags=["moderation"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="socket.io")
