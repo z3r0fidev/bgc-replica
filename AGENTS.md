@@ -9,6 +9,10 @@
 - **Test Frontend E2E**: `cd frontend && npm run test:e2e` (Playwright)
 - **Test Backend**: `cd backend && pytest`
 - **Run Single Test**: Frontend - `npm run test -- --run path/to/test`; Backend - `pytest -k test_name`
+- **Seed Forums**: `cd backend && $env:PYTHONPATH="." && .\venv\Scripts\python app/core/seed_forums.py`
+- **Load Test (Locust)**: `cd backend && locust -f tests/load_test.py`
+- **PWA Audit**: `npx lighthouse http://localhost:3000 --view`
+- **Accessibility Check**: `npx pa11y http://localhost:3000`
 
 ## Code Style Guidelines
 - **Imports**: Group external libs first (alphabetically), then internal. Use absolute imports.
