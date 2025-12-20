@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.middleware import CacheControlMiddleware
 import socketio
 from app.core.socket import sio
 from app.api.auth import router as auth_router
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(CacheControlMiddleware)
 
 @app.get("/")
 async def root():

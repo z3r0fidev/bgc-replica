@@ -20,7 +20,11 @@ class StorageService:
         response = self.supabase.storage.from_(self.bucket_name).upload(
             path=path,
             file=file_content,
-            file_options={"content-type": content_type, "upsert": "true"}
+            file_options={
+                "content-type": content_type, 
+                "upsert": "true",
+                "cache-control": "31536000" # 1 Year
+            }
         )
 
         # In supabase-py 2.x, it usually returns the path or raises exception
