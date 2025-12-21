@@ -1,11 +1,13 @@
-from typing import List, Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Annotated, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User, Relationship
-from app.schemas.social import Relationship as RelationshipSchema, RelationshipBase
+from app.schemas.social import Relationship as RelationshipSchema
+from app.schemas.common import PaginatedResponse
+from app.core.pagination import paginate_query
 import uuid
 
 router = APIRouter()
@@ -91,20 +93,6 @@ async def accept_friend_request(
     await db.refresh(rel)
     return rel
 
-from typing import List, Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
-from app.core.database import get_db
-from app.api import deps
-from app.models.user import User, Relationship
-from app.schemas.social import Relationship as RelationshipSchema, RelationshipBase
-from app.schemas.common import PaginatedResponse
-from app.core.pagination import paginate_query
-import uuid
-
-router = APIRouter()
-
 @router.get("/relationships", response_model=PaginatedResponse[RelationshipSchema])
 async def get_my_relationships(
     current_user: Annotated[User, Depends(deps.get_current_user)],
@@ -119,5 +107,3 @@ async def get_my_relationships(
         )
     )
     return await paginate_query(db, query, Relationship, limit, cursor)
-
-@router.post("/favorite/{user_id}", response_model=RelationshipSchema)
