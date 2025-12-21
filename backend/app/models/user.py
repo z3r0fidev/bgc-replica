@@ -136,6 +136,7 @@ class Profile(Base):
     location_lng: Mapped[Optional[float]] = mapped_column(Float)
     privacy_level: Mapped[str] = mapped_column(String(50), default="PUBLIC")
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     user: Mapped["User"] = relationship(back_populates="profile")
 

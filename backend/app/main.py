@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
@@ -39,13 +40,26 @@ trace.set_tracer_provider(provider)
 
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+import logging
 
-sentry_sdk.init(
-    dsn=settings.SENTRY_DSN if hasattr(settings, "SENTRY_DSN") else None,
-    integrations=[FastApiIntegration()],
-    traces_sample_rate=1.0,
-    profiles_sample_rate=1.0,
-)
+if os.getenv("TESTING") != "true":
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN if hasattr(settings, "SENTRY_DSN") else None,
+        integrations=[
+            FastApiIntegration(),
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR
+            ),
+        ],
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+        enable_tracing=True,
+        _experiments={
+            "enable_metrics": True,
+        },
+    )
 
 from app.core.logging_config import setup_logging
 
@@ -54,7 +68,8 @@ setup_logging()
 app = FastAPI(title="BGCLive Replica API")
 
 # Instrument FastAPI
-FastAPIInstrumentor.instrument_app(app)
+if os.getenv("TESTING") != "true":
+    FastAPIInstrumentor.instrument_app(app)
 
 @app.on_event("startup")
 async def startup():
@@ -62,7 +77,8 @@ async def startup():
     await FastAPILimiter.init(r)
 
 # Instrument Prometheus
-Instrumentator().instrument(app).expose(app)
+if os.getenv("TESTING") != "true":
+    Instrumentator().instrument(app).expose(app)
 
 @app.exception_handler(BaseAppException)
 async def app_exception_handler(request: Request, exc: BaseAppException):
