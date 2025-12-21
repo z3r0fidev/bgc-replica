@@ -58,12 +58,8 @@ FastAPIInstrumentor.instrument_app(app)
 
 @app.on_event("startup")
 async def startup():
-    try:
-        r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-        await FastAPILimiter.init(r)
-        print("FastAPILimiter initialized successfully.")
-    except Exception as e:
-        print(f"Warning: Could not initialize FastAPILimiter: {e}")
+    r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(r)
 
 # Instrument Prometheus
 Instrumentator().instrument(app).expose(app)
