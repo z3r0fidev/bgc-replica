@@ -30,5 +30,5 @@
 
 - [x] T015 [P] Run Lighthouse PWA audit and fix remaining issues (Target 100/100 verified)
 - [x] T016 [P] Benchmark scroll performance (FPS) on mobile devices (Stable 60 FPS target met)
-- [x] T018 [P] E2E test for Deep-linking in `frontend/tests/e2e/pwa-deep-link.spec.ts`
-- [x] T019 [P] E2E test for Share Target in `frontend/tests/e2e/pwa-share.spec.ts`
+- [ ] T018 [P] E2E test for Deep-linking in `frontend/tests/e2e/pwa-deep-link.spec.ts`
+- [ ] T019 [P] E2E test for Share Target in `frontend/tests/e2e/pwa-share.spec.ts`

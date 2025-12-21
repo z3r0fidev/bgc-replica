@@ -7,7 +7,7 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Database Administrator Implements Index Optimizations (Priority: P1)
+### User Story 1 - Database Administrator Implements Index Optimizations (Priority: P1) ✅
 
 As a database administrator, I need to implement advanced indexing strategies including partial indexes, expression indexes, and GIN/GiST indexes to improve query performance, so that frequently executed queries run faster and database resources are used efficiently.
 
@@ -17,9 +17,9 @@ As a database administrator, I need to implement advanced indexing strategies in
 
 **Acceptance Scenarios**:
 
-1. **Given** a database with slow queries on user searches, **When** partial indexes are added for active users, **Then** search queries complete 50% faster.
-2. **Given** JSON data in profiles table, **When** GIN indexes are implemented, **Then** JSON queries execute with proper index usage.
-3. **Given** location-based searches, **When** GiST indexes are added, **Then** spatial queries perform efficiently.
+1. [x] **Given** a database with slow queries on user searches, **When** partial indexes are added for active users, **Then** search queries complete 50% faster.
+2. [x] **Given** JSON data in profiles table, **When** GIN indexes are implemented, **Then** JSON queries execute with proper index usage.
+3. [x] **Given** location-based searches, **When** GiST indexes are added, **Then** spatial queries perform efficiently.
 
 ---
 
@@ -39,7 +39,7 @@ As an operations engineer, I need to implement multi-level caching strategies in
 
 ---
 
-### User Story 3 - DBA Sets Up Partitioning and Replication (Priority: P2)
+### User Story 3 - DBA Sets Up Partitioning and Replication (Priority: P2) ✅
 
 As a database administrator, I need to implement table partitioning for large tables and set up streaming replication for high availability, so that the system can scale with growing data and maintain uptime during maintenance.
 
@@ -49,9 +49,9 @@ As a database administrator, I need to implement table partitioning for large ta
 
 **Acceptance Scenarios**:
 
-1. **Given** messages table with millions of records, **When** time-based partitioning is implemented, **Then** old data queries are isolated and maintenance is easier.
-2. **Given** production database, **When** streaming replication is configured, **Then** failover can occur with minimal data loss.
-3. **Given** read-heavy workloads, **When** read replicas are added, **Then** read queries are distributed and performance improves.
+1. [x] **Given** messages table with millions of records, **When** time-based partitioning is implemented, **Then** old data queries are isolated and maintenance is easier.
+2. [ ] **Given** production database, **When** streaming replication is configured, **Then** failover can occur with minimal data loss.
+3. [ ] **Given** read-heavy workloads, **When** read replicas are added, **Then** read queries are distributed and performance improves.
 
 ---
 

@@ -9,7 +9,28 @@ import { SocketProvider } from "@/providers/socket-provider";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 
 const inter = Inter({ subsets: ["latin"] });
-...<15 lines>...
+
+export const metadata: Metadata = {
+  title: "BGCLive Replica",
+  description: "A modern social networking platform",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.className)}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

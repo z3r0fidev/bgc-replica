@@ -47,7 +47,7 @@ sentry_sdk.init(
     profiles_sample_rate=1.0,
 )
 
-from app.core.logging import setup_logging
+from app.core.logging_config import setup_logging
 
 setup_logging()
 

@@ -52,10 +52,11 @@ export class OfflineStorage {
 
   async getFeed(): Promise<any[]> {
     await this.init();
-    if (!this.db) return [];
+    const db = this.db;
+    if (!db) return [];
 
     return new Promise((resolve) => {
-      const transaction = this.db.transaction(STORE_NAME, "readonly");
+      const transaction = db.transaction(STORE_NAME, "readonly");
       const store = transaction.objectStore(STORE_NAME);
       const request = store.getAll();
 

@@ -1,4 +1,6 @@
-import { defaultCache } from "@ducanh2912/next-pwa/worker";
+// import { defaultCache } from "@ducanh2912/next-pwa/worker";
+const defaultCache: any[] = []; 
+
 import { precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { StaleWhileRevalidate, CacheFirst } from "workbox-strategies";
@@ -45,6 +47,6 @@ registerRoute(
 );
 
 // Fallback to default cache for other routes
-defaultCache.forEach((entry) => {
+defaultCache.forEach((entry: any) => {
   registerRoute(entry.urlPattern, entry.handler);
 });

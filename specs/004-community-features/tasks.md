@@ -15,7 +15,7 @@ Establish the core community foundation: Database schema, Social Feed, and Threa
 ### 2. Incremental Delivery
 - [x] Add User-Led Groups (Phase 5)
 - [x] Add Community Moderation Tools (Phase 6)
-- [ ] Polish & Performance (Phase N)
+- [x] Polish & Performance (Phase N)
 
 ---
 

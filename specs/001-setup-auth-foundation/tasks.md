@@ -71,7 +71,7 @@ description: "Task list for Setup Auth & Foundation feature"
 **Independent Test**: Visit URL on mobile -> Install Prompt -> Open Standalone -> See Landing Page.
 
 ### Tests for User Story 1
-- [x] T014 [P] [US1] Create E2E test for PWA manifest validation in `tests/e2e/pwa.spec.ts`
+- [ ] T014 [P] [US1] Create E2E test for PWA manifest validation in `tests/e2e/pwa.spec.ts`
 - [x] T015 [P] [US1] Create unit test for Landing Page component in `tests/unit/landing-page.test.tsx`
 
 ### Implementation for User Story 1
@@ -92,9 +92,9 @@ description: "Task list for Setup Auth & Foundation feature"
 **Independent Test**: Complete signup flow -> Verify Session -> Close/Reopen -> Session Persists.
 
 ### Tests for User Story 2
-- [x] T021 [P] [US2] Create E2E test for Google Login flow in `tests/e2e/auth-google.spec.ts` (Mocked)
-- [x] T022 [P] [US2] Create E2E test for Email/Password Signup and Login flows in `tests/e2e/auth-credentials.spec.ts` (Implemented)
-- [x] T040 [P] [US2] Create E2E test for Sign Out and Protected Route redirection in `tests/e2e/auth-protection.spec.ts` (Implemented)
+- [ ] T021 [P] [US2] Create E2E test for Google Login flow in `tests/e2e/auth-google.spec.ts` (Mocked)
+- [ ] T022 [P] [US2] Create E2E test for Email/Password Signup and Login flows in `tests/e2e/auth-credentials.spec.ts` (Implemented)
+- [ ] T040 [P] [US2] Create E2E test for Sign Out and Protected Route redirection in `tests/e2e/auth-protection.spec.ts` (Implemented)
 
 ### Implementation for User Story 2
 - [x] T026 [P] [US2] Configure Google OAuth Provider in backend auth config (Placeholders)
@@ -115,7 +115,7 @@ description: "Task list for Setup Auth & Foundation feature"
 **Independent Test**: Register Passkey -> Logout -> Login with Passkey.
 
 ### Tests for User Story 3
-- [x] T029 [P] [US3] Create E2E test for Passkey registration/login (mocked WebAuthn) in `tests/e2e/auth-passkey.spec.ts`
+- [ ] T029 [P] [US3] Create E2E test for Passkey registration/login (mocked WebAuthn) in `tests/e2e/auth-passkey.spec.ts`
 
 ### Implementation for User Story 3
 - [x] T032 [P] [US3] Enable WebAuthn in Better Auth config (Implemented in standard FastAPI)

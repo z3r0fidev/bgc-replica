@@ -26,7 +26,7 @@
 
 ## Phase N: Polish
 
-- [ ] T039 [P] Add Framer Motion animations for feed transitions and forum navigation
-- [ ] T040 [P] Implement skeleton loaders for feed and forum lists
+- [x] T039 [P] Add Framer Motion animations for feed transitions and forum navigation
+- [x] T040 [P] Implement skeleton loaders for feed and forum lists
 - [ ] T041 E2E test for Forum posting in `frontend/tests/e2e/community-forums.spec.ts`
 - [ ] T042 E2E test for Social Feed flow in `frontend/tests/e2e/community-feed.spec.ts`

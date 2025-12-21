@@ -29,7 +29,7 @@ import { toast } from "sonner"
 const profileSchema = z.object({
   bio: z.string().max(500).optional(),
   height: z.string().optional(),
-  weight: z.coerce.number().optional(),
+  weight: z.number().optional(),
   ethnicity: z.string().optional(),
   body_type: z.string().optional(),
   location_city: z.string().optional(),
@@ -127,7 +127,7 @@ export default function ProfileEditPage() {
                     <FormItem>
                       <FormLabel>Height</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. 5'10\"" {...field} />
+                        <Input placeholder="e.g. 5ft 10in" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

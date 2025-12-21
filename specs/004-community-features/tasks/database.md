@@ -12,5 +12,5 @@
 
 ## Phase 6: Polish
 
-- [ ] T008 [P] Optimize PostgreSQL indices for feed and forum list performance
-- [ ] T009 [P] Implement soft-delete logic for forum threads and their children
+- [x] T008 [P] Optimize PostgreSQL indices for feed and forum list performance
+- [x] T009 [P] Implement soft-delete logic for forum threads and their children

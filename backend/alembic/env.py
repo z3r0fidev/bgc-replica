@@ -18,8 +18,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from app.core.database import Base
 from app.core.config import settings
-from app.models.user import User, Account, Session, VerificationToken, Authenticator # noqa
-from app.models.community import ForumCategory, ForumThread, ForumPost, StatusUpdate, PostComment, CommunityGroup, GroupMembership, ContentReport # noqa
+from app.models import * # noqa
 
 target_metadata = Base.metadata
 

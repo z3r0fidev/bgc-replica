@@ -31,7 +31,7 @@
 
 ## Phase N: Polish
 
-- [ ] T024 [P] Unit tests for Feed aggregation in `backend/tests/test_feed.py`
-- [ ] T025 [P] Unit tests for Threaded Forum retrieval in `backend/tests/test_forums.py`
-- [ ] T026 [P] Configure health checks for Redis connectivity and verify feed index (feed:global) existence in `backend/app/main.py`
-- [ ] T043 [P] Conduct load testing (Locust/k6) to verify SC-004 (500 concurrent posters)
+- [x] T024 [P] Unit tests for Feed aggregation in `backend/tests/test_feed.py`
+- [x] T025 [P] Unit tests for Threaded Forum retrieval in `backend/tests/test_forums.py`
+- [x] T026 [P] Configure health checks for Redis connectivity and verify feed index (feed:global) existence in `backend/app/main.py`
+- [x] T043 [P] Conduct load testing (Locust/k6) to verify SC-004 (500 concurrent posters)
