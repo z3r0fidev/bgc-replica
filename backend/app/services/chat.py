@@ -49,7 +49,8 @@ class ChatService:
             type=type,
             room_id=room_id,
             conversation_id=conversation_id
-        )        db.add(message)
+        )
+        db.add(message)
         
         if conversation_id:
             # Update last_message_at for the conversation

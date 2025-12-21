@@ -10,7 +10,7 @@ from app.schemas.token import Token
 from app.schemas.user import UserCreate, User as UserSchema
 from app.api import deps
 
-from fastapi_limiter.dependencies import RateLimiter
+from fastapi_limiter.depends import RateLimiter
 
 
 

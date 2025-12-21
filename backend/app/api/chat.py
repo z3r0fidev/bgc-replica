@@ -29,6 +29,14 @@ async def get_rooms(
         stmt = stmt.where(ChatRoom.category == category)
     return await paginate_query(db, stmt, ChatRoom, limit, cursor)
 
+@router.get("/rooms/{room_id}/history", response_model=PaginatedResponse[MessageSchema])
+async def get_room_history(
+    room_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 50,
+    cursor: Optional[str] = None
+):
+    from sqlalchemy.orm import selectinload
     stmt = select(Message).where(Message.room_id == room_id).options(selectinload(Message.sender))
     return await paginate_query(db, stmt, Message, limit, cursor)
 
