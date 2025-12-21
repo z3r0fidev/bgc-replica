@@ -16,7 +16,8 @@ python-socketio[asyncio]
 supabase
 asyncpg
 prometheus-fastapi-instrumentator
-fastapi-limiterbleach
+fastapi-limiter
+bleach
 celery
 opentelemetry-api
 opentelemetry-sdk
