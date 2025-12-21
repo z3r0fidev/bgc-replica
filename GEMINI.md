@@ -38,28 +38,60 @@ The project has achieved advanced UI/UX fluidity and API optimization. We have i
 
 
 
+
+
+
+
 ### Phase 7: Production Readiness & SecOps (In Progress)
 
-- **Security Hardening**:
 
-  - Unify Auth: Integrate Auth.js (NextAuth) sessions with Backend JWT validation.
 
-  - Implement strict CORS and HSTS/CSP security headers.
+- **Security Hardening (High Priority)**:
 
-  - Deploy Redis-based distributed rate limiting and request deduplication.
 
-- **System Scalability**:
 
-  - Integrate Celery for asynchronous background tasks (e.g., email, media processing).
+  - **Unified Authentication**: Unify Backend JWT and NextAuth.js flows; implement Secure Cookie storage and session rotation.
 
-  - Implement PostgreSQL table partitioning for `messages` and `status_updates`.
 
-  - Configure read replicas for distributed database load.
 
-- **Observability & QA**:
+  - **Infrastructure Security**: Configure restricted CORS, HSTS, and strict CSP headers (aiming for 100% securityheaders.com score).
 
-  - Finalize OpenTelemetry and Sentry integration.
 
-  - Conduct full-scale load testing (Locust) for 10k+ concurrent users.
 
-  - Automated security scanning (SAST/DAST) in CI/CD.
+  - **Rate Limiting**: Implement distributed Redis-based rate limiting (`fastapi-limiter`) across all public endpoints.
+
+
+
+- **Scalability & Background Tasks**:
+
+
+
+  - **Async Processing**: Integrate Celery with Redis for offloading expensive media processing and automated email workflows.
+
+
+
+  - **Database Scaling**: Implement PostgreSQL range partitioning for `messages` and `status_updates` by month.
+
+
+
+  - **API Scalability**: Optimize WebSocket connection management to support 10k+ concurrent real-time users.
+
+
+
+- **Observability & Operational Excellence**:
+
+
+
+  - **Distributed Tracing**: Full OpenTelemetry integration for request tracing across the stack.
+
+
+
+  - **Security Auditing**: Set up automated SAST (Static Analysis) and DAST (Dynamic Analysis) in the CI/CD pipeline.
+
+
+
+  - **Error Monitoring**: Finalize Sentry integration with environment-specific alerting and automated log rotation.
+
+
+
+
