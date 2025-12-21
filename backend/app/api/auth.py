@@ -10,29 +10,58 @@ from app.schemas.token import Token
 from app.schemas.user import UserCreate, User as UserSchema
 from app.api import deps
 
+from fastapi_limiter.dependencies import RateLimiter
+
+
+
 router = APIRouter()
 
-@router.post("/login", response_model=Token)
+
+
+@router.post("/login", response_model=Token, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+
 async def login(
+
     db: Annotated[AsyncSession, Depends(get_db)],
+
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+
 ):
+
     result = await db.execute(select(User).where(User.email == form_data.username))
+
     user = result.scalars().first()
+
     if not user or not verify_password(form_data.password, user.hashed_password):
+
         raise HTTPException(
+
             status_code=status.HTTP_401_UNAUTHORIZED,
+
             detail="Incorrect email or password",
+
         )
+
     return Token(
+
         access_token=create_access_token(user.id),
+
         token_type="bearer",
+
     )
 
-@router.post("/register", response_model=UserSchema)
+
+
+
+
+@router.post("/register", response_model=UserSchema, dependencies=[Depends(RateLimiter(times=3, seconds=3600))])
+
 async def register(
+
     db: Annotated[AsyncSession, Depends(get_db)],
+
     user_in: UserCreate
+
 ):
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalars().first()

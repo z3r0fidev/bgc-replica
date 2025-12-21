@@ -5,6 +5,7 @@ from sqlalchemy import select, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.chat import Message, ChatRoom, Conversation
 from app.services.location import search_users_nearby
+import bleach
 
 class ChatService:
     async def get_or_create_conversation(
@@ -31,22 +32,24 @@ class ChatService:
         return conv
 
     async def save_message(
-        self, 
-        db: AsyncSession, 
-        sender_id: uuid.UUID, 
-        content: str, 
+        self,
+        db: AsyncSession,
+        sender_id: uuid.UUID,
+        content: str,
         type: str = "TEXT",
         room_id: Optional[uuid.UUID] = None,
         conversation_id: Optional[uuid.UUID] = None
     ) -> Message:
+        # Sanitize content
+        sanitized_content = bleach.clean(content, tags=[], attributes={}, strip=True)
+        
         message = Message(
             sender_id=sender_id,
-            content=content,
+            content=sanitized_content,
             type=type,
             room_id=room_id,
             conversation_id=conversation_id
-        )
-        db.add(message)
+        )        db.add(message)
         
         if conversation_id:
             # Update last_message_at for the conversation
