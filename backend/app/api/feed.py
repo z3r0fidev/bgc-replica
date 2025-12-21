@@ -1,5 +1,5 @@
 from typing import List, Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from app.core.database import get_db
@@ -77,12 +77,13 @@ async def get_feed(
         }
     }
 
+from app.services.tasks import fan_out_post
+
 @router.post("/", response_model=StatusUpdateSchema)
 async def create_status_update(
     update_in: StatusUpdateCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    background_tasks: BackgroundTasks
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
     new_update = StatusUpdate(
         **update_in.model_dump(),
@@ -92,7 +93,7 @@ async def create_status_update(
     await db.commit()
     await db.refresh(new_update)
     
-    # Fan-out in background
+    # Fan-out in background via Celery
     # 1. Get follower IDs
     stmt = select(Relationship.from_user_id).where(
         Relationship.to_user_id == current_user.id,
@@ -102,11 +103,10 @@ async def create_status_update(
     result = await db.execute(stmt)
     follower_ids = result.scalars().all()
     
-    background_tasks.add_task(
-        feed_service.add_post_to_feeds,
-        post_id=new_update.id,
-        author_id=current_user.id,
-        follower_ids=follower_ids
+    # Convert UUIDs to strings for Celery (JSON serializable)
+    fan_out_post.delay(
+        post_id_str=str(new_update.id),
+        follower_ids_str=[str(fid) for fid in follower_ids]
     )
     
     return new_update

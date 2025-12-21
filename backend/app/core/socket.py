@@ -30,15 +30,22 @@ async def check_rate_limit(user_id: str) -> bool:
 
 @sio.event
 async def connect(sid, environ, auth):
-    # In a real app, validate JWT from auth header/cookie
-    if auth and 'user_id' in auth:
-        user_id = auth['user_id']
-        await sio.save_session(sid, {'user_id': user_id})
-        await sio.enter_room(sid, str(user_id)) # User's private room for DMs
-        await presence_service.update_presence(uuid.UUID(user_id), "online")
-        print(f"User {user_id} connected on {sid}")
-    else:
-        print(f"Anonymous client connected: {sid}")
+    try:
+        # In production, validate JWT session from cookies or headers
+        if auth and 'user_id' in auth:
+            user_id = auth['user_id']
+            # Basic UUID validation
+            uuid.UUID(user_id)
+            
+            await sio.save_session(sid, {'user_id': user_id})
+            await sio.enter_room(sid, str(user_id))
+            await presence_service.update_presence(uuid.UUID(user_id), "online")
+            print(f"Authenticated user {user_id} connected on {sid}")
+        else:
+            print(f"Anonymous client connected: {sid}")
+    except Exception as e:
+        print(f"Connection rejected for {sid}: {str(e)}")
+        return False # Reject connection
 
 @sio.event
 async def disconnect(sid):
