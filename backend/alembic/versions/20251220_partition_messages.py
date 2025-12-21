@@ -64,4 +64,12 @@ def downgrade() -> None:
         );
     """)
     op.execute("INSERT INTO messages (id, room_id, conversation_id, sender_id, content, type, created_at) SELECT id, room_id, conversation_id, sender_id, content, type, created_at FROM messages_partitioned;")
+    
+    # Restore indexes
+    op.create_index('ix_messages_conversation_id', 'messages', ['conversation_id'], unique=False)
+    op.create_index('ix_messages_created_at', 'messages', ['created_at'], unique=False)
+    op.create_index('ix_messages_created_at_brin', 'messages', ['created_at'], unique=False, postgresql_using='brin')
+    op.create_index('ix_messages_room_id', 'messages', ['room_id'], unique=False)
+    op.create_index('ix_messages_sender_id', 'messages', ['sender_id'], unique=False)
+
     op.execute("DROP TABLE messages_partitioned CASCADE;")

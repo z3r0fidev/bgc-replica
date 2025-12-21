@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
 import socketio
@@ -16,9 +16,6 @@ from app.core.database import SessionLocal
 from app.core.redis import get_redis
 from app.core.config import settings
 from sqlalchemy import text
-
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from app.core.exceptions import BaseAppException
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -39,26 +36,20 @@ provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 
 import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-import logging
 
 if os.getenv("TESTING") != "true":
     sentry_sdk.init(
-        dsn=settings.SENTRY_DSN if hasattr(settings, "SENTRY_DSN") else None,
-        integrations=[
-            FastApiIntegration(),
-            LoggingIntegration(
-                level=logging.INFO,
-                event_level=logging.ERROR
-            ),
-        ],
+        dsn=settings.SENTRY_DSN,
+        # Add data like request headers and IP for users
+        send_default_pii=True,
+        # Enable sending logs to Sentry
+        enable_logs=True,
+        # Set traces_sample_rate to 1.0 to capture 100% of transactions for tracing
         traces_sample_rate=1.0,
-        profiles_sample_rate=1.0,
-        enable_tracing=True,
-        _experiments={
-            "enable_metrics": True,
-        },
+        # Set profile_session_sample_rate to 1.0 to profile 100% of profile sessions
+        profile_session_sample_rate=1.0,
+        # Set profile_lifecycle to "trace" to automatically run the profiler when there is an active transaction
+        profile_lifecycle="trace",
     )
 
 from app.core.logging_config import setup_logging
