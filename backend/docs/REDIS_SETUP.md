@@ -4,7 +4,7 @@ The BGCLive Replica uses Redis for **Rate Limiting**, **Real-time Presence track
 
 ## Troubleshooting "Connection Refused" (Errno 10061)
 
-If you see a warning that `FastAPILimiter` could not be initialized, it means the backend cannot reach Redis at `localhost:6379`.
+The application will **fail to start** if it cannot reach a Redis instance at the configured `REDIS_URL` (default: `localhost:6379`). This ensures that critical security features like Rate Limiting are always active in a functional environment.
 
 ## Installation Options
 
