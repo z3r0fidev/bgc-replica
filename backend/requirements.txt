@@ -14,4 +14,12 @@ pytest
 pytest-asyncio
 python-socketio[asyncio]
 supabase
-asyncpgprometheus-fastapi-instrumentator
+asyncpg
+prometheus-fastapi-instrumentator
+fastapi-limiterbleach
+celery
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-exporter-otlp
+sentry-sdk[fastapi]

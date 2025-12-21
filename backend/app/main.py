@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.middleware import CacheControlMiddleware
+from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
 import socketio
 from app.core.socket import sio
 from app.api.auth import router as auth_router
@@ -21,7 +21,44 @@ from app.core.exceptions import BaseAppException
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from fastapi_limiter import FastAPILimiter
+import redis.asyncio as redis
+
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+# Initialize Tracing
+provider = TracerProvider()
+processor = BatchSpanProcessor(OTLPSpanExporter())
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+sentry_sdk.init(
+    dsn=settings.SENTRY_DSN if hasattr(settings, "SENTRY_DSN") else None,
+    integrations=[FastApiIntegration()],
+    traces_sample_rate=1.0,
+    profiles_sample_rate=1.0,
+)
+
+from app.core.logging import setup_logging
+
+setup_logging()
+
 app = FastAPI(title="BGCLive Replica API")
+
+# Instrument FastAPI
+FastAPIInstrumentor.instrument_app(app)
+
+@app.on_event("startup")
+async def startup():
+    r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(r)
 
 # Instrument Prometheus
 Instrumentator().instrument(app).expose(app)
@@ -43,6 +80,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CacheControlMiddleware)
 
 @app.get("/")
