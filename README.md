@@ -24,7 +24,7 @@ This project is organized as a monorepo:
 2. Create and activate a virtual environment: `python -m venv venv`.
 3. Install dependencies: `pip install -r requirements.txt`.
 4. Configure `.env` file.
-5. Start server: `uvicorn app.main:app --reload --port 8000`.
+5. Start server: `.\venv\Scripts\python -m uvicorn app.main:app --reload --port 8000` (Windows) or `source venv/bin/activate && uvicorn app.main:app --reload` (Unix).
 
 ### Frontend Setup
 1. Navigate to `/frontend`.
