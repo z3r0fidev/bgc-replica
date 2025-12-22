@@ -88,7 +88,8 @@ Core data models defined across Phase 1-5:
 | Feature | BGCLive (Legacy) | Modern Replica |
 | :--- | :--- | :--- |
 | **Platform** | Desktop Web | Mobile-First Responsive PWA |
-| **Tech** | PHP/MySQL | Next.js / FastAPI / Postgres |
+| **Tech** | PHP/MySQL | Next.js 16 / FastAPI / Postgres |
 | **Chat** | Page Refresh / Simple AJAX | Real-time WebSockets (Socket.io) |
 | **Media** | Low-res Images | Optimized High-res, Lazy Loading |
 | **Auth** | Basic Cookie | JWT / OAuth / Passkeys |
+| **Database** | Raw MySQL | Prisma 7 (Frontend) / SQLAlchemy (Backend) |
