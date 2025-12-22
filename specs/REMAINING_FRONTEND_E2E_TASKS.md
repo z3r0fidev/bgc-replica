@@ -4,8 +4,8 @@ The following tasks represent the Frontend E2E testing suite that has been defer
 
 ## Phase 1: Setup Auth & Foundation (Specs 001)
 
-- [ ] **T014 [US1]**: Create E2E test for PWA manifest validation in `frontend/tests/e2e/pwa.spec.ts`
-- [ ] **T021 [US2]**: Create E2E test for Google Login flow (mocked) in `frontend/tests/e2e/auth-google.spec.ts`
+- [x] **T014 [US1]**: Create E2E test for PWA manifest validation in `frontend/tests/e2e/pwa.spec.ts`
+- [x] **T021 [US2]**: Create E2E test for Google Login flow (mocked) in `frontend/tests/e2e/auth-google.spec.ts`
 - [ ] **T022 [US2]**: Create E2E test for Email/Password Signup and Login flows in `frontend/tests/e2e/auth-credentials.spec.ts`
 - [ ] **T040 [US2]**: Create E2E test for Sign Out and Protected Route redirection in `frontend/tests/e2e/auth-protection.spec.ts`
 - [ ] **T029 [US3]**: Create E2E test for Passkey registration/login (mocked WebAuthn) in `frontend/tests/e2e/auth-passkey.spec.ts`

@@ -5,15 +5,17 @@ This guide outlines the step-by-step process to clone the core functionality of 
 ## 1. Tech Stack Recommendation
 To modernize the application for performance, scalability, and developer experience, we use:
 
-- **Frontend:** **Next.js (React)** with **shadcn/ui**, **Framer Motion**, **Zustand**, **TanStack Virtual**
-    - *Why:* SSR for SEO, premium UI with virtualization for large data lists.
-- **Styling:** **Tailwind CSS**
-    - *Why:* Utility-first CSS for rapid UI development and easy mobile responsiveness.
+- **Frontend:** **Next.js 16 (React 19)** with **shadcn/ui**, **Framer Motion**, **Zustand**, **TanStack Virtual**
+    - *Why:* Latest SSR/RSC features, premium UI with virtualization.
+- **Styling:** **Tailwind CSS 4.x**
+    - *Why:* High-performance utility-first CSS.
 - **Backend:** **FastAPI (Python)** with **SQLAlchemy**, **Socket.io**
     - *Why:* High-performance async APIs, scalable real-time communication.
 - **Database:** **PostgreSQL** (via **Supabase**) with **Redis** for caching
     - *Why:* Relational data integrity with caching for scalability.
-- **ORM:** **SQLAlchemy 2.x**
+- **ORM (Frontend):** **Prisma 7** with **Driver Adapters** (`@prisma/adapter-pg`)
+    - *Why:* Type-safe database access with optimized JavaScript-native connection pooling.
+- **ORM (Backend):** **SQLAlchemy 2.x**
     - *Why:* Async-native, optimized for complex queries.
 - **Storage:** **Supabase Storage** for user photos/videos.
 - **Security:** **JWT**, **Rate Limiting**, **CORS**, **Zod** (Frontend), **Pydantic** (Backend).

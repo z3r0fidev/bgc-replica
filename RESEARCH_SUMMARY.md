@@ -37,5 +37,13 @@ Based on historical analysis, the site offered a comprehensive suite of social n
 - **Ownership:** Synergy Tek.
 - **Status:** The site is currently considered "dead" or archived, likely displaced by the rise of mobile-first geolocation apps like Grindr, Jack'd, and Scruff which streamlined the dating aspect of the platform.
 
-## 5. Modernization Opportunities
-Recreating BGCLive today requires shifting from a "desktop-first portal" to a "mobile-first progressive web app (PWA)." The original site's heavy reliance on forums and chat rooms can be modernized into "Communities" (like Discord servers or Reddit subreddits) and "Direct Messaging" (like WhatsApp/Telegram).
+## 6. Technical Evolution: Prisma 7 Migration
+In December 2025, the project underwent a significant architectural upgrade to **Prisma 7**. This migration was driven by the need for better performance and a more modern approach to database connectivity in serverless-friendly environments like Next.js.
+
+### Key Changes
+- **Driver Adapters**: Replaced the traditional Rust-based binary connection with `@prisma/adapter-pg`. This allows Prisma to use the `pg` library directly, leading to faster cold starts and more efficient connection pooling in JavaScript environments.
+- **Config Centralization**: Moved database connection configuration to `prisma.config.ts`, separating CLI configuration from runtime instantiation.
+- **Improved Typings**: Leveraged Prisma 7's enhanced type safety for better developer experience during complex query building.
+
+### Impact on Replica
+This upgrade ensures the BGCLive replica remains at the bleeding edge of web technology, matching the performance expectations of a 2026-era social application while maintaining the robust features of the original platform.

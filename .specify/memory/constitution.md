@@ -1,45 +1,50 @@
-<!--
-Sync Impact Report:
-- Version Change: 0.0.0 -> 1.0.0
-- List of Modified Principles:
-  - Added: I. Mobile-First PWA
-  - Added: II. Historical Fidelity
-  - Added: III. Modern Tech Stack (T3)
-  - Added: IV. Community Safety & Moderation
-  - Added: V. Progressive Disclosure
-- Added Sections: Governance
-- Removed Sections: None (Template placeholders replaced)
-- Templates Requiring Updates: None (Standard templates align with these principles)
-- Follow-up TODOs: None
--->
-# BGCLive Replica Constitution
+# [PROJECT_NAME] Constitution
+<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
 
 ## Core Principles
 
-### I. Mobile-First PWA
-The application MUST be designed and built as a Progressive Web App (PWA) with a mobile-first mindset. All UI/UX decisions must prioritize small screens, touch interactions, and offline capabilities before desktop adaptations. This ensures accessibility for the modern user base who primarily access social networks via smartphones.
+### [PRINCIPLE_1_NAME]
+<!-- Example: I. Library-First -->
+[PRINCIPLE_1_DESCRIPTION]
+<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
 
-### II. Historical Fidelity
-The core features (Profiles, Chat Rooms, Forums/Feed, Galleries) MUST functionally replicate the experience of the original BGCLive.com while adapting the interface for modern standards. We preserve the "spirit" of the community interactions (e.g., directness, specific demographic focus) even if the exact pixel-perfect UI is updated.
+### [PRINCIPLE_2_NAME]
+<!-- Example: II. CLI Interface -->
+[PRINCIPLE_2_DESCRIPTION]
+<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
 
-### III. Modern Tech Stack (FastAPI + Next.js)
-Development MUST adhere to the established architecture: Next.js (React) for the frontend, FastAPI (Python) for the backend, Tailwind CSS for styling, PostgreSQL (via Supabase) for primary data, SQLAlchemy for ORM, and Redis for caching and high-performance indexing. This polyglot approach ensures high-performance async APIs and a modern, responsive UI. Deviations require explicit architectural justification.
+### [PRINCIPLE_3_NAME]
+<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
+[PRINCIPLE_3_DESCRIPTION]
+<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
 
-### IV. Community Safety & Moderation
-Given the social nature of the application, safety features (blocking, reporting, moderation tools) are NOT optional add-ons but core requirements. Every interactive feature (chat, posts, comments) MUST have a corresponding safety mechanism designed alongside it.
+### [PRINCIPLE_4_NAME]
+<!-- Example: IV. Integration Testing -->
+[PRINCIPLE_4_DESCRIPTION]
+<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
 
-### V. Progressive Disclosure
-Implementation MUST follow a phased approach: (1) Auth & Foundation, (2) User Profiles, (3) Real-time Chat, (4) Community Features. We do not build "everything at once." Each phase must result in a stable, testable deliverable before moving to the next complex domain.
+### [PRINCIPLE_5_NAME]
+<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
+[PRINCIPLE_5_DESCRIPTION]
+<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+
+## [SECTION_2_NAME]
+<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+
+[SECTION_2_CONTENT]
+<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+
+## [SECTION_3_NAME]
+<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+
+[SECTION_3_CONTENT]
+<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
 
 ## Governance
+<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-**Amendments**:
-This constitution is the supreme architectural law of the project. Amendments require a clear rationale and must be reflected in the project's version history.
+[GOVERNANCE_RULES]
+<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
 
-**Compliance**:
-All feature specifications and implementation plans must explicitly state how they adhere to these principles. Code reviews must verify compliance with the Tech Stack and Mobile-First mandates.
-
-**Versioning**:
-We follow semantic versioning for this document. Major version bumps represent fundamental shifts in project goals or tech stack.
-
-**Version**: 1.0.0 | **Ratified**: 2025-12-20 | **Last Amended**: 2025-12-20
+**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
+<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->

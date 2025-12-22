@@ -6,6 +6,7 @@ import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -67,6 +68,28 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogleLogin() {
+    setIsLoading(true)
+    try {
+      await signIn("google", { callbackUrl: "/" })
+    } catch (error) {
+      toast.error("Something went wrong with Google login")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handlePasskeyLogin() {
+    setIsLoading(true)
+    try {
+      await signIn("passkey", { callbackUrl: "/" })
+    } catch (error) {
+      toast.error("Passkey login failed")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
       <Card className="w-full max-w-md">
@@ -110,6 +133,27 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" type="button" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
+              Continue with Google
+            </Button>
+            <Button variant="outline" type="button" className="w-full" onClick={handlePasskeyLogin} disabled={isLoading}>
+              Sign in with Passkey
+            </Button>
+          </div>
+
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <div className="text-sm text-muted-foreground">

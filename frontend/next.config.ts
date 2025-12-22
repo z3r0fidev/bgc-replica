@@ -14,9 +14,13 @@ const withPWA = withPWAInit({
   },
 });
 
+import path from "path";
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  turbopack: {},
+  turbopack: {
+    root: path.resolve("."),
+  },
   async headers() {
     return [
       {
