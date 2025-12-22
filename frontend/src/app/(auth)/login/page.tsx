@@ -56,8 +56,9 @@ export default function LoginPage() {
       }
 
       const data = await response.json()
-      // Store token in local storage or cookie
+      // Store token in local storage and cookie
       localStorage.setItem("access_token", data.access_token)
+      document.cookie = `access_token=${data.access_token}; path=/; max-age=3600; SameSite=Lax`
       
       toast.success("Login successful!")
       router.push("/")
