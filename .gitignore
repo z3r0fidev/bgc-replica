@@ -11,11 +11,16 @@
 
 # testing
 /coverage
+**/playwright-report/
+**/test-results/
+error-context.md
 
 # next.js
 .next/
 **/ .next/
 /out/
+frontend/server.err
+frontend/server.log
 
 # production
 /build
