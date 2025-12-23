@@ -1,0 +1,65 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths: [ "backend/**" ]
+  pull_request:
+    branches: [ "main" ]
+    paths: [ "backend/**" ]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    services:
+      # Service container for Postgres to run integration tests
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff mypy httpx coverage
+
+      - name: Lint with Ruff
+        run: ruff check .
+
+      - name: Type Check with Mypy
+        run: mypy .
+
+      - name: Run Tests
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+        run: |
+          pytest --cov=app --cov-report=xml
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
