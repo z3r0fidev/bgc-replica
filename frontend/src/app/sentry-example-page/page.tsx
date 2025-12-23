@@ -18,8 +18,24 @@ export default function Page() {
   useEffect(() => {
     Sentry.logger.info("Sentry example page loaded");
     async function checkConnectivity() {
-      const result = await Sentry.diagnoseSdkConnectivity();
-      setIsConnected(result !== "sentry-unreachable");
+      try {
+        // Check connectivity using the SDK's diagnostic tool
+        const result = await Sentry.diagnoseSdkConnectivity();
+        
+        if (result === "sentry-unreachable") {
+          // Fallback: try to reach the tunnel directly
+          const tunnelRes = await fetch("/monitoring", { method: "OPTIONS" }).catch(() => null);
+          if (tunnelRes && tunnelRes.status !== 404) {
+            setIsConnected(true);
+            return;
+          }
+          setIsConnected(false);
+        } else {
+          setIsConnected(true);
+        }
+      } catch (e) {
+        setIsConnected(false);
+      }
     }
     checkConnectivity();
   }, []);
