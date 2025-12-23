@@ -23,7 +23,7 @@ export default function ChatPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setConversations(data);
+          setConversations(data.items || []);
         }
 
         const meRes = await fetch(`${apiUrl}/api/auth/me`, {
@@ -35,6 +35,7 @@ export default function ChatPage() {
         }
       } catch (e) {
         console.error("Failed to fetch data", e);
+        setConversations([]);
       }
     }
     loadConversations();
@@ -46,7 +47,7 @@ export default function ChatPage() {
         <h1 className="text-2xl font-bold px-2">Messages</h1>
         <ScrollArea className="flex-1 border rounded-xl bg-card">
           <div className="p-2 space-y-2">
-            {conversations.map((conv) => (
+            {Array.isArray(conversations) && conversations.map((conv) => (
               <Card 
                 key={conv.id} 
                 className={cn(
@@ -72,7 +73,7 @@ export default function ChatPage() {
                 </CardContent>
               </Card>
             ))}
-            {conversations.length === 0 && (
+            {Array.isArray(conversations) && conversations.length === 0 && (
               <div className="text-center py-20 text-muted-foreground">
                 <p className="text-sm">No active conversations.</p>
                 <p className="text-xs mt-1">Start a chat from a user profile.</p>

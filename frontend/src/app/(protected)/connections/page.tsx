@@ -19,10 +19,11 @@ export default function ConnectionsPage() {
         })
         if (response.ok) {
           const data = await response.json()
-          setRelationships(data)
+          setRelationships(data.items || [])
         }
       } catch (error) {
         console.error("Failed to load connections", error)
+        setRelationships([])
       } finally {
         setIsLoading(false)
       }
@@ -30,9 +31,9 @@ export default function ConnectionsPage() {
     loadRelationships()
   }, [])
 
-  const friends = relationships.filter(r => r.type === "FRIEND" && r.status === "ACCEPTED")
-  const favorites = relationships.filter(r => r.type === "FAVORITE")
-  const pending = relationships.filter(r => r.type === "FRIEND" && r.status === "PENDING")
+  const friends = Array.isArray(relationships) ? relationships.filter(r => r.type === "FRIEND" && r.status === "ACCEPTED") : []
+  const favorites = Array.isArray(relationships) ? relationships.filter(r => r.type === "FAVORITE") : []
+  const pending = Array.isArray(relationships) ? relationships.filter(r => r.type === "FRIEND" && r.status === "PENDING") : []
 
   return (
     <div className="container max-w-4xl py-10">

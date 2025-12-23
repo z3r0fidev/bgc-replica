@@ -30,6 +30,11 @@ async def search_users(
     max_age: Optional[int] = Query(None),
     ethnicity: Optional[str] = Query(None),
     location: Optional[str] = Query(None), # city name
+    position: Optional[str] = Query(None),
+    build: Optional[str] = Query(None),
+    hiv_status: Optional[str] = Query(None),
+    privacy_mode: Optional[str] = Query(None),
+    trans_interested: Optional[bool] = Query(None),
     radius_km: Optional[float] = Query(50),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
@@ -44,6 +49,16 @@ async def search_users(
         filters.append(Profile.ethnicity == ethnicity)
     if location:
         filters.append(Profile.location_city.ilike(f"%{location}%"))
+    if position:
+        filters.append(Profile.position == position)
+    if build:
+        filters.append(Profile.build == build)
+    if hiv_status:
+        filters.append(Profile.hiv_status == hiv_status)
+    if privacy_mode:
+        filters.append(Profile.privacy_mode == privacy_mode)
+    if trans_interested is not None:
+        filters.append(Profile.is_trans_interested == trans_interested)
     
     # Location-based filtering using Redis if lat/lng provided
     if lat is not None and lng is not None:

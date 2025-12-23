@@ -22,10 +22,11 @@ export default function RoomsPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setRooms(data);
+          setRooms(data.items || []);
         }
       } catch (e) {
         console.error(e);
+        setRooms([]);
       } finally {
         setIsLoading(false);
       }
@@ -50,7 +51,7 @@ export default function RoomsPage() {
         <div className="text-center py-20">Loading rooms...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map((room) => (
+          {Array.isArray(rooms) && rooms.map((room) => (
             <Card key={room.id} className="hover:ring-2 hover:ring-primary transition-all">
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">

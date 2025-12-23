@@ -13,6 +13,8 @@ from app.api.forums import router as forums_router
 from app.api.feed import router as feed_router
 from app.api.groups import router as groups_router
 from app.api.moderation import router as moderation_router
+from app.api.media import router as media_router
+from app.api.stories import router as stories_router
 from app.core.database import SessionLocal
 from app.core.redis import get_redis
 from app.core.config import settings
@@ -31,10 +33,11 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 # Initialize Tracing
-provider = TracerProvider()
-processor = BatchSpanProcessor(OTLPSpanExporter())
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
+if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
+    provider = TracerProvider()
+    processor = BatchSpanProcessor(OTLPSpanExporter())
+    provider.add_span_processor(processor)
+    trace.set_tracer_provider(provider)
 
 import sentry_sdk
 
@@ -60,7 +63,7 @@ setup_logging()
 app = FastAPI(title="BGCLive Replica API")
 
 # Instrument FastAPI
-if os.getenv("TESTING") != "true":
+if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
     FastAPIInstrumentor.instrument_app(app)
 
 @app.on_event("startup")
@@ -128,6 +131,8 @@ app.include_router(forums_router, prefix="/api/forums", tags=["forums"])
 app.include_router(feed_router, prefix="/api/feed", tags=["feed"])
 app.include_router(groups_router, prefix="/api/groups", tags=["groups"])
 app.include_router(moderation_router, prefix="/api/moderation", tags=["moderation"])
+app.include_router(media_router, prefix="/api/media", tags=["media"])
+app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="socket.io")

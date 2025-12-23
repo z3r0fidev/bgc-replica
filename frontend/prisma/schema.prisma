@@ -18,9 +18,52 @@ model User {
   accounts       Account[]
   sessions       Session[]
   authenticators Authenticator[]
+  profile        Profile?
+  media          Media[]
+  stories        Story[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Profile {
+  id             String   @id
+  bio            String?
+  height         String?
+  weight         Int?
+  ethnicity      String?
+  body_type      String?
+  position       String?
+  build          String?
+  hiv_status     String?
+  privacy_mode   String   @default("OUT") // OUT, DOWNLO
+  is_trans_interested Boolean @default(false)
+  location_city  String?
+  location_state String?
+  user           User     @relation(fields: [id], references: [id], onDelete: Cascade)
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  userId       String
+  url          String
+  storage_path String
+  type         String   // IMAGE, VIDEO
+  is_primary   Boolean  @default(false)
+  is_original  Boolean  @default(false) // For BGC Original Video Programming
+  created_at   DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Story {
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  content    String
+  cover_url  String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {

@@ -31,6 +31,7 @@ class User(Base):
     # Phase 2 Relationships
     profile: Mapped[Optional["Profile"]] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
     media: Mapped[List["Media"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    stories: Mapped[List["Story"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     
     # Social Graph Relationships
     relationships_sent: Mapped[List["Relationship"]] = relationship(
@@ -135,6 +136,14 @@ class Profile(Base):
     location_lat: Mapped[Optional[float]] = mapped_column(Float)
     location_lng: Mapped[Optional[float]] = mapped_column(Float)
     privacy_level: Mapped[str] = mapped_column(String(50), default="PUBLIC")
+    
+    # Advanced Profile Attributes (Extrapolated from BGCLive)
+    position: Mapped[Optional[str]] = mapped_column(String(100))
+    build: Mapped[Optional[str]] = mapped_column(String(100))
+    hiv_status: Mapped[Optional[str]] = mapped_column(String(100))
+    privacy_mode: Mapped[str] = mapped_column(String(50), default="OUT") # OUT, DOWNLO
+    is_trans_interested: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
@@ -149,9 +158,23 @@ class Media(Base):
     storage_path: Mapped[str] = mapped_column(String(1024))
     type: Mapped[str] = mapped_column(String(50)) # IMAGE, VIDEO
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_original: Mapped[bool] = mapped_column(Boolean, default=False) # BGC Original
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     user: Mapped["User"] = relationship(back_populates="media")
+
+class Story(Base):
+    __tablename__ = "stories"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(512))
+    content: Mapped[str] = mapped_column(Text)
+    cover_url: Mapped[Optional[str]] = mapped_column(String(1024))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user: Mapped["User"] = relationship(back_populates="stories")
 
 class Relationship(Base):
     __tablename__ = "relationships"

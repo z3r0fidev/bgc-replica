@@ -23,10 +23,11 @@ export default function GroupsPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setGroups(data);
+          setGroups(data.items || []);
         }
       } catch (e) {
         console.error(e);
+        setGroups([]);
       } finally {
         setIsLoading(false);
       }
@@ -61,7 +62,7 @@ export default function GroupsPage() {
         <div className="text-center py-20">Loading groups...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {groups.map((group) => (
+          {Array.isArray(groups) && groups.map((group) => (
             <Card key={group.id} className="hover:ring-2 hover:ring-primary transition-all">
               <CardHeader className="flex flex-row items-center gap-4">
                 <div className="p-2 bg-primary/10 rounded-lg text-primary">

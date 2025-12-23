@@ -16,6 +16,13 @@ class ProfileBase(BaseModel):
     location_lat: Optional[float] = None
     location_lng: Optional[float] = None
     privacy_level: str = "PUBLIC"
+    
+    # Advanced Attributes
+    position: Optional[str] = None
+    build: Optional[str] = None
+    hiv_status: Optional[str] = None
+    privacy_mode: str = "OUT"
+    is_trans_interested: bool = False
 
 class ProfileCreate(ProfileBase):
     pass

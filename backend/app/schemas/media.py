@@ -8,6 +8,7 @@ class MediaBase(BaseModel):
     storage_path: str
     type: str # IMAGE, VIDEO
     is_primary: bool = False
+    is_original: bool = False
 
 class MediaCreate(MediaBase):
     user_id: uuid.UUID

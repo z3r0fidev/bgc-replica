@@ -1,0 +1,87 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "BGCLive" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e6]: BGCLive
+        - navigation
+      - navigation [ref=e8]:
+        - link "Login" [ref=e9] [cursor=pointer]:
+          - /url: /login
+        - link "Register" [ref=e10] [cursor=pointer]:
+          - /url: /register
+  - main [ref=e13]:
+    - generic [ref=e14]:
+      - complementary [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - img [ref=e18]
+            - generic [ref=e20]: Discovery
+          - button "Reset" [ref=e21]
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - text: Username
+            - textbox "Full or partial..." [ref=e27]
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e30]: Location & Distance
+              - button "Use My Location" [ref=e31]:
+                - img
+                - text: Use My Location
+            - generic [ref=e32]:
+              - textbox "Zipcode" [ref=e34]
+              - combobox [ref=e35]:
+                - generic: 50 miles
+                - img
+            - textbox "Or Search by City..." [ref=e36]
+          - generic [ref=e37]:
+            - text: Identity & Roles
+            - generic [ref=e38]:
+              - text: Ethnicity
+              - combobox [ref=e39]:
+                - generic: All Ethnicities
+                - img
+            - generic [ref=e40]:
+              - text: Position
+              - combobox [ref=e41]:
+                - generic: All Positions
+                - img
+            - generic [ref=e42]:
+              - text: Privacy Mode
+              - combobox [ref=e43]:
+                - generic: Any Privacy
+                - img
+            - generic [ref=e44]:
+              - text: Trans Interested
+              - combobox [ref=e45]:
+                - generic: Any Interest
+                - img
+          - generic [ref=e46]:
+            - text: Physical Attributes
+            - generic [ref=e47]:
+              - text: Build
+              - combobox [ref=e48]:
+                - generic: Any Build
+                - img
+            - generic [ref=e49]:
+              - text: HIV Status
+              - combobox [ref=e50]:
+                - generic: Any Status
+                - img
+          - button "Apply Filters" [ref=e51]:
+            - img
+            - text: Apply Filters
+      - main [ref=e52]:
+        - generic [ref=e54]:
+          - img [ref=e55]
+          - textbox "Global search by name or bio..." [ref=e58]
+        - generic [ref=e64]: Searching the community...
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e70] [cursor=pointer]:
+    - img [ref=e71]
+  - alert [ref=e74]
+```

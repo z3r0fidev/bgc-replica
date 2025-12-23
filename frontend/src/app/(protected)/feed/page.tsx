@@ -43,8 +43,8 @@ export default function FeedPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setPosts(data);
-        await offlineStorage.saveFeed(data);
+        setPosts(data.items || []);
+        await offlineStorage.saveFeed(data.items || []);
       }
     } catch (e) {
       console.error(e);

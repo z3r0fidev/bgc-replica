@@ -7,6 +7,7 @@ import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { Toaster } from "@/components/ui/sonner";
 import { SocketProvider } from "@/providers/socket-provider";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
+import { Navbar } from "@/components/layout/Navbar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,7 +31,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.className)}>
+      <body
+        className={cn("min-h-screen bg-background font-sans antialiased", inter.className)}
+        suppressHydrationWarning
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -39,6 +43,7 @@ export default function RootLayout({
         >
           <SocketProvider>
             <OfflineIndicator />
+            <Navbar />
             {children}
           </SocketProvider>
           <Toaster />

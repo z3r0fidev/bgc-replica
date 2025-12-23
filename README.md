@@ -40,12 +40,13 @@ This project is organized as a monorepo:
 - **Phase 5 (PWA & Performance)**: COMPLETED ✅
 - **Phase 6 (Final Polish & Enhancements)**: COMPLETED ✅
 - **Phase 7 (Production Readiness & SecOps)**: COMPLETED ✅
+- **Phase 8 (Extrapolated Features & Discovery)**: COMPLETED ✅
 
 *Recent Updates*:
+- Implemented **Advanced Search Sidebar** with 10+ granular filters and **Geolocation** ("Use My Location").
+- Launched **BGC Originals** media portal and **User Stories** narrative section.
 - Migrated to **Next.js 16 (Turbopack)** and **Prisma 7**, implementing `@prisma/adapter-pg` for improved database connectivity.
-- Implemented comprehensive Backend E2E and API Contract testing using Schemathesis and Pytest.
-- Hardened security with strict CSP/HSTS headers and distributed rate limiting.
-- Configured Celery background workers and PostgreSQL range partitioning.
+- Seeded database with **50 diverse test profiles** across the NY/NJ/PA tri-state area.
 
 ## Documentation
 - [GEMINI.md](./GEMINI.md) - High-level project context.

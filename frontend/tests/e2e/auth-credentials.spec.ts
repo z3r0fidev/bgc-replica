@@ -20,11 +20,19 @@ test.describe('Credentials Auth', () => {
     });
 
     await page.goto('/register');
+    await page.waitForLoadState('networkidle');
     
-    // Fill the form
-    await page.getByLabel('Name').fill('Test User');
-    await page.getByLabel('Email').fill('test-register@example.com');
-    await page.getByLabel('Password').fill('Password123!');
+    // Use name-based selectors for better stability
+    const nameInput = page.locator('input[name="name"]');
+    const emailInput = page.locator('input[name="email"]');
+    const passwordInput = page.locator('input[name="password"]');
+
+    await nameInput.fill('Test User');
+    await emailInput.fill('test-register@example.com');
+    await passwordInput.fill('Password123!');
+    
+    // Ensure values are set before clicking
+    await expect(nameInput).toHaveValue('Test User');
     
     // Wait for the response after clicking register
     const responsePromise = page.waitForResponse(registerUrl);
@@ -51,9 +59,13 @@ test.describe('Credentials Auth', () => {
     });
 
     await page.goto('/login');
+    await page.waitForLoadState('networkidle');
     
-    await page.getByLabel('Email').fill('test-login@example.com');
-    await page.getByLabel('Password').fill('Password123!');
+    const emailInput = page.locator('input[name="email"]');
+    const passwordInput = page.locator('input[name="password"]');
+
+    await emailInput.fill('test-login@example.com');
+    await passwordInput.fill('Password123!');
     
     const responsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
@@ -109,10 +121,11 @@ test.describe('Credentials Auth', () => {
     });
 
     await page.goto('/register');
+    await page.waitForLoadState('networkidle');
     
-    await page.getByLabel('Name').fill('Test User');
-    await page.getByLabel('Email').fill('existing@example.com');
-    await page.getByLabel('Password').fill('Password123!');
+    await page.locator('input[name="name"]').fill('Test User');
+    await page.locator('input[name="email"]').fill('existing@example.com');
+    await page.locator('input[name="password"]').fill('Password123!');
     
     await page.getByRole('button', { name: 'Register' }).click();
     
