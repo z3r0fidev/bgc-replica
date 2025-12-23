@@ -20,10 +20,13 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     const socketInstance = io(apiUrl, {
       path: "/ws/socket.io",
       addTrailingSlash: false,
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 5,
+      timeout: 10000,
     });
 
     socketInstance.on("connect", () => {
