@@ -14,7 +14,7 @@ from app.core.pagination import paginate_query
 
 router = APIRouter()
 
-@router.get("/posts", response_model=PaginatedResponse[PersonalPostSchema])
+@router.get("", response_model=PaginatedResponse[PersonalPostSchema])
 async def get_personal_posts(
     db: Annotated[AsyncSession, Depends(get_db)],
     category: Optional[str] = Query(None),
@@ -31,7 +31,7 @@ async def get_personal_posts(
         
     return await paginate_query(db, stmt, PersonalPost, limit, cursor)
 
-@router.post("/posts", response_model=PersonalPostSchema, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PersonalPostSchema, status_code=status.HTTP_201_CREATED)
 async def create_personal_post(
     post_in: PersonalPostCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
@@ -48,7 +48,7 @@ async def create_personal_post(
     await db.refresh(new_post)
     return new_post
 
-@router.post("/posts/{id}/follow")
+@router.post("/{id}/follow")
 async def toggle_follow_post(
     id: uuid.UUID,
     current_user: Annotated[User, Depends(deps.get_current_user)],
@@ -84,7 +84,7 @@ async def toggle_follow_post(
     await db.commit()
     return {"following": following, "count": post.follow_count}
 
-@router.get("/posts/{id}/comments", response_model=List[PersonalPostCommentSchema])
+@router.get("/{id}/comments", response_model=List[PersonalPostCommentSchema])
 async def get_post_comments(
     id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)]
@@ -96,7 +96,7 @@ async def get_post_comments(
     result = await db.execute(stmt)
     return result.scalars().all()
 
-@router.post("/posts/{id}/comments", response_model=PersonalPostCommentSchema, status_code=status.HTTP_201_CREATED)
+@router.post("/{id}/comments", response_model=PersonalPostCommentSchema, status_code=status.HTTP_201_CREATED)
 async def create_post_comment(
     id: uuid.UUID,
     comment_in: PersonalPostCommentCreate,

@@ -139,7 +139,7 @@ app.include_router(moderation_router, prefix="/api/moderation", tags=["moderatio
 app.include_router(media_router, prefix="/api/media", tags=["media"])
 app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
 app.include_router(personals_router, prefix="/api/personals", tags=["personals"])
-app.include_router(personals_expansion_router, prefix="/api/personals", tags=["personals"])
+app.include_router(personals_expansion_router, prefix="/api/personals/posts", tags=["personals"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="socket.io")
