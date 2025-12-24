@@ -9,6 +9,22 @@ export interface PersonalCategory {
   banner: string;
 }
 
+export interface PersonalPost {
+  id: string;
+  author_id: string;
+  category_slug: string;
+  content: string;
+  media_ids?: string[];
+  follow_count: number;
+  comment_count: number;
+  created_at: string;
+  author?: {
+    id: string;
+    name?: string;
+    image?: string;
+  };
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export const personalsService = {
@@ -49,6 +65,32 @@ export const personalsService = {
         const response = await fetch(`${API_URL}/api/personals/listings?${searchParams.toString()}`);
         if (!response.ok) {
           const err = new Error("Failed to fetch listings");
+          Sentry.captureException(err);
+          throw err;
+        }
+        return response.json();
+      }
+    );
+  },
+
+  async getPosts(params: {
+    category?: string;
+    limit?: number;
+    cursor?: string;
+  }): Promise<PaginatedResponse<PersonalPost>> {
+    return Sentry.startSpan(
+      { name: "GET /api/personals/posts", op: "http.client" },
+      async (span) => {
+        const searchParams = new URLSearchParams();
+        if (params.category) searchParams.set("category", params.category);
+        if (params.limit) searchParams.set("limit", params.limit.toString());
+        if (params.cursor) searchParams.set("cursor", params.cursor);
+
+        span.setAttribute("query", searchParams.toString());
+
+        const response = await fetch(`${API_URL}/api/personals/posts?${searchParams.toString()}`);
+        if (!response.ok) {
+          const err = new Error("Failed to fetch personal posts");
           Sentry.captureException(err);
           throw err;
         }

@@ -2,17 +2,16 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { personalsService } from "@/services/personals";
+import { personalsService, PersonalPost } from "@/services/personals";
 import { VirtualizedListingView } from "@/components/personals/list";
 import { LocationSelector } from "@/components/personals/location-filter";
-import { Profile } from "@/types/profile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CategoryPage() {
   const params = useParams();
   const category = params.category as string;
   
-  const [items, setItems] = useState<Profile[]>([]);
+  const [items, setItems] = useState<PersonalPost[]>([]);
   const [hasNext, setHasNext] = useState(true);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,9 +25,8 @@ export default function CategoryPage() {
     setIsLoading(true);
     
     try {
-      const response = await personalsService.getListings({
+      const response = await personalsService.getPosts({
         category,
-        city: city === "all" ? undefined : city,
         cursor: isInitial ? undefined : cursor,
         limit: 20
       });
@@ -41,11 +39,11 @@ export default function CategoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [category, cursor, isLoading, city]);
+  }, [category, cursor, isLoading]);
 
   useEffect(() => {
     fetchListings(true);
-  }, [category, city]);
+  }, [category, city, fetchListings]);
 
   return (
     <div className="flex flex-col gap-6">

@@ -4,9 +4,11 @@ import React, { useRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Profile } from "@/types/profile";
 import { PersonalListingRow } from "./row";
+import { PersonalPostRow } from "./post-row";
+import { PersonalPost } from "@/services/personals";
 
 interface VirtualizedListingViewProps {
-  items: Profile[];
+  items: (Profile | PersonalPost)[];
   hasNext: boolean;
   onLoadMore: () => void;
   isLoading: boolean;
@@ -23,7 +25,11 @@ export function VirtualizedListingView({
   const virtualizer = useVirtualizer({
     count: hasNext ? items.length + 1 : items.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 120, // Estimated row height
+    estimateSize: (index) => {
+      const item = items[index];
+      if (item && 'content' in item) return 200; // Post height
+      return 120; // Profile height
+    },
     overscan: 5,
   });
 
@@ -50,7 +56,7 @@ export function VirtualizedListingView({
       >
         {virtualItems.map((virtualRow) => {
           const isLoaderRow = virtualRow.index >= items.length;
-          const profile = items[virtualRow.index];
+          const item = items[virtualRow.index];
 
           return (
             <div
@@ -69,7 +75,13 @@ export function VirtualizedListingView({
                   Loading more...
                 </div>
               ) : (
-                <PersonalListingRow profile={profile} />
+                <>
+                  {'content' in item ? (
+                    <PersonalPostRow post={item as PersonalPost} />
+                  ) : (
+                    <PersonalListingRow profile={item as Profile} />
+                  )}
+                </>
               )}
             </div>
           );

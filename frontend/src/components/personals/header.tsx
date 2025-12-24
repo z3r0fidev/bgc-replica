@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { personalsService, PersonalCategory } from "@/services/personals";
+import { PostNowDialog } from "./post-now-dialog";
 
 export function PersonalsHeader() {
   const params = useParams();
@@ -41,8 +42,11 @@ export function PersonalsHeader() {
           <span className="text-[#8E8E8E]">|</span>
           <span>PHILADELPHIA</span>
         </div>
-        <div className="hidden md:block">
-          TRANSX.COM
+        <div className="flex items-center gap-4">
+          <PostNowDialog />
+          <div className="hidden md:block">
+            TRANSX.COM
+          </div>
         </div>
       </div>
     </div>

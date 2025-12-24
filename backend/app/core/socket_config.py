@@ -205,3 +205,85 @@ async def leave_forum(sid, data):
     # Broadcast new count
     count = await presence_service.get_forum_active_count(uuid.UUID(forum_id))
     await sio.emit("forum_stats_update", {"forum_id": forum_id, "active_users": count}, room=f"forum:{forum_id}")
+
+@sio.event
+async def join_post(sid, data):
+    post_id = data['post_id']
+    await sio.enter_room(sid, f"post:{post_id}:comments")
+    print(f"Client {sid} joined post room {post_id}")
+
+@sio.event
+
+async def leave_post(sid, data):
+
+    post_id = data['post_id']
+
+    await sio.leave_room(sid, f"post:{post_id}:comments")
+
+    print(f"Client {sid} left post room {post_id}")
+
+
+
+@sio.event
+
+async def send_post_comment(sid, data):
+
+    session = await sio.get_session(sid)
+
+    if not session or 'user_id' not in session:
+
+        return
+
+    
+
+    user_id = session['user_id']
+
+    if not await check_rate_limit(user_id):
+
+        await sio.emit("error", {"detail": "Rate limit exceeded. Slow down!"}, to=sid)
+
+        return
+
+
+
+    author_id = uuid.UUID(user_id)
+
+    post_id = uuid.UUID(data['post_id'])
+
+    content = data['content']
+
+    parent_id = data.get('parent_id')
+
+    if parent_id:
+
+        parent_id = uuid.UUID(parent_id)
+
+
+
+    async with SessionLocal() as db:
+
+        # We'll use the service to save the comment when implemented in T017
+
+        # For now, this is a placeholder that matches the expected flow
+
+        # In T017 we will properly integrate this with the DB
+
+        comment_data = {
+
+            "id": str(uuid.uuid4()),
+
+            "post_id": str(post_id),
+
+            "author_id": str(author_id),
+
+            "content": content,
+
+            "parent_id": str(parent_id) if parent_id else None,
+
+            "created_at": datetime.utcnow().isoformat()
+
+        }
+
+        
+
+        await sio.emit("new_comment", comment_data, room=f"post:{post_id}:comments")
