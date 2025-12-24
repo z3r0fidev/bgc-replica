@@ -9,6 +9,8 @@ from app.api import deps
 from app.models.user import User, Profile
 from app.models.social import PersonalPost, PersonalPostFollower, PersonalPostComment
 from app.schemas.community import PersonalPostCreate, PersonalPostSchema, PersonalPostCommentCreate, PersonalPostCommentSchema
+from app.schemas.common import PaginatedResponse
+from app.core.pagination import paginate_query
 
 router = APIRouter()
 
