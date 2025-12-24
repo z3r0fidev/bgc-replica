@@ -1,4 +1,4 @@
-# BGCLive Replica Project Context
+﻿# BGCLive Replica Project Context
 
 ## Current Status: Phase 5 Complete (PWA & Performance Optimization) ✅
 The project has achieved production-grade performance and deep OS integration. The application is now a fully featured PWA with a 100/100 Lighthouse score, supporting offline resilience and high-performance list rendering for large community datasets.
