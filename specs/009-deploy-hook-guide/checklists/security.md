@@ -2,7 +2,7 @@
 
 **Purpose**: Validate requirement quality for "Implement Deploy Hook Guide Tasks"
 **Created**: 2025-12-23
-**Feature**: [specs/001-deploy-hook-guide/spec.md](specs/001-deploy-hook-guide/spec.md)
+**Feature**: [specs/009-deploy-hook-guide/spec.md](specs/009-deploy-hook-guide/spec.md)
 
 ## Requirement Completeness
 - [ ] CHK001 Are requirements defined for all critical failure scenarios (e.g., Railway API down)? [Completeness, Spec §Edge Cases]

@@ -3,7 +3,7 @@
 ## Technical Context
 
 - **Feature**: Configure Backend Deployment Hook using Railway CLI
-- **Source**: `specs/001-deploy-hook-guide/spec.md`
+- **Source**: `specs/009-deploy-hook-guide/spec.md`
 - **Dependencies**:
   - GitHub Actions
   - Docker Image: `ghcr.io/railwayapp/cli:latest`

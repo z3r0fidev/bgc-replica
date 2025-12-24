@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2025-12-23
-**Feature**: [specs/001-deploy-hook-guide/spec.md](specs/001-deploy-hook-guide/spec.md)
+**Feature**: [specs/009-deploy-hook-guide/spec.md](specs/009-deploy-hook-guide/spec.md)
 
 ## Content Quality
 

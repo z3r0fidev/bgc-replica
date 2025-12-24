@@ -1,6 +1,6 @@
 # Tasks: Implement Deploy Hook Guide Tasks
 
-**Input**: Design documents from `specs/001-deploy-hook-guide/`
+**Input**: Design documents from `specs/009-deploy-hook-guide/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories)
 
 **Tests**: Manual verification tasks included as per Constitution check in plan.md.
