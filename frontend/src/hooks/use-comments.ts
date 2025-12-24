@@ -41,7 +41,7 @@ export function useComments(postId: string) {
 
     // Socket.io integration
     const newSocket = io(process.env.NEXT_PUBLIC_WS_URL || "http://127.0.0.1:8000", {
-      path: "/socket.io",
+      path: "/ws/socket.io",
     });
 
     newSocket.emit("join_post", { post_id: postId });
