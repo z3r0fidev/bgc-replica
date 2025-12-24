@@ -101,6 +101,7 @@
 - [x] T022 [P] Perform final visual regression check against TransX layout
 - [x] T023 Run `quickstart.md` validation scenarios
 - [x] T024 [P] Run Lighthouse / Performance benchmarks to verify SC-001 (<200ms) and SC-002 (60 FPS) goals
+- [x] T025 [P] Move remaining category banner assets to `frontend/public/assets/personals/banners/` and update `get_categories` in `backend/app/api/personals.py` to associate them.
 
 ---
 

@@ -17,7 +17,7 @@
 
 **Purpose**: Basic structure and asset preparation
 
-- [x] T001 [P] Move forum-specific banner and icon assets to `frontend/public/assets/forums/`
+- [x] T001 [P] Move 15+ forum-specific banner and icon assets to `frontend/public/assets/forums/`
 - [x] T001a [P] Generate/Verify "Liquid Glass" status icons (sticky, hot, unread, locked) in `frontend/public/assets/forums/icons/`
 - [x] T002 [P] Create frontend component structure in `frontend/src/components/forums/`
 - [x] T003 Configure "Liquid Glass" design tokens in `frontend/tailwind.config.ts` per research.md (Updated in globals.css for Tailwind 4)

@@ -54,6 +54,7 @@ backend/
 
 frontend/
 ├── public/assets/forums/
+│   ├── banners/            # New: category-specific headers (aaok, milfy, etc.)
 │   └── icons/              # New: status icons (sticky, hot, unread, locked)
 ├── src/
 │   ├── app/

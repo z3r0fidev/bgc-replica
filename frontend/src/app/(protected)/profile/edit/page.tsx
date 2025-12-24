@@ -57,7 +57,7 @@ export default function ProfileEditPage() {
     async function loadProfile() {
       try {
         const token = localStorage.getItem("access_token")
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
         const response = await fetch(`${apiUrl}/api/profiles/me`, {
           headers: { "Authorization": `Bearer ${token}` }
         })
@@ -76,7 +76,7 @@ export default function ProfileEditPage() {
     setIsLoading(true)
     try {
       const token = localStorage.getItem("access_token")
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
       const response = await fetch(`${apiUrl}/api/profiles/me`, {
         method: "PUT",
         headers: {
