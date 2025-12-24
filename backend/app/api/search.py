@@ -19,7 +19,7 @@ from app.models.user import User, Profile
 from app.schemas.profile import Profile as ProfileSchema
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
-from app.services.location import search_users_nearby
+from app.services.location import search_users_nearby, get_lat_lng_from_zip
 import uuid
 
 router = APIRouter()
@@ -30,6 +30,7 @@ async def search_users(
     max_age: Optional[int] = Query(None),
     ethnicity: Optional[str] = Query(None),
     location: Optional[str] = Query(None), # city name
+    zipcode: Optional[str] = Query(None),
     position: Optional[str] = Query(None),
     build: Optional[str] = Query(None),
     hiv_status: Optional[str] = Query(None),
@@ -42,7 +43,8 @@ async def search_users(
     cursor: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Profile)
+    from sqlalchemy.orm import selectinload
+    query = select(Profile).options(selectinload(Profile.user))
     filters = []
 
     if ethnicity:
@@ -60,6 +62,13 @@ async def search_users(
     if trans_interested is not None:
         filters.append(Profile.is_trans_interested == trans_interested)
     
+    # Handle Zipcode
+    if zipcode and lat is None and lng is None:
+        zip_coords = get_lat_lng_from_zip(zipcode)
+        if zip_coords:
+            lat = zip_coords["lat"]
+            lng = zip_coords["lng"]
+
     # Location-based filtering using Redis if lat/lng provided
     if lat is not None and lng is not None:
         nearby_results = await search_users_nearby(lat, lng, radius_km)

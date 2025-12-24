@@ -16,7 +16,7 @@ export default function PublicProfilePage() {
     async function loadProfile() {
       try {
         const token = localStorage.getItem("access_token")
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
         const response = await fetch(`${apiUrl}/api/profiles/${params.id}`, {
           headers: { "Authorization": `Bearer ${token}` }
         })
@@ -47,16 +47,16 @@ export default function PublicProfilePage() {
   return (
     <div className="container max-w-4xl py-10 space-y-8">
       <div className="flex flex-col md:flex-row gap-8 items-start">
-        <div className="w-full md:w-1/3 aspect-square bg-muted rounded-xl overflow-hidden">
-          <img src={profile.image || "/placeholder-user.png"} alt={profile.name} className="w-full h-full object-cover" />
+        <div className="w-full md:w-1/3 aspect-square bg-muted rounded-xl overflow-hidden shadow-lg border border-black/10">
+          <img src={profile.user?.image || "/placeholder-user.png"} alt={profile.user?.name || "User"} className="w-full h-full object-cover" />
         </div>
         <div className="flex-1 space-y-4 w-full">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold">{profile.name || "Anonymous"}</h1>
+              <h1 className="text-4xl font-bold text-[#4C1230]">{profile.user?.name || "Anonymous"}</h1>
               <div className="flex items-center text-muted-foreground mt-1 gap-2">
                 <MapPin className="h-4 w-4" />
-                <span>{profile.location_city || "Earth"}, {profile.location_state || "Anywhere"}</span>
+                <span className="font-medium">{profile.location_city || "Earth"}, {profile.location_state || "Anywhere"}</span>
               </div>
             </div>
             <div className="flex gap-2">

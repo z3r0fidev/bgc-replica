@@ -34,9 +34,11 @@ export interface ForumThread {
   is_hot: boolean;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 export const forumsService = {
   async getTree(): Promise<ForumCategoryTree[]> {
-    const response = await fetch("/api/forums/tree");
+    const response = await fetch(`${API_URL}/api/forums/tree`);
     if (!response.ok) throw new Error("Failed to fetch forum tree");
     return response.json();
   },
@@ -50,7 +52,7 @@ export const forumsService = {
     if (params.cursor) searchParams.set("cursor", params.cursor);
 
     const response = await fetch(
-      `/api/forums/categories/${categorySlug}/threads?${searchParams.toString()}`
+      `${API_URL}/api/forums/categories/${categorySlug}/threads?${searchParams.toString()}`
     );
     if (!response.ok) throw new Error("Failed to fetch threads");
     return response.json();

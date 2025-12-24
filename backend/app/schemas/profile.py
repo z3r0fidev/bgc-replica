@@ -30,9 +30,12 @@ class ProfileCreate(ProfileBase):
 class ProfileUpdate(ProfileBase):
     pass
 
+from app.schemas.user import UserBase
+
 class Profile(ProfileBase):
     id: uuid.UUID
     last_active: datetime
+    user: Optional[UserBase] = None
 
     class Config:
         from_attributes = True

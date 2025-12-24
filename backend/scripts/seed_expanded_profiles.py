@@ -32,19 +32,38 @@ BUILDS = ["Slim", "Athletic", "Muscular", "Average", "Large", "Stocky"]
 HIV_STATUSES = ["Negative", "Positive", "Undetectable", "Ask Me"]
 PRIVACY_MODES = ["OUT", "DOWNLO"]
 
-# Targeted Localities: PHL + North/Central NJ
-LOCATIONS = [
-    # Philadelphia Metro
-    ("Philadelphia", "PA"), ("King of Prussia", "PA"), ("Norristown", "PA"), ("Ardmore", "PA"),
-    ("Cherry Hill", "NJ"), ("Camden", "NJ"), ("Mount Laurel", "NJ"), ("Pennsauken", "NJ"),
-    # North NJ
-    ("Newark", "NJ"), ("Jersey City", "NJ"), ("Hoboken", "NJ"), ("Weehawken", "NJ"),
-    ("Paterson", "NJ"), ("Clifton", "NJ"), ("Montclair", "NJ"), ("Hackensack", "NJ"),
-    ("Elizabeth", "NJ"), ("Union", "NJ"), ("Morristown", "NJ"),
-    # Central NJ
-    ("New Brunswick", "NJ"), ("Edison", "NJ"), ("Woodbridge", "NJ"), ("Old Bridge", "NJ"),
-    ("Princeton", "NJ"), ("Trenton", "NJ"), ("Hamilton", "NJ"), ("Freehold", "NJ")
-]
+# Targeted Localities: PHL + North/Central NJ with coordinates
+CITY_COORDS = {
+    "Philadelphia": {"lat": 39.9526, "lng": -75.1652, "state": "PA"},
+    "King of Prussia": {"lat": 40.0884, "lng": -75.3910, "state": "PA"},
+    "Norristown": {"lat": 40.1212, "lng": -75.3400, "state": "PA"},
+    "Ardmore": {"lat": 40.0068, "lng": -75.2855, "state": "PA"},
+    "Cherry Hill": {"lat": 39.9348, "lng": -75.0307, "state": "NJ"},
+    "Camden": {"lat": 39.9259, "lng": -75.1196, "state": "NJ"},
+    "Mount Laurel": {"lat": 39.9340, "lng": -74.8910, "state": "NJ"},
+    "Pennsauken": {"lat": 39.9526, "lng": -75.0582, "state": "NJ"},
+    "Newark": {"lat": 40.7357, "lng": -74.1724, "state": "NJ"},
+    "Jersey City": {"lat": 40.7282, "lng": -74.0776, "state": "NJ"},
+    "Hoboken": {"lat": 40.7440, "lng": -74.0324, "state": "NJ"},
+    "Weehawken": {"lat": 40.7695, "lng": -74.0201, "state": "NJ"},
+    "Paterson": {"lat": 40.9168, "lng": -74.1718, "state": "NJ"},
+    "Clifton": {"lat": 40.8584, "lng": -74.1638, "state": "NJ"},
+    "Montclair": {"lat": 40.8137, "lng": -74.2129, "state": "NJ"},
+    "Hackensack": {"lat": 40.8859, "lng": -74.0435, "state": "NJ"},
+    "Elizabeth": {"lat": 40.6640, "lng": -74.2107, "state": "NJ"},
+    "Union": {"lat": 40.6976, "lng": -74.2632, "state": "NJ"},
+    "Morristown": {"lat": 40.7968, "lng": -74.4815, "state": "NJ"},
+    "New Brunswick": {"lat": 40.4862, "lng": -74.4518, "state": "NJ"},
+    "Edison": {"lat": 40.5187, "lng": -74.4121, "state": "NJ"},
+    "Woodbridge": {"lat": 40.5576, "lng": -74.2846, "state": "NJ"},
+    "Old Bridge": {"lat": 40.4043, "lng": -74.3318, "state": "NJ"},
+    "Princeton": {"lat": 40.3487, "lng": -74.6590, "state": "NJ"},
+    "Trenton": {"lat": 40.2206, "lng": -74.7597, "state": "NJ"},
+    "Hamilton": {"lat": 40.2237, "lng": -74.6982, "state": "NJ"},
+    "Freehold": {"lat": 40.2601, "lng": -74.2738, "state": "NJ"}
+}
+
+LOCATIONS = list(CITY_COORDS.keys())
 
 # Robust Persona Components
 ARCHETYPES = [
@@ -192,6 +211,8 @@ def generate_bio(name, archetype):
     )
     return bio_template
 
+from app.services.location import index_user_location
+
 async def seed_expanded_profiles():
     print(f"Seeding {NUM_PROFILES} robust test profiles for PHL/NJ areas...")
     
@@ -209,8 +230,12 @@ async def seed_expanded_profiles():
             # 2. Archetype Selection
             archetype = random.choice(ARCHETYPES)
             
-            # 3. Location
-            city, state = random.choice(LOCATIONS)
+            # 3. Location & Coordinates
+            city = random.choice(LOCATIONS)
+            coords = CITY_COORDS[city]
+            state = coords["state"]
+            lat = coords["lat"] + (random.random() - 0.5) * 0.01 # Add slight jitter
+            lng = coords["lng"] + (random.random() - 0.5) * 0.01
             
             # 4. Profile Pic (Unique via Seed)
             image_url = f"https://api.dicebear.com/7.x/avataaars/svg?seed={username}&gender=male"
@@ -233,7 +258,7 @@ async def seed_expanded_profiles():
             profile = Profile(
                 id=user.id,
                 bio=bio_text,
-                height=f"{random.randint(5,6)}\'{{random.randint(0,11)}}\"",
+                height=f"{random.randint(5,6)}'{random.randint(0,11)}\"",
                 weight=random.randint(140, 270),
                 ethnicity=random.choice(ETHNICITIES),
                 position=random.choice(POSITIONS),
@@ -242,10 +267,15 @@ async def seed_expanded_profiles():
                 privacy_mode=random.choice(PRIVACY_MODES),
                 location_city=city,
                 location_state=state,
+                location_lat=lat,
+                location_lng=lng,
                 is_trans_interested=random.choice([True, False]),
                 created_at=fake.date_time_between(start_date='-1y', end_date='now')
             )
             db.add(profile)
+            
+            # 7. Index in Redis for geospatial search
+            await index_user_location(user.id, lat, lng)
             
             if (i + 1) % 10 == 0:
                 print(f"  Processed {i + 1}/100 profiles...")

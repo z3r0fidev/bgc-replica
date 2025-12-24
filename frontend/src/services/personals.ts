@@ -9,12 +9,14 @@ export interface PersonalCategory {
   banner: string;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 export const personalsService = {
   async getCategories(): Promise<PersonalCategory[]> {
     return Sentry.startSpan(
       { name: "GET /api/personals/categories", op: "http.client" },
       async () => {
-        const response = await fetch("/api/personals/categories");
+        const response = await fetch(`${API_URL}/api/personals/categories`);
         if (!response.ok) {
           const err = new Error("Failed to fetch categories");
           Sentry.captureException(err);
@@ -44,7 +46,7 @@ export const personalsService = {
 
         span.setAttribute("query", searchParams.toString());
 
-        const response = await fetch(`/api/personals/listings?${searchParams.toString()}`);
+        const response = await fetch(`${API_URL}/api/personals/listings?${searchParams.toString()}`);
         if (!response.ok) {
           const err = new Error("Failed to fetch listings");
           Sentry.captureException(err);

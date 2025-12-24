@@ -40,7 +40,8 @@ async def get_listings(
     limit: int = 20,
     cursor: Optional[str] = None
 ):
-    query = select(Profile).where(Profile.is_personal == True)
+    from sqlalchemy.orm import selectinload
+    query = select(Profile).where(Profile.is_personal == True).options(selectinload(Profile.user))
     filters = []
     
     if category:
