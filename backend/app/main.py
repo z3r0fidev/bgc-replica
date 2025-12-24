@@ -89,10 +89,7 @@ async def app_exception_handler(request: Request, exc: BaseAppException):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -142,5 +139,5 @@ app.include_router(personals_router, prefix="/api/personals", tags=["personals"]
 app.include_router(personals_expansion_router, prefix="/api/personals/posts", tags=["personals"])
 
 # Mount Socket.io
-socket_app = socketio.ASGIApp(sio, socketio_path="socket.io")
-app.mount("/ws", socket_app)
+socket_app = socketio.ASGIApp(sio, socketio_path="")
+app.mount("/socket.io", socket_app)
