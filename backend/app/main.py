@@ -16,6 +16,7 @@ from app.api.moderation import router as moderation_router
 from app.api.media import router as media_router
 from app.api.stories import router as stories_router
 from app.api.personals import router as personals_router
+from app.api.personals_expansion import router as personals_expansion_router
 from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
 from app.core.config import settings
@@ -88,7 +89,10 @@ async def app_exception_handler(request: Request, exc: BaseAppException):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Adjust for production
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -135,6 +139,7 @@ app.include_router(moderation_router, prefix="/api/moderation", tags=["moderatio
 app.include_router(media_router, prefix="/api/media", tags=["media"])
 app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
 app.include_router(personals_router, prefix="/api/personals", tags=["personals"])
+app.include_router(personals_expansion_router, prefix="/api/personals", tags=["personals"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="socket.io")
