@@ -119,6 +119,7 @@ export function RichEditor({ content, onChange, placeholder }: RichEditorProps) 
       }),
     ],
     content: content,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
