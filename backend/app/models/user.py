@@ -143,6 +143,7 @@ class Profile(Base):
     hiv_status: Mapped[Optional[str]] = mapped_column(String(100))
     privacy_mode: Mapped[str] = mapped_column(String(50), default="OUT") # OUT, DOWNLO
     is_trans_interested: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_personal: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

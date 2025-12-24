@@ -15,6 +15,7 @@ from app.api.groups import router as groups_router
 from app.api.moderation import router as moderation_router
 from app.api.media import router as media_router
 from app.api.stories import router as stories_router
+from app.api.personals import router as personals_router
 from app.core.database import SessionLocal
 from app.core.redis import get_redis
 from app.core.config import settings
@@ -133,6 +134,7 @@ app.include_router(groups_router, prefix="/api/groups", tags=["groups"])
 app.include_router(moderation_router, prefix="/api/moderation", tags=["moderation"])
 app.include_router(media_router, prefix="/api/media", tags=["media"])
 app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
+app.include_router(personals_router, prefix="/api/personals", tags=["personals"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="socket.io")
