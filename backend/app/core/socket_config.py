@@ -3,7 +3,7 @@ from app.core.config import settings
 from app.services.chat import chat_service
 from app.services.presence import presence_service
 from app.core.database import SessionLocal
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 import uuid
 from datetime import datetime
 
@@ -173,3 +173,35 @@ async def send_room_message(sid, data):
         }
         
         await sio.emit("new_room_message", msg_data, room=str(room_id))
+
+@sio.event
+async def join_forum(sid, data):
+    session = await sio.get_session(sid)
+    if not session or 'user_id' not in session:
+        return
+    
+    user_id = session['user_id']
+    forum_id = data['forum_id']
+    
+    await sio.enter_room(sid, f"forum:{forum_id}")
+    await presence_service.join_forum(uuid.UUID(forum_id), uuid.UUID(user_id))
+    
+    # Broadcast new count
+    count = await presence_service.get_forum_active_count(uuid.UUID(forum_id))
+    await sio.emit("forum_stats_update", {"forum_id": forum_id, "active_users": count}, room=f"forum:{forum_id}")
+
+@sio.event
+async def leave_forum(sid, data):
+    session = await sio.get_session(sid)
+    if not session or 'user_id' not in session:
+        return
+    
+    user_id = session['user_id']
+    forum_id = data['forum_id']
+    
+    await sio.leave_room(sid, f"forum:{forum_id}")
+    await presence_service.leave_forum(uuid.UUID(forum_id), uuid.UUID(user_id))
+    
+    # Broadcast new count
+    count = await presence_service.get_forum_active_count(uuid.UUID(forum_id))
+    await sio.emit("forum_stats_update", {"forum_id": forum_id, "active_users": count}, room=f"forum:{forum_id}")

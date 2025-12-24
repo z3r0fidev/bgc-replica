@@ -1,7 +1,7 @@
 from typing import Optional, Dict
 import httpx
 from app.core.config import settings
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 import uuid
 
 async def get_location_from_ip(ip: str) -> Optional[Dict]:

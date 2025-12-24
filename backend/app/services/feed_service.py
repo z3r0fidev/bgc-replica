@@ -1,6 +1,6 @@
 from typing import List, Optional
 import time
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 import uuid
 
 class FeedService:

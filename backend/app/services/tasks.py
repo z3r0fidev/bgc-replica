@@ -1,5 +1,5 @@
-from app.core.celery import celery_app
-from app.core.redis import get_redis
+from app.core.celery_config import celery_app
+from app.core.redis_config import get_redis
 import asyncio
 import time
 import uuid

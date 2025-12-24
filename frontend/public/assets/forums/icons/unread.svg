@@ -1,0 +1,11 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="unread-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4C1230;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#800000;stop-opacity:0.9" />
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="20" height="20" rx="6" fill="white" fill-opacity="0.1"/>
+  <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" stroke-opacity="0.2"/>
+  <circle cx="12" cy="12" r="4" fill="url(#unread-grad)"/>
+</svg>

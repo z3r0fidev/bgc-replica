@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
 import socketio
-from app.core.socket import sio
+from app.core.socket_config import sio
 from app.api.auth import router as auth_router
 from app.api.profiles import router as profile_router
 from app.api.social import router as social_router
@@ -17,7 +17,7 @@ from app.api.media import router as media_router
 from app.api.stories import router as stories_router
 from app.api.personals import router as personals_router
 from app.core.database import SessionLocal
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 from app.core.config import settings
 from sqlalchemy import text
 from app.core.exceptions import BaseAppException

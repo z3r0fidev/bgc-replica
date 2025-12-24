@@ -1,4 +1,4 @@
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 import asyncio
 
 async def cleanup_transient_data():

@@ -2,6 +2,7 @@ from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 import uuid
 from datetime import datetime
+from app.schemas.user import UserBase
 
 # --- Forums ---
 
@@ -10,7 +11,13 @@ class ForumCategorySchema(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
+    parent_id: Optional[uuid.UUID] = None
+    icon_path: Optional[str] = None
+    banner_path: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
+
+class ForumCategoryTree(ForumCategorySchema):
+    children: List["ForumCategoryTree"] = []
 
 class ForumPostSchema(BaseModel):
     id: uuid.UUID
@@ -25,12 +32,16 @@ class ForumPostSchema(BaseModel):
 class ForumThreadSchema(BaseModel):
     id: uuid.UUID
     category_id: uuid.UUID
-    author_id: uuid.UUID
     title: str
-    content: str
-    media_url: Optional[str] = None
+    is_sticky: bool
+    view_count: int
+    reply_count: int
     created_at: datetime
     last_activity: datetime
+    
+    # Author Info
+    author: Optional[UserBase] = None
+    
     model_config = ConfigDict(from_attributes=True)
 
 class ForumThreadCreate(BaseModel):

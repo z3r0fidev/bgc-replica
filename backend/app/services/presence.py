@@ -1,6 +1,6 @@
 from typing import List, Optional
 import time
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 import uuid
 
 class PresenceService:
@@ -43,5 +43,17 @@ class PresenceService:
         redis = await get_redis()
         cutoff = int(time.time()) - 3600 # 1 hour
         await redis.zremrangebyscore(self.presence_key, "-inf", cutoff)
+
+    async def join_forum(self, forum_id: uuid.UUID, user_id: uuid.UUID):
+        redis = await get_redis()
+        await redis.sadd(f"forum:{forum_id}:active_users", str(user_id))
+
+    async def leave_forum(self, forum_id: uuid.UUID, user_id: uuid.UUID):
+        redis = await get_redis()
+        await redis.srem(f"forum:{forum_id}:active_users", str(user_id))
+
+    async def get_forum_active_count(self, forum_id: uuid.UUID) -> int:
+        redis = await get_redis()
+        return await redis.scard(f"forum:{forum_id}:active_users")
 
 presence_service = PresenceService()

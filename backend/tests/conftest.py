@@ -15,7 +15,7 @@ if "+asyncpg" not in TEST_DATABASE_URL:
 @pytest.fixture(scope="session", autouse=True)
 async def cleanup_redis():
     yield
-    from app.core.redis import redis_client
+    from app.core.redis_config import redis_client
     try:
         await redis_client.aclose()
     except Exception:

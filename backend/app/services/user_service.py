@@ -4,7 +4,7 @@ import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.user import User
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 from app.schemas.user import User as UserSchema
 
 async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> Optional[User]:
