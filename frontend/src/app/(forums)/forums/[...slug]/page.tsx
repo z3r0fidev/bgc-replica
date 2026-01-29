@@ -46,8 +46,8 @@ export default function ForumPage() {
       });
 
       setThreads(prev => isInitial ? response.items : [...prev, ...response.items]);
-      setHasNext(response.metadata.has_next);
-      setCursor(response.metadata.next_cursor);
+      setHasNext(response.has_more);
+      setCursor(response.next_cursor ?? undefined);
     } catch (error) {
       console.error("Failed to fetch forum data:", error);
     } finally {
