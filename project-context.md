@@ -11,10 +11,14 @@ BGCLive Replica is a full-stack social networking platform inspired by community
 
 ### Core Features
 1. **Authentication**: NextAuth v5 with Google OAuth and JWT-based session management
-2. **User Profiles**: Comprehensive identity, lifestyle, professional, and social data with field-level privacy
-3. **Forums**: Threaded discussions with categories and real-time commenting
-4. **Chat**: Real-time messaging via Socket.io
-5. **Search & Discovery**: Advanced filtering by profile attributes, interests, and intent
+2. **Two-Factor Authentication**: TOTP-based 2FA with QR codes, backup codes, and authenticator app support
+3. **Email Verification**: Token-based verification with Resend email service and async delivery
+4. **User Profiles**: Comprehensive identity, lifestyle, professional, and social data with field-level privacy
+5. **Forums**: Threaded discussions with categories and real-time commenting
+6. **Chat**: Real-time messaging via Socket.io
+7. **Search & Discovery**: Advanced filtering by profile attributes, interests, and intent
+8. **Moderation**: Admin queue for reviewing reports with filtering, stats, and bulk actions
+9. **Notifications**: Granular notification preferences with email digest options
 
 **Note**: The Personals feature has been extracted to a standalone subproject at `bgc-personals/` (see Subprojects section below).
 
@@ -120,6 +124,21 @@ bgc-replica/
 ### Completed Specifications
 1. **Spec 001-009**: Core platform features (auth, profiles, forums, chat)
 2. **Spec 013**: Profile Expansion (identity, lifestyle, professional, privacy controls)
+3. **Security Features** (2026-01-29):
+   - Two-Factor Authentication (TOTP) with backup codes
+   - Email Verification with Resend integration
+   - Password Reset flow
+4. **Moderation Features** (2026-01-29):
+   - Admin moderation queue with filtering and bulk actions
+5. **User Preferences** (2026-01-29):
+   - Notification preferences with email digest options
+
+### Recent Commits (2026-01-29)
+1. **bd32b05**: Notification preferences settings (731 lines, 8 files)
+2. **33b40b5**: Admin moderation queue (999 lines, 5 files)
+3. **42a0da9**: Two-factor authentication (1,353 lines, 12 files)
+4. **85c9892**: Email verification with Resend (797 lines, 14 files)
+5. **9979ce8**: Password reset flow
 
 ### Extracted Features (Standalone Subprojects)
 - **Personals** (Specs 010, 012): Moved to `bgc-personals/` subdirectory
@@ -129,14 +148,15 @@ bgc-replica/
 
 ### Active Branch
 - **Branch**: `013-profile-expansion`
-- **Status**: Personals extraction complete, pending commit
+- **Status**: All recent security & moderation features committed and pushed
 - **PR**: https://github.com/z3r0fidev/bgc-replica/pull/2
 
 ### Next Priorities
-1. Commit personals extraction changes
-2. Test both apps running simultaneously
-3. Set up separate deployment for bgc-personals
-4. Continue with remaining features or technical debt
+1. Deploy security features (2FA, email verification) to production
+2. Configure Resend API key and Celery workers
+3. E2E tests for 2FA and email verification flows
+4. User documentation for security features
+5. Admin training for moderation queue
 
 ## Dependencies
 
@@ -155,6 +175,10 @@ bgc-replica/
 - `pydantic`: 2.10.5
 - `python-socketio`: 5.12.1
 - `sentry-sdk`: 2.19.2
+- `pyotp`: For TOTP 2FA generation
+- `qrcode[pil]`: For QR code generation
+- `resend`: Email service for verification emails
+- `celery`: Async task queue for email delivery
 
 ## Environment Configuration
 
@@ -168,11 +192,14 @@ bgc-replica/
 
 **Backend** (`backend/.env`):
 - `DATABASE_URL`: PostgreSQL with asyncpg driver
-- `REDIS_URL`: Redis connection string
+- `REDIS_URL`: Redis connection string (for sessions and Celery)
 - `SECRET_KEY`: FastAPI secret key
 - `NEXTAUTH_SECRET`: Must match frontend `AUTH_SECRET`
 - `SENTRY_DSN`: Sentry project DSN
 - `SUPABASE_URL/KEY`: Supabase Storage credentials
+- `RESEND_API_KEY`: Resend API key for email verification
+- `CELERY_BROKER_URL`: Redis URL for Celery task queue
+- `CELERY_RESULT_BACKEND`: Redis URL for Celery results
 
 ## Code Quality Standards
 
@@ -247,9 +274,18 @@ bgc-replica/
 
 1. **Performance**: Profile load time optimization pending (T025)
 2. **Accessibility**: Form focus management needs audit (T028)
-3. **Testing**: E2E test coverage for personals posting incomplete
-4. **Documentation**: API documentation needs OpenAPI spec export
-5. **Monitoring**: Production alerting and dashboards not configured
+3. **Testing**:
+   - E2E test coverage for personals posting incomplete
+   - E2E tests for 2FA login flow needed
+   - Email delivery testing in production environment
+4. **Documentation**:
+   - API documentation needs OpenAPI spec export
+   - User guide for 2FA setup needed
+   - Admin guide for moderation queue needed
+5. **Monitoring**:
+   - Production alerting and dashboards not configured
+   - Email delivery monitoring needed
+   - 2FA adoption rate tracking needed
 
 ## Subprojects
 
