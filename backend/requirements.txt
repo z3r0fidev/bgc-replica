@@ -25,3 +25,4 @@ opentelemetry-sdk
 opentelemetry-instrumentation-fastapi
 opentelemetry-exporter-otlp
 sentry-sdk[fastapi]
+resend

@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -8,6 +9,14 @@ from app.core.security import verify_password, create_access_token, get_password
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, User as UserSchema
+from app.schemas.verification import (
+    VerifyEmailRequest,
+    ResendVerificationRequest,
+    VerificationResponse,
+    VerificationStatusResponse,
+)
+from app.services.verification_service import verification_service
+from app.services.tasks import send_verification_email_task
 from app.api import deps
 
 from fastapi_limiter.depends import RateLimiter
@@ -55,13 +64,9 @@ async def login(
 
 
 @router.post("/register", response_model=UserSchema, dependencies=[Depends(RateLimiter(times=3, seconds=3600))])
-
 async def register(
-
     db: Annotated[AsyncSession, Depends(get_db)],
-
     user_in: UserCreate
-
 ):
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalars().first()
@@ -70,7 +75,7 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User already exists",
         )
-    
+
     new_user = User(
         email=user_in.email,
         name=user_in.name,
@@ -79,6 +84,15 @@ async def register(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    # Create verification token and send email
+    token = await verification_service.create_verification_token(db, user_in.email)
+    send_verification_email_task.delay(
+        to_email=user_in.email,
+        token=token,
+        user_name=user_in.name,
+    )
+
     return new_user
 
 @router.post("/logout")
@@ -90,3 +104,100 @@ async def logout():
 @router.get("/me", response_model=UserSchema)
 async def get_me(current_user: Annotated[User, Depends(deps.get_current_user)]):
     return current_user
+
+
+@router.post("/verify-email", response_model=VerificationResponse)
+async def verify_email(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: VerifyEmailRequest,
+):
+    """Verify email with token from verification link."""
+    email = await verification_service.verify_token(db, request.token)
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    user = await verification_service.mark_email_verified(db, email)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    return VerificationResponse(
+        success=True,
+        message="Email verified successfully",
+    )
+
+
+@router.post(
+    "/resend-verification",
+    response_model=VerificationResponse,
+    dependencies=[Depends(RateLimiter(times=1, seconds=60))],
+)
+async def resend_verification(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: ResendVerificationRequest,
+):
+    """
+    Resend verification email.
+    Rate limited to 1 request per minute.
+    Does not reveal if email exists for security.
+    """
+    # Check if user exists
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalars().first()
+
+    # Always return success to prevent email enumeration
+    if not user:
+        return VerificationResponse(
+            success=True,
+            message="If that email exists, a verification link has been sent",
+        )
+
+    # Check if already verified
+    if user.email_verified:
+        return VerificationResponse(
+            success=True,
+            message="Email is already verified",
+        )
+
+    # Check rate limit (in addition to FastAPI limiter, check last sent time)
+    last_sent = await verification_service.get_last_verification_sent(
+        db, request.email
+    )
+    if last_sent:
+        time_since = datetime.utcnow() - last_sent
+        if time_since < timedelta(minutes=1):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Please wait before requesting another verification email",
+            )
+
+    # Create new token and send email
+    token = await verification_service.create_verification_token(db, request.email)
+    send_verification_email_task.delay(
+        to_email=request.email,
+        token=token,
+        user_name=user.name,
+    )
+
+    return VerificationResponse(
+        success=True,
+        message="If that email exists, a verification link has been sent",
+    )
+
+
+@router.get("/verification-status", response_model=VerificationStatusResponse)
+async def get_verification_status(
+    current_user: Annotated[User, Depends(deps.get_current_user)],
+):
+    """Check if current user's email is verified."""
+    return VerificationStatusResponse(
+        email_verified=current_user.email_verified is not None,
+        verified_at=current_user.email_verified,
+    )

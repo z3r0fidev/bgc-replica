@@ -62,3 +62,18 @@ async def get_current_user_optional(
         return await get_current_user(request, db, token)
     except HTTPException:
         return None
+
+
+async def get_verified_user(
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> User:
+    """
+    Dependency that requires the current user to have a verified email.
+    Use this for features that require email verification.
+    """
+    if current_user.email_verified is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email verification required to access this feature",
+        )
+    return current_user
