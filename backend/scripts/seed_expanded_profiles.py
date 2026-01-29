@@ -32,6 +32,15 @@ BUILDS = ["Slim", "Athletic", "Muscular", "Average", "Large", "Stocky"]
 HIV_STATUSES = ["Negative", "Positive", "Undetectable", "Ask Me"]
 PRIVACY_MODES = ["OUT", "DOWNLO"]
 
+# Social Expansion Fields
+PRONOUNS = ["He/Him", "She/Her", "They/Them", "He/They", "Any Pronouns"]
+GENDER_IDENTITIES = ["Cis-male", "Cis-female", "Trans-male", "Trans-female", "Non-binary", "Genderqueer"]
+RELATIONSHIP_STATUSES = ["Single", "In a Relationship", "Married", "Open Relationship", "Its Complicated", "Prefer Not to Say"]
+LOOKING_FOR_OPTIONS = ["Friendship", "Networking", "Dating", "Activity Partners", "Long-term Relationship", "Casual", "Not Sure Yet"]
+INDUSTRIES = ["Technology", "Healthcare", "Finance", "Education", "Entertainment", "Arts & Design", "Legal", "Marketing", "Hospitality", "Real Estate", "Nonprofit", "Government", "Retail", "Manufacturing"]
+EDUCATION_LEVELS = ["High School", "Some College", "Associates Degree", "Bachelors Degree", "Masters Degree", "Doctorate", "Trade School"]
+UNIVERSITIES = ["Temple University", "Drexel University", "Penn State", "Rutgers University", "Princeton University", "Rowan University", "Villanova University", "TCNJ", "Seton Hall", "Montclair State", "NJIT", "Stevens Institute"]
+
 # Targeted Localities: PHL + North/Central NJ with coordinates
 CITY_COORDS = {
     "Philadelphia": {"lat": 39.9526, "lng": -75.1652, "state": "PA"},
@@ -254,7 +263,38 @@ async def seed_expanded_profiles():
 
             # 6. Full Robust Profile Creation
             bio_text = generate_bio(name, archetype)
-            
+
+            # Generate social expansion fields
+            display_name = name.split()[0] + " " + name.split()[1][0] + "."
+            birthdate = fake.date_of_birth(minimum_age=21, maximum_age=55)
+            looking_for = random.sample(LOOKING_FOR_OPTIONS, k=random.randint(1, 4))
+
+            # Occupation based on archetype
+            occupations_by_type = {
+                "The Career Professional": ["Executive", "Manager", "Consultant", "Director", "Analyst"],
+                "The Urban Creative": ["Designer", "Artist", "Musician", "Photographer", "Writer"],
+                "The Dedicated Athlete": ["Personal Trainer", "Coach", "Physical Therapist", "Sports Manager"],
+                "The Community Pillar": ["Teacher", "Social Worker", "Community Organizer", "Nonprofit Director"],
+                "The Tech & Geek Culture": ["Software Engineer", "Data Scientist", "DevOps Engineer", "Product Manager"]
+            }
+            occupation = random.choice(occupations_by_type.get(archetype["type"], ["Professional"]))
+
+            # Social links (50% chance for each)
+            social_links = {}
+            if random.random() > 0.5:
+                social_links["instagram_url"] = f"https://instagram.com/{username.replace('_', '')}"
+            if random.random() > 0.5:
+                social_links["x_url"] = f"https://x.com/{username.replace('_', '')}"
+            if random.random() > 0.7:
+                social_links["website_url"] = f"https://{username.replace('_', '')}.com"
+
+            # Privacy settings (random levels for some fields)
+            privacy_settings = {}
+            if random.random() > 0.7:
+                privacy_settings["occupation"] = random.choice(["PUBLIC", "FRIENDS_ONLY", "PRIVATE"])
+            if random.random() > 0.7:
+                privacy_settings["relationship_status"] = random.choice(["PUBLIC", "FRIENDS_ONLY"])
+
             profile = Profile(
                 id=user.id,
                 bio=bio_text,
@@ -270,7 +310,20 @@ async def seed_expanded_profiles():
                 location_lat=lat,
                 location_lng=lng,
                 is_trans_interested=random.choice([True, False]),
-                created_at=fake.date_time_between(start_date='-1y', end_date='now')
+                created_at=fake.date_time_between(start_date='-1y', end_date='now'),
+                # Social Expansion Fields
+                display_name=display_name,
+                pronouns=random.choice(PRONOUNS),
+                birthdate=birthdate,
+                gender_identity=random.choice(GENDER_IDENTITIES),
+                relationship_status=random.choice(RELATIONSHIP_STATUSES),
+                looking_for=looking_for,
+                occupation=occupation,
+                industry=random.choice(INDUSTRIES),
+                education_level=random.choice(EDUCATION_LEVELS) if random.random() > 0.3 else None,
+                university=random.choice(UNIVERSITIES) if random.random() > 0.4 else None,
+                social_links=social_links if social_links else None,
+                privacy_settings=privacy_settings if privacy_settings else None
             )
             db.add(profile)
             

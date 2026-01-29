@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, JSON, Index, Float, CheckConstraint
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, JSON, Index, Float, CheckConstraint, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from app.core.database import Base
 
 class User(Base):
@@ -144,6 +144,20 @@ class Profile(Base):
     privacy_mode: Mapped[str] = mapped_column(String(50), default="OUT") # OUT, DOWNLO
     is_trans_interested: Mapped[bool] = mapped_column(Boolean, default=False)
     is_personal: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    
+    # Extended Profile Fields (Social Expansion)
+    display_name: Mapped[Optional[str]] = mapped_column(String(255), index=True)
+    pronouns: Mapped[Optional[str]] = mapped_column(String(50))
+    birthdate: Mapped[Optional[datetime.date]] = mapped_column(Date)
+    gender_identity: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    relationship_status: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    looking_for: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(100)))
+    occupation: Mapped[Optional[str]] = mapped_column(String(255))
+    industry: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    education_level: Mapped[Optional[str]] = mapped_column(String(100))
+    university: Mapped[Optional[str]] = mapped_column(String(255))
+    social_links: Mapped[Optional[dict]] = mapped_column(JSONB)
+    privacy_settings: Mapped[Optional[dict]] = mapped_column(JSONB)
     
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

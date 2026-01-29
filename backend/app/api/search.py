@@ -36,6 +36,12 @@ async def search_users(
     hiv_status: Optional[str] = Query(None),
     privacy_mode: Optional[str] = Query(None),
     trans_interested: Optional[bool] = Query(None),
+    # Profile expansion filters
+    relationship_status: Optional[str] = Query(None),
+    looking_for: Optional[List[str]] = Query(None),
+    industry: Optional[str] = Query(None),
+    gender_identity: Optional[str] = Query(None),
+    # Location filters
     radius_km: Optional[float] = Query(50),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
@@ -61,7 +67,18 @@ async def search_users(
         filters.append(Profile.privacy_mode == privacy_mode)
     if trans_interested is not None:
         filters.append(Profile.is_trans_interested == trans_interested)
-    
+
+    # Profile expansion filters
+    if relationship_status:
+        filters.append(Profile.relationship_status == relationship_status)
+    if looking_for:
+        # Array overlap for multi-select matching (PostgreSQL)
+        filters.append(Profile.looking_for.overlap(looking_for))
+    if industry:
+        filters.append(Profile.industry == industry)
+    if gender_identity:
+        filters.append(Profile.gender_identity == gender_identity)
+
     # Handle Zipcode
     if zipcode and lat is None and lng is None:
         zip_coords = get_lat_lng_from_zip(zipcode)
