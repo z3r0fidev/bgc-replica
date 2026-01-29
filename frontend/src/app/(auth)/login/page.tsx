@@ -1,13 +1,14 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { signIn } from "next-auth/react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { signIn } from "next-auth/react";
+import { Shield, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -15,19 +16,31 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
+import { twoFactorService } from "@/services/twoFactorService";
+import { LoginResponse } from "@/types/auth";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
-})
+});
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,62 +48,153 @@ export default function LoginPage() {
       email: "",
       password: "",
     },
-  })
+  });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const formData = new FormData()
-      formData.append("username", values.email)
-      formData.append("password", values.password)
+      const formData = new FormData();
+      formData.append("username", values.email);
+      formData.append("password", values.password);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         body: formData,
-      })
+      });
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "Login failed")
+        const error = await response.json();
+        throw new Error(error.detail || "Login failed");
       }
 
-      const data = await response.json()
-      // Store token in local storage and cookie
-      localStorage.setItem("access_token", data.access_token)
-      document.cookie = `access_token=${data.access_token}; path=/; max-age=3600; SameSite=Lax`
-      
-      toast.success("Login successful!")
-      router.push("/")
-    } catch (error: any) {
-      toast.error(error.message)
+      const data: LoginResponse = await response.json();
+
+      // Check if 2FA is required
+      if (data.requires_2fa && data.user_id) {
+        setRequires2FA(true);
+        setUserId(data.user_id);
+        return;
+      }
+
+      // No 2FA required, complete login
+      if (data.access_token) {
+        localStorage.setItem("access_token", data.access_token);
+        document.cookie = `access_token=${data.access_token}; path=/; max-age=3600; SameSite=Lax`;
+        toast.success("Login successful!");
+        router.push("/");
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Login failed";
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
-  async function handleGoogleLogin() {
-    setIsLoading(true)
+  async function handleTwoFactorSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!userId || !twoFactorCode) return;
+
+    setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: "/" })
-    } catch (error) {
-      toast.error("Something went wrong with Google login")
+      const data = await twoFactorService.verifyLogin(userId, twoFactorCode);
+
+      localStorage.setItem("access_token", data.access_token);
+      document.cookie = `access_token=${data.access_token}; path=/; max-age=3600; SameSite=Lax`;
+
+      toast.success("Login successful!");
+      router.push("/");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Verification failed";
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
+    }
+  }
+
+  function handleBack() {
+    setRequires2FA(false);
+    setUserId(null);
+    setTwoFactorCode("");
+  }
+
+  async function handleGoogleLogin() {
+    setIsLoading(true);
+    try {
+      await signIn("google", { callbackUrl: "/" });
+    } catch {
+      toast.error("Something went wrong with Google login");
+    } finally {
+      setIsLoading(false);
     }
   }
 
   async function handlePasskeyLogin() {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await signIn("passkey", { callbackUrl: "/" })
-    } catch (error) {
-      toast.error("Passkey login failed")
+      await signIn("passkey", { callbackUrl: "/" });
+    } catch {
+      toast.error("Passkey login failed");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
+  // 2FA Verification View
+  if (requires2FA) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">
+              Two-Factor Authentication
+            </CardTitle>
+            <CardDescription>
+              Enter the 6-digit code from your authenticator app or use a backup
+              code.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleTwoFactorSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  placeholder="000000"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value)}
+                  maxLength={8}
+                  className="text-center text-2xl tracking-widest"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground text-center">
+                  Enter your 6-digit code or 8-character backup code
+                </p>
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Verifying..." : "Verify"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={handleBack}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to login
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Regular Login View
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
       <Card className="w-full max-w-md">
@@ -131,7 +235,11 @@ export default function LoginPage() {
                       </Link>
                     </div>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -153,26 +261,40 @@ export default function LoginPage() {
               </span>
             </div>
           </div>
-          
+
           <div className="flex flex-col gap-2">
-            <Button variant="outline" type="button" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+            >
               Continue with Google
             </Button>
-            <Button variant="outline" type="button" className="w-full" onClick={handlePasskeyLogin} disabled={isLoading}>
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full"
+              onClick={handlePasskeyLogin}
+              disabled={isLoading}
+            >
               Sign in with Passkey
             </Button>
           </div>
-
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <div className="text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-primary hover:underline font-medium">
+            <Link
+              href="/register"
+              className="text-primary hover:underline font-medium"
+            >
               Register
             </Link>
           </div>
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

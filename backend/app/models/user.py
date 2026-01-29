@@ -8,7 +8,7 @@ from app.core.database import Base
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[Optional[str]] = mapped_column(String(255))
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True)
@@ -17,7 +17,12 @@ class User(Base):
     hashed_password: Mapped[Optional[str]] = mapped_column(String(1024))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
+    # Two-Factor Authentication
+    totp_secret: Mapped[Optional[str]] = mapped_column(String(32))
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    backup_codes: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(20)))
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
     

@@ -17,8 +17,10 @@ from app.schemas.verification import (
     PasswordResetRequest,
     PasswordResetConfirm,
 )
+from app.schemas.totp import TwoFactorLoginRequest
 from app.services.verification_service import verification_service
 from app.services.password_reset_service import password_reset_service
+from app.services.totp_service import totp_service
 from app.services.tasks import send_verification_email_task, send_password_reset_email_task
 from app.api import deps
 
@@ -30,36 +32,76 @@ router = APIRouter()
 
 
 
-@router.post("/login", response_model=Token, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
-
+@router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def login(
-
     db: Annotated[AsyncSession, Depends(get_db)],
-
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
-
 ):
-
     result = await db.execute(select(User).where(User.email == form_data.username))
-
     user = result.scalars().first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
-
         raise HTTPException(
-
             status_code=status.HTTP_401_UNAUTHORIZED,
-
             detail="Incorrect email or password",
+        )
 
+    # Check if 2FA is enabled
+    if user.totp_enabled:
+        # Return a response indicating 2FA is required
+        return {
+            "requires_2fa": True,
+            "user_id": str(user.id),
+            "message": "Two-factor authentication required",
+        }
+
+    return Token(
+        access_token=create_access_token(user.id),
+        token_type="bearer",
+    )
+
+
+@router.post("/login/2fa", response_model=Token, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+async def login_2fa(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: TwoFactorLoginRequest,
+):
+    """Complete login with 2FA verification."""
+    import uuid as uuid_module
+
+    try:
+        user_id = uuid_module.UUID(request.user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user ID",
+        )
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    if not user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not enabled for this account",
+        )
+
+    # Verify 2FA code
+    if not await totp_service.verify_2fa(db, user, request.code):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid verification code",
         )
 
     return Token(
-
         access_token=create_access_token(user.id),
-
         token_type="bearer",
-
     )
 
 
