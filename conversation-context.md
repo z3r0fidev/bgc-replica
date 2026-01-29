@@ -170,6 +170,202 @@ Created complete Obsidian knowledge base with 18 documentation files:
 
 ---
 
+## Session: 2026-01-29 - Personals Feature Extraction
+
+**Duration**: 2026-01-29 (single session)
+**Branch**: `013-profile-expansion`
+**Participants**: Developer + Claude Code
+
+### Session Summary
+
+This session focused on extracting the personals feature from the main bgc-replica application into a standalone subproject called `bgc-personals/`, enabling independent deployment and scaling.
+
+### Major Accomplishments
+
+#### 1. Created Standalone bgc-personals Subproject
+
+**Frontend Structure** (Port 3001):
+- Complete Next.js 16 application with App Router
+- Package.json with all dependencies
+- next.config.ts configured for API rewrites
+- tsconfig.json for TypeScript configuration
+- Prisma schema for database models
+- 13 React components:
+  - `comments/CommentItem.tsx`, `comments/CommentThread.tsx`
+  - `editor/RichEditor.tsx` (Tiptap integration)
+  - `follow-button.tsx`, `header.tsx`, `list.tsx`
+  - `location-filter.tsx`, `media-upload.tsx`, `mobile-nav.tsx`
+  - `post-now-dialog.tsx`, `post-row.tsx`, `row.tsx`, `sidebar.tsx`
+- Custom hooks: `use-comments.ts`, `use-follow.ts`
+- Services: `personals.ts` API client
+- UI primitives from shadcn/ui: button, dialog, select, label, avatar, scroll-area, skeleton
+- App routes: `(personals)/personals/page.tsx`, `(personals)/personals/[category]/page.tsx`
+- Layout components
+
+**Backend Structure** (Port 8001):
+- Complete FastAPI application
+- Core modules: config, database, redis, pagination
+- Models: `user.py` (auth tables), `social.py` (PersonalPost, Comment, Follower)
+- API routes: `personals.py`, `personals_expansion.py`
+- Pydantic schemas for validation
+- Socket.io configuration for real-time comments
+- Alembic migrations
+- Pytest test suite
+
+**Assets** (46 files):
+- Category banners (16 PNG files): 40up, aaok, alligator, aypapi, candy, carfun, cookies, manup, max80, milfy, open24, outcall, transx, uber, yolo
+- Category icons (14 PNG files): matching icons for categories + reviewed badge
+- UI buttons (2 PNG files): comments button, follow button
+
+**Documentation**:
+- `README.md`: Complete setup instructions, API endpoints, architecture overview
+- Moved specs: `010-personals-section/`, `012-personals-expansion/`
+
+#### 2. Cleaned Up bgc-replica Main Application
+
+**Backend Deletions** (9 files):
+- `backend/app/api/personals.py` - Main personals routes (62 lines)
+- `backend/app/api/personals_expansion.py` - Social features (150 lines)
+- `backend/app/models/social.py` - Social models (45 lines)
+- `backend/tests/test_personals.py` - Unit tests (23 lines)
+- `backend/tests/test_personals_social.py` - Social tests (57 lines)
+
+**Backend Modifications** (4 files):
+- `backend/app/main.py`: Removed personals router registrations
+- `backend/app/models/__init__.py`: Removed social.py imports
+- `backend/app/schemas/community.py`: Removed personals schemas (31 lines)
+- `backend/app/core/socket_config.py`: Removed personals Socket.io events (82 lines)
+
+**Frontend Deletions** (61 files):
+- Components: 13 personals component files
+- Routes: 3 personals page files
+- Hooks: 2 custom hooks (use-comments, use-follow)
+- Services: personals.ts API client
+- Tests: 2 test files (unit + E2E)
+- Assets: 46 image files (banners, icons, buttons)
+- Research docs: 3 markdown files in frontend-enhancements
+
+**Specs Moved** (2 directories):
+- `specs/010-personals-section/` → `bgc-personals/specs/010-personals-section/`
+- `specs/012-personals-expansion/` → `bgc-personals/specs/012-personals-expansion/`
+
+**Total Changes**: 84 files (61 deleted, 4 modified, 19+ created in bgc-personals/)
+
+#### 3. Architecture Decisions
+
+**Separate Databases**:
+- **Rationale**: Enables independent scaling, deployment, and data management
+- **Implementation**: Each app has its own PostgreSQL connection string
+- **Benefit**: High-volume personals data isolated from core user data
+
+**Shared Authentication**:
+- **Rationale**: Seamless user experience across both applications
+- **Implementation**: Same `AUTH_SECRET`/`NEXTAUTH_SECRET` in both apps
+- **Benefit**: Users authenticated in one app are automatically authenticated in the other
+
+**Port Separation**:
+- **Main App**: Frontend 3000, Backend 8000
+- **Personals**: Frontend 3001, Backend 8001
+- **Benefit**: Both apps can run simultaneously for development and testing
+
+**Independent Deployment**:
+- **Rationale**: Personals can be scaled or deployed separately
+- **Future**: Could move to separate repository if needed
+- **Benefit**: Different teams can manage different apps
+
+### Key Technical Decisions
+
+1. **Monorepo Structure**: Keep bgc-personals as subdirectory (not separate repo) for now
+2. **Complete Feature Extraction**: All related code, tests, assets, and specs moved
+3. **Clean Interfaces**: No lingering dependencies between apps
+4. **Shared Design System**: Both apps use same UI components for consistency
+
+### Challenges Encountered & Solutions
+
+**Challenge 1**: Identifying all personals dependencies
+- **Solution**: Systematic search through codebase for "personals" references
+- **Implementation**: Checked imports, routes, models, schemas, Socket.io events
+
+**Challenge 2**: Maintaining test coverage
+- **Solution**: Moved all personals tests to bgc-personals/
+- **Implementation**: Both unit and E2E tests included in extraction
+
+**Challenge 3**: Asset organization
+- **Solution**: Preserved original asset structure in bgc-personals/frontend/public/
+- **Implementation**: 46 assets organized by type (banners, icons, buttons)
+
+### Git Status
+
+**Uncommitted Changes**:
+- 61 deleted files (personals code removed from main app)
+- 4 modified files (main.py, socket_config.py, models/__init__.py, community.py)
+- 1 untracked directory (bgc-personals/ with complete subproject)
+- 2 untracked directories (.claude/, frontend/frontend-enhancements/profile/)
+
+**Next Steps**:
+1. Stage all deletions and modifications
+2. Add bgc-personals/ directory
+3. Commit with descriptive message
+4. Test both applications independently
+
+### Outstanding Items
+
+**Immediate**:
+- [ ] Commit personals extraction to git
+- [ ] Test bgc-replica without personals
+- [ ] Test bgc-personals standalone functionality
+- [ ] Verify shared authentication works
+
+**Follow-up**:
+- [ ] Set up separate database for bgc-personals
+- [ ] Create deployment configuration for bgc-personals
+- [ ] Update CI/CD to handle both apps
+- [ ] Consider moving bgc-personals to separate repository
+
+**Cleanup**:
+- [ ] Review `.claude/` directory (session context files)
+- [ ] Evaluate `frontend/frontend-enhancements/profile/` (research docs)
+
+### Session Artifacts
+
+**Created**:
+- Complete bgc-personals/ subproject with 100+ files
+- README.md with setup instructions
+- Separate frontend and backend applications
+- All tests, migrations, and specifications
+
+**Deleted**:
+- 61 files from main bgc-replica app
+- All personals components, routes, models, schemas
+- All personals assets (46 image files)
+- Personals specifications (moved to subproject)
+
+**Modified**:
+- 4 core files (routing, models, schemas, Socket.io)
+
+### Notes for Next Session
+
+**Immediate Priorities**:
+1. Commit the personals extraction
+2. Verify bgc-replica functionality without personals
+3. Set up bgc-personals environment and database
+4. Test both apps running simultaneously
+
+**Testing Checklist**:
+- [ ] bgc-replica backend starts without errors
+- [ ] bgc-replica frontend loads without personals routes
+- [ ] bgc-personals backend starts on port 8001
+- [ ] bgc-personals frontend loads on port 3001
+- [ ] Shared authentication works across apps
+
+**Future Considerations**:
+- Consider separate GitHub repository for bgc-personals
+- Plan deployment strategy (same server or separate)
+- Evaluate other features for potential extraction
+- Document cross-app integration patterns
+
+---
+
 ## Session: [Previous Sessions]
 
 *To be populated with historical session data when available*

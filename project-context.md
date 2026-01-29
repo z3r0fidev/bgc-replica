@@ -12,10 +12,11 @@ BGCLive Replica is a full-stack social networking platform inspired by community
 ### Core Features
 1. **Authentication**: NextAuth v5 with Google OAuth and JWT-based session management
 2. **User Profiles**: Comprehensive identity, lifestyle, professional, and social data with field-level privacy
-3. **Personals**: Categorical directory with rich-text posts, media uploads, and social engagement
-4. **Forums**: Threaded discussions with categories and real-time commenting
-5. **Chat**: Real-time messaging via Socket.io
-6. **Search & Discovery**: Advanced filtering by profile attributes, interests, and intent
+3. **Forums**: Threaded discussions with categories and real-time commenting
+4. **Chat**: Real-time messaging via Socket.io
+5. **Search & Discovery**: Advanced filtering by profile attributes, interests, and intent
+
+**Note**: The Personals feature has been extracted to a standalone subproject at `bgc-personals/` (see Subprojects section below).
 
 ## Architecture
 
@@ -49,18 +50,16 @@ BGCLive Replica is a full-stack social networking platform inspired by community
 
 ```
 bgc-replica/
-├── frontend/                 # Next.js application
+├── frontend/                 # Next.js application (port 3000)
 │   ├── src/
 │   │   ├── app/             # App Router pages
 │   │   │   ├── (auth)/      # Auth flow pages
 │   │   │   ├── (protected)/ # Authenticated pages
-│   │   │   ├── (forums)/    # Forum pages
-│   │   │   └── (personals)/ # Personals pages
+│   │   │   └── (forums)/    # Forum pages
 │   │   ├── components/      # React components
 │   │   │   ├── chat/        # Chat UI
 │   │   │   ├── feed/        # News feed
 │   │   │   ├── forums/      # Forum components
-│   │   │   ├── personals/   # Personals UI
 │   │   │   ├── profile/     # Profile components
 │   │   │   └── ui/          # shadcn/ui primitives
 │   │   ├── hooks/           # Custom React hooks
@@ -71,7 +70,7 @@ bgc-replica/
 │   └── tests/
 │       ├── unit/            # Vitest unit tests
 │       └── e2e/             # Playwright E2E tests
-├── backend/                 # FastAPI application
+├── backend/                 # FastAPI application (port 8000)
 │   ├── alembic/            # Database migrations
 │   ├── app/
 │   │   ├── api/            # Route handlers
@@ -81,6 +80,11 @@ bgc-replica/
 │   │   └── services/       # Business logic
 │   ├── scripts/            # Utility scripts (seeding, etc.)
 │   └── tests/              # Pytest tests
+├── bgc-personals/          # Standalone Personals subproject
+│   ├── frontend/           # Next.js app (port 3001)
+│   ├── backend/            # FastAPI app (port 8001)
+│   ├── specs/              # Personals specifications
+│   └── README.md           # Personals documentation
 └── specs/                  # Feature specifications
     ├── 001-*/              # Spec directories
     ├── ...
@@ -114,18 +118,25 @@ bgc-replica/
 ## Current Development Status
 
 ### Completed Specifications
-1. **Spec 001-012**: Core platform features (auth, profiles, personals, forums, chat)
+1. **Spec 001-009**: Core platform features (auth, profiles, forums, chat)
 2. **Spec 013**: Profile Expansion (identity, lifestyle, professional, privacy controls)
+
+### Extracted Features (Standalone Subprojects)
+- **Personals** (Specs 010, 012): Moved to `bgc-personals/` subdirectory
+  - Separate databases for independent scaling
+  - Shared authentication via same NextAuth secrets
+  - Ports: 3001 (frontend), 8001 (backend)
 
 ### Active Branch
 - **Branch**: `013-profile-expansion`
-- **Status**: Implementation complete, PR created
+- **Status**: Personals extraction complete, pending commit
 - **PR**: https://github.com/z3r0fidev/bgc-replica/pull/2
 
 ### Next Priorities
-1. Merge Spec 013 to main branch
-2. Performance audits and accessibility review
-3. Plan next feature (Spec 014 or technical debt)
+1. Commit personals extraction changes
+2. Test both apps running simultaneously
+3. Set up separate deployment for bgc-personals
+4. Continue with remaining features or technical debt
 
 ## Dependencies
 
@@ -239,6 +250,37 @@ bgc-replica/
 3. **Testing**: E2E test coverage for personals posting incomplete
 4. **Documentation**: API documentation needs OpenAPI spec export
 5. **Monitoring**: Production alerting and dashboards not configured
+
+## Subprojects
+
+### BGC Personals (`bgc-personals/`)
+
+**Purpose**: Standalone personals/classifieds platform with categorical listings and social features.
+
+**Architecture**:
+- **Independent deployment**: Separate frontend (port 3001) and backend (port 8001)
+- **Separate database**: Own PostgreSQL instance for data isolation
+- **Shared authentication**: Uses same NextAuth secrets for cross-app sessions
+- **Complete feature set**: Categories, posts, comments, follows, real-time updates
+
+**Key Components**:
+- Frontend: 13 React components, custom hooks (use-comments, use-follow), personals service
+- Backend: API routes, social models (PersonalPost, Comment, Follower), Socket.io events
+- Assets: 46 image files (category banners, icons, buttons)
+- Tests: Unit tests, integration tests, E2E tests
+
+**Rationale for Extraction**:
+1. **Scaling**: Personals can be scaled independently from core platform
+2. **Deployment**: Can be deployed to different infrastructure
+3. **Development**: Separate team can work without affecting main app
+4. **Database**: Isolates high-volume personals data from core user data
+
+**Integration Points**:
+- Shared user authentication (JWT tokens)
+- Cross-linking: Main app can link to personals posts
+- Consistent UI/UX with shared design system
+
+See `bgc-personals/README.md` for setup and deployment instructions.
 
 ## Resources
 

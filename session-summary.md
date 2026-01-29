@@ -1,12 +1,54 @@
 # Development Session Summary
 
-## Session Information
+---
+
+## Session: 2026-01-29 - Personals Feature Extraction
+
+### Session Information
+- **Date**: 2026-01-29
+- **Duration**: ~2 hours
+- **Branch**: `013-profile-expansion`
+- **Focus**: Extract Personals Feature to Standalone Subproject
+
+### High-Level Summary
+
+Successfully extracted the personals feature from the main bgc-replica application into a standalone subproject called `bgc-personals/`. This architectural change enables independent deployment, scaling, and development of the personals platform while maintaining shared authentication with the main application. The extraction involved moving 61 files from the main app, creating a complete standalone application with its own frontend (port 3001) and backend (port 8001), and updating all routing, models, schemas, and Socket.io configuration to remove personals dependencies.
+
+### Major Changes Summary
+
+**Created**: Complete `bgc-personals/` subproject (100+ files)
+- Frontend: Next.js 16 app with 13 components, 2 hooks, services, routes
+- Backend: FastAPI app with models, routes, schemas, Socket.io config
+- Assets: 46 image files (category banners, icons, buttons)
+- Specs: Moved specs 010 and 012 to bgc-personals/specs/
+- Documentation: README.md with setup instructions
+
+**Removed from bgc-replica**: 61 files
+- Backend: 5 files (routes, models, tests)
+- Frontend: 21 files (components, routes, hooks, services, tests)
+- Assets: 46 image files
+- Research docs: 3 files
+- Specs: 2 directories (moved to bgc-personals)
+
+**Modified in bgc-replica**: 4 files
+- `backend/app/main.py` - Removed personals routers
+- `backend/app/models/__init__.py` - Removed social.py imports
+- `backend/app/schemas/community.py` - Removed personals schemas
+- `backend/app/core/socket_config.py` - Removed personals events
+
+**Total Impact**: 84 files changed, ~3,139 lines removed from main app
+
+---
+
+## Session: 2026-01-28 - Profile Expansion Implementation & Documentation
+
+### Session Information
 - **Date**: 2026-01-28
 - **Duration**: ~3 hours
 - **Branch**: `013-profile-expansion`
 - **Focus**: Profile Expansion Feature (Spec 013) + Project Documentation
 
-## High-Level Summary
+### High-Level Summary
 
 Successfully completed implementation of the Profile Expansion feature (Spec 013), which adds comprehensive social networking capabilities to user profiles including identity fields, lifestyle preferences, professional information, social media links, and granular field-level privacy controls. Additionally established complete project documentation infrastructure with 18 Obsidian knowledge base files and 3 context tracking files.
 
