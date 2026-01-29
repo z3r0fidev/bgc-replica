@@ -113,3 +113,10 @@ class ReportCreate(BaseModel):
     content_type: str
     content_id: uuid.UUID
     reason: str
+
+
+class UserReportCreate(BaseModel):
+    """Schema for reporting a user."""
+    user_id: uuid.UUID
+    reason: str  # HARASSMENT, SPAM, INAPPROPRIATE, FAKE_PROFILE, OTHER
+    details: Optional[str] = None

@@ -2,6 +2,7 @@ from typing import List, Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User, Relationship
@@ -11,6 +12,7 @@ from app.schemas.community import (
     PostCommentSchema, PostCommentCreate
 )
 from app.services.feed_service import feed_service
+from app.services.block_service import block_service
 import uuid
 
 from app.schemas.common import PaginatedResponse
@@ -46,7 +48,10 @@ async def get_feed(
     
     # Convert string IDs back to UUIDs
     post_uuids = [uuid.UUID(pid) for pid in page_ids]
-    
+
+    # Get blocked user IDs to filter out
+    block_ids = await block_service.get_block_ids(db, current_user.id)
+
     # Fetch actual objects from DB
     # We want to maintain the order from Redis
     stmt = (
@@ -56,9 +61,12 @@ async def get_feed(
     )
     result = await db.execute(stmt)
     updates = {u.id: u for u in result.scalars().all()}
-    
-    # Re-order
-    items = [updates[pid] for pid in post_uuids if pid in updates]
+
+    # Re-order and filter out posts from blocked users
+    items = [
+        updates[pid] for pid in post_uuids
+        if pid in updates and updates[pid].author_id not in block_ids
+    ]
     
     # Get next cursor from the last item
     next_cursor = None

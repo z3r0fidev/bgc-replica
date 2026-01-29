@@ -20,6 +20,8 @@ from app.schemas.profile import Profile as ProfileSchema
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
 from app.services.location import search_users_nearby, get_lat_lng_from_zip
+from app.services.block_service import block_service
+from app.api import deps
 import uuid
 
 router = APIRouter()
@@ -47,7 +49,8 @@ async def search_users(
     lng: Optional[float] = Query(None),
     limit: int = 20,
     cursor: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(deps.get_current_user_optional)
 ):
     from sqlalchemy.orm import selectinload
     query = select(Profile).options(selectinload(Profile.user))
@@ -91,6 +94,12 @@ async def search_users(
         nearby_results = await search_users_nearby(lat, lng, radius_km)
         nearby_ids = [uuid.UUID(res[0]) for res in nearby_results]
         filters.append(Profile.id.in_(nearby_ids))
+
+    # Filter out blocked users (bidirectional)
+    if current_user:
+        block_ids = await block_service.get_block_ids(db, current_user.id)
+        if block_ids:
+            filters.append(~Profile.id.in_(block_ids))
 
     if filters:
         query = query.where(and_(*filters))

@@ -2,6 +2,7 @@ from typing import List, Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User
@@ -9,6 +10,7 @@ from app.models.chat import ChatRoom, Message, Conversation
 from app.schemas.chat import ChatRoom as ChatRoomSchema, Message as MessageSchema, Conversation as ConversationSchema
 from app.services.storage import storage_service
 from app.services.chat import chat_service
+from app.services.block_service import block_service
 import uuid
 from sqlalchemy import select, desc, or_, and_
 
@@ -68,6 +70,12 @@ async def get_or_create_conversation(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
+    # Check if either user has blocked the other
+    if await block_service.is_blocked(db, current_user.id, recipient_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot message this user"
+        )
     return await chat_service.get_or_create_conversation(db, current_user.id, recipient_id)
 
 @router.get("/conversations/{conv_id}/history", response_model=PaginatedResponse[MessageSchema])

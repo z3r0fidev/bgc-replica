@@ -2,6 +2,7 @@ import socketio
 from app.core.config import settings
 from app.services.chat import chat_service
 from app.services.presence import presence_service
+from app.services.block_service import block_service
 from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
 import uuid
@@ -68,13 +69,19 @@ async def typing(sid, data):
     session = await sio.get_session(sid)
     if not session or 'user_id' not in session:
         return
-    
+
     user_id = session['user_id']
     room_id = data.get('room_id')
     recipient_id = data.get('recipient_id')
-    
+
+    # Check block status for DM typing indicators
+    if recipient_id:
+        async with SessionLocal() as db:
+            if await block_service.is_blocked(db, uuid.UUID(user_id), uuid.UUID(recipient_id)):
+                return  # Silently ignore typing to blocked users
+
     event_data = {"user_id": user_id, "is_typing": True}
-    
+
     if room_id:
         await sio.emit("user_typing", event_data, room=str(room_id), skip_sid=sid)
     elif recipient_id:
@@ -85,7 +92,7 @@ async def send_dm(sid, data):
     session = await sio.get_session(sid)
     if not session or 'user_id' not in session:
         return
-    
+
     user_id = session['user_id']
     if not await check_rate_limit(user_id):
         await sio.emit("error", {"detail": "Rate limit exceeded. Slow down!"}, to=sid)
@@ -97,6 +104,11 @@ async def send_dm(sid, data):
     msg_type = data.get('type', 'TEXT')
 
     async with SessionLocal() as db:
+        # Check if either user has blocked the other
+        if await block_service.is_blocked(db, sender_id, recipient_id):
+            await sio.emit("error", {"detail": "Cannot message this user"}, to=sid)
+            return
+
         conv = await chat_service.get_or_create_conversation(db, sender_id, recipient_id)
         msg = await chat_service.save_message(
             db, 

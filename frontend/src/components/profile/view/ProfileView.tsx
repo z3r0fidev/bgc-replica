@@ -14,6 +14,7 @@ import {
   Globe,
 } from "lucide-react";
 import Link from "next/link";
+import { ProfileActions } from "@/components/profile/ProfileActions";
 
 interface ProfileViewProps {
   profile: Profile;
@@ -67,14 +68,21 @@ export function ProfileView({ profile, isOwner = false }: ProfileViewProps) {
                 </div>
               )}
             </div>
-            {isOwner && (
-              <Link
-                href="/profile/edit"
-                className="text-sm text-primary hover:underline"
-              >
-                Edit Profile
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              {isOwner ? (
+                <Link
+                  href="/profile/edit"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Edit Profile
+                </Link>
+              ) : (
+                <ProfileActions
+                  userId={profile.id}
+                  userName={displayName}
+                />
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
