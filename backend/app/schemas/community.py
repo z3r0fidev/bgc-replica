@@ -107,7 +107,40 @@ class ReportSchema(BaseModel):
     reason: str
     status: str
     created_at: datetime
+    reviewed_by: Optional[uuid.UUID] = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReporterInfo(BaseModel):
+    id: uuid.UUID
+    name: Optional[str] = None
+    email: Optional[str] = None
+    image: Optional[str] = None
+
+
+class ReportedUserInfo(BaseModel):
+    id: uuid.UUID
+    name: Optional[str] = None
+    email: Optional[str] = None
+    image: Optional[str] = None
+
+
+class ReportDetailSchema(BaseModel):
+    """Detailed report info for moderation queue."""
+    id: uuid.UUID
+    reporter: ReporterInfo
+    content_type: str
+    content_id: uuid.UUID
+    reason: str
+    status: str
+    created_at: datetime
+    reviewed_by: Optional[uuid.UUID] = None
+    # For USER reports
+    reported_user: Optional[ReportedUserInfo] = None
+    # For content reports
+    content_preview: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ReportCreate(BaseModel):
     content_type: str
@@ -120,3 +153,17 @@ class UserReportCreate(BaseModel):
     user_id: uuid.UUID
     reason: str  # HARASSMENT, SPAM, INAPPROPRIATE, FAKE_PROFILE, OTHER
     details: Optional[str] = None
+
+
+class ResolveReportRequest(BaseModel):
+    """Request to resolve a report."""
+    action: str  # dismiss, warn_user, delete_content, ban_user
+
+
+class ModerationStatsSchema(BaseModel):
+    """Statistics for the moderation dashboard."""
+    pending_count: int
+    resolved_today: int
+    total_reports: int
+    reports_by_type: dict
+    reports_by_reason: dict
