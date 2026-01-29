@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     RESEND_FROM_EMAIL: str = "noreply@bgclive.com"
     APP_URL: str = "http://localhost:3000"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 1
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

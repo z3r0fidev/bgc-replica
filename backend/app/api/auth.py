@@ -14,9 +14,12 @@ from app.schemas.verification import (
     ResendVerificationRequest,
     VerificationResponse,
     VerificationStatusResponse,
+    PasswordResetRequest,
+    PasswordResetConfirm,
 )
 from app.services.verification_service import verification_service
-from app.services.tasks import send_verification_email_task
+from app.services.password_reset_service import password_reset_service
+from app.services.tasks import send_verification_email_task, send_password_reset_email_task
 from app.api import deps
 
 from fastapi_limiter.depends import RateLimiter
@@ -200,4 +203,94 @@ async def get_verification_status(
     return VerificationStatusResponse(
         email_verified=current_user.email_verified is not None,
         verified_at=current_user.email_verified,
+    )
+
+
+# Password Reset Endpoints
+
+
+@router.post(
+    "/forgot-password",
+    response_model=VerificationResponse,
+    dependencies=[Depends(RateLimiter(times=3, seconds=300))],
+)
+async def forgot_password(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: PasswordResetRequest,
+):
+    """
+    Request password reset email.
+    Rate limited to 3 requests per 5 minutes.
+    Does not reveal if email exists for security.
+    """
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalars().first()
+
+    # Always return success to prevent email enumeration
+    if not user:
+        return VerificationResponse(
+            success=True,
+            message="If that email exists, a password reset link has been sent",
+        )
+
+    # Check if user has a password (not OAuth-only)
+    if not user.hashed_password:
+        return VerificationResponse(
+            success=True,
+            message="If that email exists, a password reset link has been sent",
+        )
+
+    # Check rate limit
+    last_request = await password_reset_service.get_last_reset_request(
+        db, request.email
+    )
+    if last_request:
+        time_since = datetime.utcnow() - last_request
+        if time_since < timedelta(minutes=5):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Please wait before requesting another password reset",
+            )
+
+    # Create reset token and send email
+    token = await password_reset_service.create_reset_token(db, request.email)
+    send_password_reset_email_task.delay(
+        to_email=request.email,
+        token=token,
+        user_name=user.name,
+    )
+
+    return VerificationResponse(
+        success=True,
+        message="If that email exists, a password reset link has been sent",
+    )
+
+
+@router.post("/reset-password", response_model=VerificationResponse)
+async def reset_password(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: PasswordResetConfirm,
+):
+    """Reset password with token from email."""
+    email = await password_reset_service.verify_reset_token(db, request.token)
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    user = await password_reset_service.reset_password(
+        db, email, request.new_password
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    return VerificationResponse(
+        success=True,
+        message="Password reset successfully",
     )

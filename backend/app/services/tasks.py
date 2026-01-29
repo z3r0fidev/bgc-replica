@@ -52,3 +52,26 @@ def send_verification_email_task(
         )
 
     return run_async(_send_email())
+
+
+@celery_app.task(name="app.services.tasks.send_password_reset_email_task")
+def send_password_reset_email_task(
+    to_email: str, token: str, user_name: Optional[str] = None
+):
+    """
+    Celery task to send password reset email asynchronously.
+
+    Args:
+        to_email: Recipient email address
+        token: Plain reset token
+        user_name: Optional user name for personalization
+    """
+    async def _send_email():
+        from app.services.email_service import email_service
+        return await email_service.send_password_reset_email(
+            to_email=to_email,
+            token=token,
+            user_name=user_name,
+        )
+
+    return run_async(_send_email())
