@@ -23,6 +23,9 @@ class User(Base):
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     backup_codes: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(20)))
 
+    # Notification Preferences
+    notification_preferences: Mapped[Optional[dict]] = mapped_column(JSONB)
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
     

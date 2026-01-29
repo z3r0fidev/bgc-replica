@@ -17,6 +17,7 @@ from app.api.media import router as media_router
 from app.api.stories import router as stories_router
 from app.api.block import router as block_router
 from app.api.totp import router as totp_router
+from app.api.notifications import router as notifications_router
 from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
 from app.core.config import settings
@@ -137,6 +138,7 @@ app.include_router(media_router, prefix="/api/media", tags=["media"])
 app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
 app.include_router(block_router, prefix="/api/block", tags=["block"])
 app.include_router(totp_router, prefix="/api/2fa", tags=["2fa"])
+app.include_router(notifications_router, prefix="/api/notifications", tags=["notifications"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="")
