@@ -34,7 +34,6 @@ async def get_current_user(
 
     try:
         # Use NEXTAUTH_SECRET if it looks like a NextAuth token, otherwise SECRET_KEY
-        # NextAuth tokens are usually JWS signed with NEXTAUTH_SECRET
         secret = settings.NEXTAUTH_SECRET if settings.NEXTAUTH_SECRET else settings.SECRET_KEY
         payload = jwt.decode(token, secret, algorithms=[settings.ALGORITHM])
         
@@ -53,3 +52,13 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+async def get_current_user_optional(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[Optional[str], Depends(oauth2_scheme)] = None
+) -> Optional[User]:
+    try:
+        return await get_current_user(request, db, token)
+    except HTTPException:
+        return None

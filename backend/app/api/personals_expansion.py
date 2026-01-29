@@ -46,7 +46,11 @@ async def create_personal_post(
     db.add(new_post)
     await db.commit()
     await db.refresh(new_post)
-    return new_post
+    
+    # Load author relationship for the response
+    stmt = select(PersonalPost).where(PersonalPost.id == new_post.id).options(selectinload(PersonalPost.author))
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 @router.post("/{id}/follow")
 async def toggle_follow_post(
