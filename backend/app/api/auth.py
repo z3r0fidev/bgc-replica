@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -21,10 +21,19 @@ from app.schemas.totp import TwoFactorLoginRequest
 from app.services.verification_service import verification_service
 from app.services.password_reset_service import password_reset_service
 from app.services.totp_service import totp_service
+from app.services.audit_service import audit_service, AuditAction
 from app.services.tasks import send_verification_email_task, send_password_reset_email_task
 from app.api import deps
 
 from fastapi_limiter.depends import RateLimiter
+
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP from request."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 
@@ -34,13 +43,27 @@ router = APIRouter()
 
 @router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def login(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
+    ip_address = get_client_ip(request)
+    user_agent = request.headers.get("User-Agent", "")[:512]
+
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalars().first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
+        # Log failed login attempt
+        await audit_service.log(
+            db,
+            AuditAction.LOGIN_FAILED,
+            user_id=user.id if user else None,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=False,
+            event_metadata={"email": form_data.username},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -48,12 +71,27 @@ async def login(
 
     # Check if 2FA is enabled
     if user.totp_enabled:
-        # Return a response indicating 2FA is required
+        await audit_service.log(
+            db,
+            AuditAction.LOGIN_2FA_REQUIRED,
+            user_id=user.id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         return {
             "requires_2fa": True,
             "user_id": str(user.id),
             "message": "Two-factor authentication required",
         }
+
+    # Log successful login
+    await audit_service.log(
+        db,
+        AuditAction.LOGIN_SUCCESS,
+        user_id=user.id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
 
     return Token(
         access_token=create_access_token(user.id),
@@ -63,11 +101,15 @@ async def login(
 
 @router.post("/login/2fa", response_model=Token, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def login_2fa(
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     request: TwoFactorLoginRequest,
 ):
     """Complete login with 2FA verification."""
     import uuid as uuid_module
+
+    ip_address = get_client_ip(http_request)
+    user_agent = http_request.headers.get("User-Agent", "")[:512]
 
     try:
         user_id = uuid_module.UUID(request.user_id)
@@ -94,10 +136,27 @@ async def login_2fa(
 
     # Verify 2FA code
     if not await totp_service.verify_2fa(db, user, request.code):
+        await audit_service.log(
+            db,
+            AuditAction.LOGIN_2FA_FAILED,
+            user_id=user.id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=False,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid verification code",
         )
+
+    # Log successful 2FA login
+    await audit_service.log(
+        db,
+        AuditAction.LOGIN_2FA_SUCCESS,
+        user_id=user.id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
 
     return Token(
         access_token=create_access_token(user.id),
@@ -110,9 +169,13 @@ async def login_2fa(
 
 @router.post("/register", response_model=UserSchema, dependencies=[Depends(RateLimiter(times=3, seconds=3600))])
 async def register(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     user_in: UserCreate
 ):
+    ip_address = get_client_ip(request)
+    user_agent = request.headers.get("User-Agent", "")[:512]
+
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalars().first()
     if user:
@@ -129,6 +192,15 @@ async def register(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    # Log registration
+    await audit_service.log(
+        db,
+        AuditAction.REGISTER,
+        user_id=new_user.id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
 
     # Create verification token and send email
     token = await verification_service.create_verification_token(db, user_in.email)

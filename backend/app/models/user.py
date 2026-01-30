@@ -173,7 +173,13 @@ class Profile(Base):
     university: Mapped[Optional[str]] = mapped_column(String(255))
     social_links: Mapped[Optional[dict]] = mapped_column(JSONB)
     privacy_settings: Mapped[Optional[dict]] = mapped_column(JSONB)
-    
+
+    # Verification Badge
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    verification_type: Mapped[Optional[str]] = mapped_column(String(50))  # identity, celebrity, official
+    verification_notes: Mapped[Optional[str]] = mapped_column(String(500))
+
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
@@ -233,6 +239,20 @@ class ProfileRating(Base):
     
     from_user: Mapped["User"] = relationship("User", foreign_keys=[from_user_id], back_populates="ratings_sent")
     to_user: Mapped["User"] = relationship("User", foreign_keys=[to_user_id], back_populates="ratings_received")
+
+class AuthLog(Base):
+    """Audit log for authentication events."""
+    __tablename__ = "auth_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    action: Mapped[str] = mapped_column(String(50), index=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512))
+    event_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
 
 # Additional Indices for performance
 
