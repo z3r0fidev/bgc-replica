@@ -82,8 +82,8 @@ export function ChatWindow({ conversationId, roomId, recipientName, currentUserI
       const data = await response.json();
       sendMessage(data.url, "IMAGE");
       toast.success("Media sent!");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }

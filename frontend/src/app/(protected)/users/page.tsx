@@ -70,7 +70,7 @@ export default function SearchPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
       
       // Clean up filters for API (remove "ALL" and empty strings)
-      const cleanFilters: any = {}
+      const cleanFilters: Record<string, string | boolean> = {}
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== "ALL" && value !== "" && value !== null) {
           if (key === "trans_interested") {
