@@ -10,10 +10,16 @@ from app.schemas.media import Media as MediaSchema
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
 from app.services.storage import storage_service
+from fastapi_limiter.depends import RateLimiter
 
 router = APIRouter()
 
-@router.post("/upload", response_model=MediaSchema)
+
+@router.post(
+    "/upload",
+    response_model=MediaSchema,
+    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
+)
 async def upload_media(
     file: UploadFile = File(...),
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,

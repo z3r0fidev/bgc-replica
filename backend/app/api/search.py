@@ -1,18 +1,6 @@
 from typing import List, Optional, Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from app.core.database import get_db
-from app.models.user import User, Profile
-from app.schemas.profile import Profile as ProfileSchema
-from app.services.location import search_users_nearby
-import uuid
-
-router = APIRouter()
-
-from typing import List, Optional, Annotated
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
 from app.core.database import get_db
 from app.models.user import User, Profile
@@ -22,11 +10,17 @@ from app.core.pagination import paginate_query
 from app.services.location import search_users_nearby, get_lat_lng_from_zip
 from app.services.block_service import block_service
 from app.api import deps
+from fastapi_limiter.depends import RateLimiter
 import uuid
 
 router = APIRouter()
 
-@router.get("/", response_model=PaginatedResponse[ProfileSchema])
+
+@router.get(
+    "/",
+    response_model=PaginatedResponse[ProfileSchema],
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def search_users(
     min_age: Optional[int] = Query(None),
     max_age: Optional[int] = Query(None),

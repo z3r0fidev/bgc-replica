@@ -11,6 +11,7 @@ from app.schemas.community import (
     ForumThreadCreate, ForumPostCreate, ForumCategoryTree
 )
 from app.schemas.common import PaginatedResponse
+from fastapi_limiter.depends import RateLimiter
 import uuid
 
 router = APIRouter()
@@ -63,7 +64,11 @@ async def get_category_threads(
     from app.core.pagination import paginate_query
     return await paginate_query(db, stmt, ForumThread, limit, cursor, cursor_attribute="last_activity")
 
-@router.post("/threads", response_model=ForumThreadSchema)
+@router.post(
+    "/threads",
+    response_model=ForumThreadSchema,
+    dependencies=[Depends(RateLimiter(times=5, seconds=300))],
+)
 async def create_thread(
     thread_in: ForumThreadCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
@@ -89,7 +94,11 @@ async def get_thread_posts(
     result = await db.execute(stmt)
     return result.scalars().all()
 
-@router.post("/posts", response_model=ForumPostSchema)
+@router.post(
+    "/posts",
+    response_model=ForumPostSchema,
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def create_post(
     post_in: ForumPostCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
