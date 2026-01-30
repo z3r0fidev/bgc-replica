@@ -91,12 +91,19 @@ class Account(Base):
 
 class Session(Base):
     __tablename__ = "sessions"
-    
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_token: Mapped[str] = mapped_column(String(1024), unique=True, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     expires: Mapped[datetime] = mapped_column(DateTime, index=True)
-    
+
+    # Device tracking fields
+    device_info: Mapped[Optional[dict]] = mapped_column(JSONB)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512))
+    last_active: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     user: Mapped["User"] = relationship(back_populates="sessions")
 
 class VerificationToken(Base):
