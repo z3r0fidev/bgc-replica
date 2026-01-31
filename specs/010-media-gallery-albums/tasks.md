@@ -34,11 +34,11 @@
 
 ### Backend Implementation
 
-- [ ] T005 [US1] Implement `POST /api/media/upload` endpoint in `backend/app/api/gallery.py`
-- [ ] T006 [US1] Create thumbnail generation service in `backend/app/services/media_processor.py`
-- [ ] T007 [US1] Implement `GET /api/media/` (paginated list) in `backend/app/api/gallery.py`
-- [ ] T008 [US1] Implement `GET /api/media/{id}` in `backend/app/api/gallery.py`
-- [ ] T009 [US1] Implement `DELETE /api/media/{id}` in `backend/app/api/gallery.py`
+- [x] T005 [US1] Implement `POST /api/media/upload` endpoint in `backend/app/api/gallery.py`
+- [x] T006 [US1] Create thumbnail generation service in `backend/app/services/media_processor.py`
+- [x] T007 [US1] Implement `GET /api/media/` (paginated list) in `backend/app/api/gallery.py`
+- [x] T008 [US1] Implement `GET /api/media/{id}` in `backend/app/api/gallery.py`
+- [x] T009 [US1] Implement `DELETE /api/media/{id}` in `backend/app/api/gallery.py`
 - [ ] T010 [P] [US1] Write integration tests in `backend/tests/test_gallery.py`
 
 ### Frontend Implementation
@@ -61,9 +61,9 @@
 
 ### Backend Implementation
 
-- [ ] T016 [US2] Implement album CRUD endpoints in `backend/app/api/albums.py`
-- [ ] T017 [US2] Implement `POST /api/albums/{id}/media` (add media to album)
-- [ ] T018 [US2] Implement `DELETE /api/albums/{id}/media/{media_id}` (remove from album)
+- [x] T016 [US2] Implement album CRUD endpoints in `backend/app/api/gallery.py`
+- [x] T017 [US2] Implement `POST /api/albums/{id}/media` (add media to album)
+- [x] T018 [US2] Implement `DELETE /api/albums/{id}/media/{media_id}` (remove from album)
 - [ ] T019 [US2] Implement album reordering endpoint
 - [ ] T020 [P] [US2] Write integration tests in `backend/tests/test_albums.py`
 
@@ -87,10 +87,10 @@
 
 ### Backend Implementation
 
-- [ ] T026 [US3] Implement `PATCH /api/media/{id}` for privacy updates
+- [x] T026 [US3] Implement `PATCH /api/media/{id}` for privacy updates
 - [ ] T027 [US3] Add privacy filtering to `GET /api/users/{id}/gallery`
-- [ ] T028 [US3] Implement `POST /api/albums/{id}/share` (generate share link)
-- [ ] T029 [US3] Implement `GET /api/albums/shared/{token}` (access shared album)
+- [x] T028 [US3] Implement `POST /api/albums/{id}/share` (generate share link)
+- [x] T029 [US3] Implement `GET /api/albums/shared/{token}` (access shared album)
 - [ ] T030 [P] [US3] Write privacy integration tests
 
 ### Frontend Implementation

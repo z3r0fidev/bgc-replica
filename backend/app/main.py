@@ -15,6 +15,7 @@ from app.api.groups import router as groups_router
 from app.api.group_chats import router as group_chats_router
 from app.api.moderation import router as moderation_router
 from app.api.media import router as media_router
+from app.api.gallery import router as gallery_router
 from app.api.stories import router as stories_router
 from app.api.block import router as block_router
 from app.api.totp import router as totp_router
@@ -139,6 +140,7 @@ app.include_router(groups_router, prefix="/api/groups", tags=["groups"])
 app.include_router(group_chats_router, prefix="/api/group-chats", tags=["group-chats"])
 app.include_router(moderation_router, prefix="/api/moderation", tags=["moderation"])
 app.include_router(media_router, prefix="/api/media", tags=["media"])
+app.include_router(gallery_router, prefix="/api/gallery", tags=["gallery"])
 app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
 app.include_router(block_router, prefix="/api/block", tags=["block"])
 app.include_router(totp_router, prefix="/api/2fa", tags=["2fa"])
