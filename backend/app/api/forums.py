@@ -8,11 +8,35 @@ from app.models.user import User
 from app.models.community import ForumCategory, ForumThread, ForumPost
 from app.schemas.community import (
     ForumCategorySchema, ForumThreadSchema, ForumPostSchema,
-    ForumThreadCreate, ForumPostCreate
+    ForumThreadCreate, ForumPostCreate, ForumCategoryTree
 )
+from app.schemas.common import PaginatedResponse
+from fastapi_limiter.depends import RateLimiter
 import uuid
 
 router = APIRouter()
+
+@router.get("/tree", response_model=List[ForumCategoryTree])
+async def get_forum_tree(
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    # Fetch all categories
+    result = await db.execute(select(ForumCategory))
+    categories = result.scalars().all()
+    
+    # Build tree in memory (suitable for small/medium number of categories)
+    category_map = {cat.id: ForumCategoryTree.model_validate(cat) for cat in categories}
+    tree = []
+    
+    for cat_id, cat_obj in category_map.items():
+        if cat_obj.parent_id:
+            parent = category_map.get(cat_obj.parent_id)
+            if parent:
+                parent.children.append(cat_obj)
+        else:
+            tree.append(cat_obj)
+            
+    return tree
 
 @router.get("/categories", response_model=List[ForumCategorySchema])
 async def get_categories(
@@ -21,23 +45,30 @@ async def get_categories(
     result = await db.execute(select(ForumCategory))
     return result.scalars().all()
 
-@router.get("/categories/{category_slug}/threads", response_model=List[ForumThreadSchema])
+@router.get("/categories/{category_slug}/threads", response_model=PaginatedResponse[ForumThreadSchema])
 async def get_category_threads(
     category_slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = 20,
-    offset: int = 0
+    cursor: Optional[str] = None
 ):
     cat_result = await db.execute(select(ForumCategory).where(ForumCategory.slug == category_slug))
     category = cat_result.scalars().first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     
-    stmt = select(ForumThread).where(ForumThread.category_id == category.id).order_by(desc(ForumThread.last_activity)).limit(limit).offset(offset)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    from sqlalchemy.orm import selectinload
+    stmt = select(ForumThread).where(ForumThread.category_id == category.id).options(selectinload(ForumThread.author))
+    
+    # Apply pagination
+    from app.core.pagination import paginate_query
+    return await paginate_query(db, stmt, ForumThread, limit, cursor, cursor_attribute="last_activity")
 
-@router.post("/threads", response_model=ForumThreadSchema)
+@router.post(
+    "/threads",
+    response_model=ForumThreadSchema,
+    dependencies=[Depends(RateLimiter(times=5, seconds=300))],
+)
 async def create_thread(
     thread_in: ForumThreadCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
@@ -63,7 +94,11 @@ async def get_thread_posts(
     result = await db.execute(stmt)
     return result.scalars().all()
 
-@router.post("/posts", response_model=ForumPostSchema)
+@router.post(
+    "/posts",
+    response_model=ForumPostSchema,
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def create_post(
     post_in: ForumPostCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],

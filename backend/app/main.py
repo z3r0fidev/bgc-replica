@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
 import socketio
-from app.core.socket import sio
+from app.core.socket_config import sio
 from app.api.auth import router as auth_router
 from app.api.profiles import router as profile_router
 from app.api.social import router as social_router
@@ -12,11 +12,17 @@ from app.api.search import router as search_router
 from app.api.forums import router as forums_router
 from app.api.feed import router as feed_router
 from app.api.groups import router as groups_router
+from app.api.group_chats import router as group_chats_router
 from app.api.moderation import router as moderation_router
 from app.api.media import router as media_router
 from app.api.stories import router as stories_router
+from app.api.block import router as block_router
+from app.api.totp import router as totp_router
+from app.api.notifications import router as notifications_router
+from app.api.sessions import router as sessions_router
+from app.api.verification import router as verification_router
 from app.core.database import SessionLocal
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 from app.core.config import settings
 from sqlalchemy import text
 from app.core.exceptions import BaseAppException
@@ -87,7 +93,7 @@ async def app_exception_handler(request: Request, exc: BaseAppException):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Adjust for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -130,10 +136,16 @@ app.include_router(search_router, prefix="/api/search", tags=["search"])
 app.include_router(forums_router, prefix="/api/forums", tags=["forums"])
 app.include_router(feed_router, prefix="/api/feed", tags=["feed"])
 app.include_router(groups_router, prefix="/api/groups", tags=["groups"])
+app.include_router(group_chats_router, prefix="/api/group-chats", tags=["group-chats"])
 app.include_router(moderation_router, prefix="/api/moderation", tags=["moderation"])
 app.include_router(media_router, prefix="/api/media", tags=["media"])
 app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
+app.include_router(block_router, prefix="/api/block", tags=["block"])
+app.include_router(totp_router, prefix="/api/2fa", tags=["2fa"])
+app.include_router(notifications_router, prefix="/api/notifications", tags=["notifications"])
+app.include_router(sessions_router, prefix="/api/sessions", tags=["sessions"])
+app.include_router(verification_router, prefix="/api/verification", tags=["verification"])
 
 # Mount Socket.io
-socket_app = socketio.ASGIApp(sio, socketio_path="socket.io")
-app.mount("/ws", socket_app)
+socket_app = socketio.ASGIApp(sio, socketio_path="")
+app.mount("/socket.io", socket_app)

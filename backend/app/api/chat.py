@@ -1,7 +1,8 @@
 from typing import List, Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, or_, and_
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User
@@ -9,11 +10,11 @@ from app.models.chat import ChatRoom, Message, Conversation
 from app.schemas.chat import ChatRoom as ChatRoomSchema, Message as MessageSchema, Conversation as ConversationSchema
 from app.services.storage import storage_service
 from app.services.chat import chat_service
-import uuid
-from sqlalchemy import select, desc, or_, and_
-
+from app.services.block_service import block_service
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
+from fastapi_limiter.depends import RateLimiter
+import uuid
 
 router = APIRouter()
 
@@ -40,7 +41,11 @@ async def get_room_history(
     stmt = select(Message).where(Message.room_id == room_id).options(selectinload(Message.sender))
     return await paginate_query(db, stmt, Message, limit, cursor)
 
-@router.post("/media", response_model=dict)
+@router.post(
+    "/media",
+    response_model=dict,
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def upload_chat_media(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     file: UploadFile = File(...)
@@ -62,12 +67,22 @@ async def get_conversations(
     # Using last_message_at as cursor
     return await paginate_query(db, stmt, Conversation, limit, cursor, cursor_attribute="last_message_at")
 
-@router.post("/conversations", response_model=ConversationSchema)
+@router.post(
+    "/conversations",
+    response_model=ConversationSchema,
+    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
+)
 async def get_or_create_conversation(
     recipient_id: uuid.UUID,
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
+    # Check if either user has blocked the other
+    if await block_service.is_blocked(db, current_user.id, recipient_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot message this user"
+        )
     return await chat_service.get_or_create_conversation(db, current_user.id, recipient_id)
 
 @router.get("/conversations/{conv_id}/history", response_model=PaginatedResponse[MessageSchema])

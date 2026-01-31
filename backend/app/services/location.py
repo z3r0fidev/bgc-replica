@@ -1,7 +1,7 @@
 from typing import Optional, Dict
 import httpx
 from app.core.config import settings
-from app.core.redis import get_redis
+from app.core.redis_config import get_redis
 import uuid
 
 async def get_location_from_ip(ip: str) -> Optional[Dict]:
@@ -62,3 +62,20 @@ async def search_users_nearby(lat: float, lng: float, radius_km: float = 50):
         # Fallback for older redis versions if needed
         print(f"Redis GeoSearch error: {e}")
         return []
+
+def get_lat_lng_from_zip(zipcode: str) -> Optional[Dict[str, float]]:
+    """
+    Mock zip code to lat/lng mapping for PHL/NJ area.
+    """
+    mock_data = {
+        "19102": {"lat": 39.9526, "lng": -75.1652}, # Philadelphia Central
+        "19104": {"lat": 39.9522, "lng": -75.1932}, # West Philly
+        "19147": {"lat": 39.9345, "lng": -75.1548}, # South Philly
+        "07102": {"lat": 40.7357, "lng": -74.1724}, # Newark
+        "07302": {"lat": 40.7282, "lng": -74.0776}, # Jersey City
+        "08901": {"lat": 40.4862, "lng": -74.4518}, # New Brunswick
+        "08540": {"lat": 40.3487, "lng": -74.6590}, # Princeton
+        "08003": {"lat": 39.9015, "lng": -74.9818}, # Cherry Hill
+        "08102": {"lat": 39.9448, "lng": -75.1199}, # Camden
+    }
+    return mock_data.get(zipcode)

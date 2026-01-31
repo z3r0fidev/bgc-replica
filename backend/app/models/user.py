@@ -1,14 +1,14 @@
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, JSON, Index, Float, CheckConstraint
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, JSON, Index, Float, CheckConstraint, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from app.core.database import Base
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[Optional[str]] = mapped_column(String(255))
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True)
@@ -17,7 +17,15 @@ class User(Base):
     hashed_password: Mapped[Optional[str]] = mapped_column(String(1024))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
+    # Two-Factor Authentication
+    totp_secret: Mapped[Optional[str]] = mapped_column(String(32))
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    backup_codes: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(20)))
+
+    # Notification Preferences
+    notification_preferences: Mapped[Optional[dict]] = mapped_column(JSONB)
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
     
@@ -83,12 +91,19 @@ class Account(Base):
 
 class Session(Base):
     __tablename__ = "sessions"
-    
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_token: Mapped[str] = mapped_column(String(1024), unique=True, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     expires: Mapped[datetime] = mapped_column(DateTime, index=True)
-    
+
+    # Device tracking fields
+    device_info: Mapped[Optional[dict]] = mapped_column(JSONB)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512))
+    last_active: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     user: Mapped["User"] = relationship(back_populates="sessions")
 
 class VerificationToken(Base):
@@ -143,7 +158,28 @@ class Profile(Base):
     hiv_status: Mapped[Optional[str]] = mapped_column(String(100))
     privacy_mode: Mapped[str] = mapped_column(String(50), default="OUT") # OUT, DOWNLO
     is_trans_interested: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_personal: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     
+    # Extended Profile Fields (Social Expansion)
+    display_name: Mapped[Optional[str]] = mapped_column(String(255), index=True)
+    pronouns: Mapped[Optional[str]] = mapped_column(String(50))
+    birthdate: Mapped[Optional[datetime.date]] = mapped_column(Date)
+    gender_identity: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    relationship_status: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    looking_for: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(100)))
+    occupation: Mapped[Optional[str]] = mapped_column(String(255))
+    industry: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    education_level: Mapped[Optional[str]] = mapped_column(String(100))
+    university: Mapped[Optional[str]] = mapped_column(String(255))
+    social_links: Mapped[Optional[dict]] = mapped_column(JSONB)
+    privacy_settings: Mapped[Optional[dict]] = mapped_column(JSONB)
+
+    # Verification Badge
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    verification_type: Mapped[Optional[str]] = mapped_column(String(50))  # identity, celebrity, official
+    verification_notes: Mapped[Optional[str]] = mapped_column(String(500))
+
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
@@ -203,6 +239,20 @@ class ProfileRating(Base):
     
     from_user: Mapped["User"] = relationship("User", foreign_keys=[from_user_id], back_populates="ratings_sent")
     to_user: Mapped["User"] = relationship("User", foreign_keys=[to_user_id], back_populates="ratings_received")
+
+class AuthLog(Base):
+    """Audit log for authentication events."""
+    __tablename__ = "auth_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    action: Mapped[str] = mapped_column(String(50), index=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512))
+    event_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
 
 # Additional Indices for performance
 

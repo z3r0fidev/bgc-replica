@@ -67,7 +67,7 @@ export function ChatWindow({ conversationId, roomId, recipientName, currentUserI
     setIsUploading(true);
     try {
       const token = localStorage.getItem("access_token");
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const formData = new FormData();
       formData.append("file", file);
 
@@ -82,8 +82,8 @@ export function ChatWindow({ conversationId, roomId, recipientName, currentUserI
       const data = await response.json();
       sendMessage(data.url, "IMAGE");
       toast.success("Media sent!");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }

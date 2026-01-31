@@ -13,7 +13,11 @@ class ForumCategory(Base):
     name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     description: Mapped[Optional[str]] = mapped_column(String(1024))
+    parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("forum_categories.id", ondelete="CASCADE"), index=True)
+    icon_path: Mapped[Optional[str]] = mapped_column(String(1024))
+    banner_path: Mapped[Optional[str]] = mapped_column(String(1024))
     
+    parent: Mapped[Optional["ForumCategory"]] = relationship("ForumCategory", remote_side=[id], backref="children")
     threads: Mapped[List["ForumThread"]] = relationship(back_populates="category", cascade="all, delete-orphan")
 
 class ForumThread(Base):
@@ -26,6 +30,9 @@ class ForumThread(Base):
     content: Mapped[str] = mapped_column(Text)
     media_url: Mapped[Optional[str]] = mapped_column(String(1024))
     report_count: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    view_count: Mapped[int] = mapped_column(Integer, default=0)
+    reply_count: Mapped[int] = mapped_column(Integer, default=0)
+    is_sticky: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_activity: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     

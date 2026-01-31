@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageSquare, Heart, Share2 } from "lucide-react";
 import { motion } from "framer-motion";
+import type { FeedPost } from "@/types/feed";
 
 interface FeedItemProps {
-  post: any;
+  post: FeedPost;
   style?: React.CSSProperties;
 }
 

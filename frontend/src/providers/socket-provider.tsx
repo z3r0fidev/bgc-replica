@@ -22,7 +22,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     const socketInstance = io(apiUrl, {
-      path: "/ws/socket.io",
+      path: "/socket.io",
       addTrailingSlash: false,
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,

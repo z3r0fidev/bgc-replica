@@ -23,7 +23,8 @@ export default function CategoryThreadsPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setThreads(data);
+          // The API now returns a PaginatedResponse with an 'items' array
+          setThreads(data.items || []);
         }
       } catch (e) {
         console.error(e);
