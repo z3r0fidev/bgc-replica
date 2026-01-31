@@ -39,7 +39,7 @@
 - [x] T007 [US1] Implement `GET /api/media/` (paginated list) in `backend/app/api/gallery.py`
 - [x] T008 [US1] Implement `GET /api/media/{id}` in `backend/app/api/gallery.py`
 - [x] T009 [US1] Implement `DELETE /api/media/{id}` in `backend/app/api/gallery.py`
-- [ ] T010 [P] [US1] Write integration tests in `backend/tests/test_gallery.py`
+- [x] T010 [P] [US1] Write integration tests in `backend/tests/test_gallery.py`
 
 ### Frontend Implementation
 
@@ -65,7 +65,7 @@
 - [x] T017 [US2] Implement `POST /api/albums/{id}/media` (add media to album)
 - [x] T018 [US2] Implement `DELETE /api/albums/{id}/media/{media_id}` (remove from album)
 - [ ] T019 [US2] Implement album reordering endpoint
-- [ ] T020 [P] [US2] Write integration tests in `backend/tests/test_albums.py`
+- [x] T020 [P] [US2] Write integration tests in `backend/tests/test_gallery.py` (combined with media tests)
 
 ### Frontend Implementation
 
@@ -91,7 +91,7 @@
 - [ ] T027 [US3] Add privacy filtering to `GET /api/users/{id}/gallery`
 - [x] T028 [US3] Implement `POST /api/albums/{id}/share` (generate share link)
 - [x] T029 [US3] Implement `GET /api/albums/shared/{token}` (access shared album)
-- [ ] T030 [P] [US3] Write privacy integration tests
+- [x] T030 [P] [US3] Write privacy integration tests in `backend/tests/test_gallery.py`
 
 ### Frontend Implementation
 
