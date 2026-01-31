@@ -39,6 +39,7 @@ export function PrivacyToggle({ field, value, onChange }: PrivacyToggleProps) {
       <SelectTrigger
         className="w-[140px] h-8 text-xs"
         data-testid={`privacy-toggle-${field}`}
+        aria-label={`Privacy setting for ${field.replace(/_/g, " ")}`}
       >
         <SelectValue />
       </SelectTrigger>
