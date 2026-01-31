@@ -68,6 +68,18 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
+    # Gallery Relationships (Spec 010)
+    gallery_media: Mapped[List["GalleryMedia"]] = relationship(
+        "GalleryMedia",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    albums: Mapped[List["Album"]] = relationship(
+        "Album",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
 class Account(Base):
     __tablename__ = "accounts"
     

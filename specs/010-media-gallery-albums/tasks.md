@@ -17,9 +17,9 @@
 
 **Purpose**: Database and infrastructure setup
 
-- [ ] T001 Create `GalleryMedia`, `Album`, `AlbumMedia` models in `backend/app/models/gallery.py`
-- [ ] T002 Create Alembic migration for gallery tables in `backend/alembic/versions/`
-- [ ] T003 Define Pydantic schemas in `backend/app/schemas/gallery.py`
+- [x] T001 Create `GalleryMedia`, `Album`, `AlbumMedia` models in `backend/app/models/gallery.py`
+- [x] T002 Create Alembic migration for gallery tables in `backend/alembic/versions/`
+- [x] T003 Define Pydantic schemas in `backend/app/schemas/gallery.py`
 - [ ] T004 Configure Supabase Storage bucket policies for gallery folder
 
 **Checkpoint**: Database ready for gallery operations
