@@ -43,10 +43,10 @@
 
 ### Frontend Implementation
 
-- [ ] T011 [P] [US1] Create `MediaUploader` component in `frontend/src/components/gallery/MediaUploader.tsx`
-- [ ] T012 [P] [US1] Create `GalleryGrid` component in `frontend/src/components/gallery/GalleryGrid.tsx`
-- [ ] T013 [US1] Create `MediaLightbox` component in `frontend/src/components/gallery/MediaLightbox.tsx`
-- [ ] T014 [US1] Create gallery page at `frontend/src/app/(protected)/gallery/page.tsx`
+- [x] T011 [P] [US1] Create `MediaUploader` component in `frontend/src/components/gallery/MediaUploader.tsx`
+- [x] T012 [P] [US1] Create `GalleryGrid` component in `frontend/src/components/gallery/GalleryGrid.tsx`
+- [x] T013 [US1] Create `MediaLightbox` component in `frontend/src/components/gallery/MediaLightbox.tsx`
+- [x] T014 [US1] Create gallery page at `frontend/src/app/(protected)/gallery/page.tsx`
 - [ ] T015 [P] [US1] Write unit tests in `frontend/tests/unit/gallery.test.tsx`
 
 **Checkpoint**: User Story 1 complete - basic gallery is functional
