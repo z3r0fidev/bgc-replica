@@ -69,10 +69,10 @@
 
 ### Frontend Implementation
 
-- [ ] T021 [P] [US2] Create `AlbumCard` component in `frontend/src/components/gallery/AlbumCard.tsx`
-- [ ] T022 [P] [US2] Create `AlbumEditor` component in `frontend/src/components/gallery/AlbumEditor.tsx`
-- [ ] T023 [US2] Create albums list page at `frontend/src/app/(protected)/gallery/albums/page.tsx`
-- [ ] T024 [US2] Create single album page at `frontend/src/app/(protected)/gallery/albums/[id]/page.tsx`
+- [x] T021 [P] [US2] Create `AlbumCard` component in `frontend/src/components/gallery/AlbumCard.tsx`
+- [x] T022 [P] [US2] Create `AlbumEditor` component in `frontend/src/components/gallery/AlbumEditor.tsx`
+- [x] T023 [US2] Create albums list page at `frontend/src/app/(protected)/gallery/albums/page.tsx`
+- [x] T024 [US2] Create single album page at `frontend/src/app/(protected)/gallery/albums/[id]/page.tsx`
 - [ ] T025 [US2] Implement drag-drop reordering in album view
 
 **Checkpoint**: User Story 2 complete - album organization functional
