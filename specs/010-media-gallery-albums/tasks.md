@@ -20,7 +20,7 @@
 - [x] T001 Create `GalleryMedia`, `Album`, `AlbumMedia` models in `backend/app/models/gallery.py`
 - [x] T002 Create Alembic migration for gallery tables in `backend/alembic/versions/`
 - [x] T003 Define Pydantic schemas in `backend/app/schemas/gallery.py`
-- [ ] T004 Configure Supabase Storage bucket policies for gallery folder
+- [ ] T004 Configure Supabase Storage bucket policies for gallery folder (manual - Supabase dashboard)
 
 **Checkpoint**: Database ready for gallery operations
 
@@ -47,7 +47,7 @@
 - [x] T012 [P] [US1] Create `GalleryGrid` component in `frontend/src/components/gallery/GalleryGrid.tsx`
 - [x] T013 [US1] Create `MediaLightbox` component in `frontend/src/components/gallery/MediaLightbox.tsx`
 - [x] T014 [US1] Create gallery page at `frontend/src/app/(protected)/gallery/page.tsx`
-- [ ] T015 [P] [US1] Write unit tests in `frontend/tests/unit/gallery.test.tsx`
+- [x] T015 [P] [US1] Write unit tests in `frontend/tests/unit/gallery.test.tsx`
 
 **Checkpoint**: User Story 1 complete - basic gallery is functional
 
