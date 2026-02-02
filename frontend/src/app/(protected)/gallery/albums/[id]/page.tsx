@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GalleryGrid, MediaLightbox } from "@/components/gallery";
+import { GalleryGrid, MediaLightbox, SortableAlbumGrid } from "@/components/gallery";
 import { AlbumEditor } from "@/components/gallery/AlbumEditor";
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import {
   Plus,
   Check,
   X,
+  ArrowUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -63,6 +64,10 @@ export default function AlbumDetailPage() {
   const [availableMedia, setAvailableMedia] = useState<GalleryMedia[]>([]);
   const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set());
   const [isAddingMedia, setIsAddingMedia] = useState(false);
+
+  // Reorder state
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   const fetchAlbum = useCallback(async () => {
     try {
@@ -222,6 +227,41 @@ export default function AlbumDetailPage() {
     setAlbum((prev) => (prev ? { ...prev, ...updated } : null));
   };
 
+  const handleReorder = async (newItems: GalleryMedia[]) => {
+    if (!album) return;
+
+    // Optimistically update local state
+    setAlbum((prev) =>
+      prev ? { ...prev, media: newItems } : null
+    );
+
+    // Save to server
+    setIsSavingOrder(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`/api/gallery/albums/${albumId}/reorder`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          media_ids: newItems.map((item) => item.id),
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save order");
+
+      toast.success("Order saved");
+    } catch (error) {
+      // Revert on failure
+      fetchAlbum();
+      toast.error("Failed to save order");
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
   const handleItemClick = (item: GalleryMedia, index: number) => {
     setLightboxIndex(index);
     setLightboxOpen(true);
@@ -296,6 +336,16 @@ export default function AlbumDetailPage() {
               <Plus className="h-4 w-4 mr-2" />
               Add Photos
             </Button>
+            <Button
+              variant={isReorderMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsReorderMode(!isReorderMode)}
+              disabled={album.media.length < 2}
+            >
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              {isReorderMode ? "Done" : "Reorder"}
+              {isSavingOrder && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setEditorOpen(true)}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
@@ -327,6 +377,19 @@ export default function AlbumDetailPage() {
             <Plus className="h-4 w-4 mr-2" />
             Add Photos
           </Button>
+        </div>
+      ) : isReorderMode ? (
+        <div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Drag and drop photos to reorder them
+          </p>
+          <SortableAlbumGrid
+            items={album.media}
+            albumId={albumId}
+            onReorder={handleReorder}
+            onItemClick={handleItemClick}
+            showPrivacyBadge={false}
+          />
         </div>
       ) : (
         <GalleryGrid

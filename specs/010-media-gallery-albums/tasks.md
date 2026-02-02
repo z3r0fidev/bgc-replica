@@ -64,7 +64,7 @@
 - [x] T016 [US2] Implement album CRUD endpoints in `backend/app/api/gallery.py`
 - [x] T017 [US2] Implement `POST /api/albums/{id}/media` (add media to album)
 - [x] T018 [US2] Implement `DELETE /api/albums/{id}/media/{media_id}` (remove from album)
-- [ ] T019 [US2] Implement album reordering endpoint
+- [x] T019 [US2] Implement album reordering endpoint
 - [x] T020 [P] [US2] Write integration tests in `backend/tests/test_gallery.py` (combined with media tests)
 
 ### Frontend Implementation
@@ -73,7 +73,7 @@
 - [x] T022 [P] [US2] Create `AlbumEditor` component in `frontend/src/components/gallery/AlbumEditor.tsx`
 - [x] T023 [US2] Create albums list page at `frontend/src/app/(protected)/gallery/albums/page.tsx`
 - [x] T024 [US2] Create single album page at `frontend/src/app/(protected)/gallery/albums/[id]/page.tsx`
-- [ ] T025 [US2] Implement drag-drop reordering in album view
+- [x] T025 [US2] Implement drag-drop reordering in album view
 
 **Checkpoint**: User Story 2 complete - album organization functional
 

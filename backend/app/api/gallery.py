@@ -26,6 +26,7 @@ from app.schemas.gallery import (
     AlbumWithMedia,
     AlbumPage,
     AlbumMediaAdd,
+    AlbumBulkReorder,
     MediaAddResponse,
     ShareLinkCreate,
     ShareLinkResponse,
@@ -598,6 +599,88 @@ async def add_media_to_album(
     total = count_result.scalar() or 0
 
     return MediaAddResponse(added_count=added_count, album_media_count=total)
+
+
+@router.put("/albums/{album_id}/reorder", response_model=AlbumWithMedia)
+async def reorder_album_media(
+    album_id: uuid.UUID,
+    data: AlbumBulkReorder,
+    current_user: Annotated[User, Depends(deps.get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None
+):
+    """
+    Reorder media within an album.
+    Accepts a list of media IDs in the desired order.
+    """
+    # Verify album ownership
+    result = await db.execute(
+        select(Album).where(
+            Album.id == album_id,
+            Album.user_id == current_user.id
+        ).options(
+            selectinload(Album.cover_media),
+            selectinload(Album.media_associations).selectinload(AlbumMedia.media)
+        )
+    )
+    album = result.scalars().first()
+
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    # Get current media IDs in album
+    current_media_ids = {assoc.media_id for assoc in album.media_associations}
+    requested_ids = set(data.media_ids)
+
+    # Validate all requested IDs exist in the album
+    if requested_ids != current_media_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Media IDs must match exactly the media in the album"
+        )
+
+    # Update positions
+    for position, media_id in enumerate(data.media_ids):
+        for assoc in album.media_associations:
+            if assoc.media_id == media_id:
+                assoc.position = position
+                break
+
+    await db.commit()
+
+    # Return updated album
+    media_list = []
+    for assoc in sorted(album.media_associations, key=lambda x: x.position):
+        media_dict = {
+            "id": assoc.media.id,
+            "user_id": assoc.media.user_id,
+            "type": assoc.media.type,
+            "url": assoc.media.url,
+            "thumbnail_url": assoc.media.thumbnail_url,
+            "filename": assoc.media.filename,
+            "mime_type": assoc.media.mime_type,
+            "width": assoc.media.width,
+            "height": assoc.media.height,
+            "size_bytes": assoc.media.size_bytes,
+            "duration_seconds": assoc.media.duration_seconds,
+            "privacy": assoc.media.privacy,
+            "view_count": assoc.media.view_count,
+            "created_at": assoc.media.created_at,
+            "position": assoc.position,
+        }
+        media_list.append(media_dict)
+
+    return AlbumWithMedia(
+        id=album.id,
+        user_id=album.user_id,
+        title=album.title,
+        description=album.description,
+        cover_media_id=album.cover_media_id,
+        cover_url=album.cover_media.thumbnail_url if album.cover_media else None,
+        privacy=album.privacy,
+        media_count=len(media_list),
+        created_at=album.created_at,
+        media=media_list
+    )
 
 
 @router.delete("/albums/{album_id}/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT)

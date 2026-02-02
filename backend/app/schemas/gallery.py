@@ -94,6 +94,12 @@ class AlbumMediaReorder(BaseModel):
     new_position: int = Field(..., ge=0)
 
 
+class AlbumBulkReorder(BaseModel):
+    """Request to bulk reorder all media within an album."""
+    media_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=1000,
+        description="Ordered list of media IDs representing the new order")
+
+
 class AlbumBase(BaseModel):
     """Base album response."""
     id: uuid.UUID
