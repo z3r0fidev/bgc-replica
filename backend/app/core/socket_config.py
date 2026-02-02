@@ -43,7 +43,7 @@ async def initialize_redis_manager():
         mgr = socketio.AsyncRedisManager(settings.REDIS_URL)
         sio.manager = mgr
         _redis_available = True
-        print(f"Socket.io: Redis manager connected successfully")
+        print("Socket.io: Redis manager connected successfully")
         return True
     except Exception as e:
         _redis_available = False
