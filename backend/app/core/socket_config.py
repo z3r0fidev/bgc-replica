@@ -59,13 +59,20 @@ def is_redis_available():
 async def check_rate_limit(user_id: str) -> bool:
     """
     Simple rate limit: max 5 messages per 10 seconds.
+    Falls back to allowing all messages if Redis is unavailable.
     """
-    redis = await get_redis()
-    key = f"ratelimit:{user_id}"
-    count = await redis.incr(key)
-    if count == 1:
-        await redis.expire(key, 10)
-    return count <= 5
+    if not _redis_available:
+        return True  # Allow all messages if Redis unavailable
+
+    try:
+        redis = await get_redis()
+        key = f"ratelimit:{user_id}"
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, 10)
+        return count <= 5
+    except Exception:
+        return True  # Allow message on Redis error
 
 
 @sio.event
