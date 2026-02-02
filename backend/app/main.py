@@ -76,8 +76,14 @@ if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
 
 @app.on_event("startup")
 async def startup():
-    r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-    await FastAPILimiter.init(r)
+    try:
+        r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+        await r.ping()  # Test connection before initializing
+        await FastAPILimiter.init(r)
+        print("Redis connected successfully")
+    except Exception as e:
+        print(f"Warning: Redis unavailable ({e}). Rate limiting disabled.")
+        # App will run but without rate limiting
 
 
 # Instrument Prometheus
