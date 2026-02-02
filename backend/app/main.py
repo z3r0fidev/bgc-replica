@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
 import socketio
-from app.core.socket_config import sio
+from app.core.socket_config import sio, initialize_redis_manager
 from app.api.auth import router as auth_router
 from app.api.profiles import router as profile_router
 from app.api.social import router as social_router
@@ -76,13 +76,17 @@ if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
 
 @app.on_event("startup")
 async def startup():
+    # Initialize Socket.io Redis manager (graceful degradation if unavailable)
+    await initialize_redis_manager()
+
+    # Initialize FastAPI rate limiter with Redis
     try:
         r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
         await r.ping()  # Test connection before initializing
         await FastAPILimiter.init(r)
-        print("Redis connected successfully")
+        print("Rate limiter: Redis connected successfully")
     except Exception as e:
-        print(f"Warning: Redis unavailable ({e}). Rate limiting disabled.")
+        print(f"Rate limiter: Redis unavailable ({e}). Rate limiting disabled.")
         # App will run but without rate limiting
 
 

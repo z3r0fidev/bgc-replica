@@ -8,15 +8,52 @@ from app.core.redis_config import get_redis
 import uuid
 from datetime import datetime
 
-# Initialize Async Redis Manager for scaling
-mgr = socketio.AsyncRedisManager(settings.REDIS_URL)
+# Track Redis availability for graceful degradation
+_redis_available = False
 
-# Initialize Async Socket.io Server
+# Initialize Socket.io Server WITHOUT Redis manager (in-memory mode)
+# This ensures the app can start even if Redis is unavailable
 sio = socketio.AsyncServer(
     async_mode="asgi",
     cors_allowed_origins="*",  # Adjust for production
-    client_manager=mgr,
+    client_manager=None,  # Start with in-memory, upgrade to Redis in startup
 )
+
+
+async def initialize_redis_manager():
+    """
+    Try to initialize Redis manager for Socket.io.
+    Call this from app startup event.
+    Returns True if Redis was connected, False otherwise.
+    """
+    global _redis_available, sio
+
+    if not settings.REDIS_URL:
+        print("Socket.io: No REDIS_URL configured, using in-memory mode")
+        return False
+
+    try:
+        # Test Redis connection first
+        import redis.asyncio as redis_client
+        r = redis_client.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+        await r.ping()
+        await r.close()
+
+        # Redis is available, create manager and reinitialize sio
+        mgr = socketio.AsyncRedisManager(settings.REDIS_URL)
+        sio.manager = mgr
+        _redis_available = True
+        print(f"Socket.io: Redis manager connected successfully")
+        return True
+    except Exception as e:
+        _redis_available = False
+        print(f"Socket.io: Redis unavailable ({e}), continuing with in-memory mode")
+        return False
+
+
+def is_redis_available():
+    """Check if Redis is available for Socket.io."""
+    return _redis_available
 
 
 async def check_rate_limit(user_id: str) -> bool:
