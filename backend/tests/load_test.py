@@ -1,9 +1,10 @@
 from locust import HttpUser, task, between
 import uuid
 
+
 class BGCLiveUser(HttpUser):
     wait_time = between(1, 5)
-    
+
     def on_start(self):
         # In a real scenario, login and get token
         self.user_id = str(uuid.uuid4())

@@ -13,10 +13,11 @@ mgr = socketio.AsyncRedisManager(settings.REDIS_URL)
 
 # Initialize Async Socket.io Server
 sio = socketio.AsyncServer(
-    async_mode='asgi',
-    cors_allowed_origins="*", # Adjust for production
-    client_manager=mgr
+    async_mode="asgi",
+    cors_allowed_origins="*",  # Adjust for production
+    client_manager=mgr,
 )
+
 
 async def check_rate_limit(user_id: str) -> bool:
     """
@@ -29,16 +30,17 @@ async def check_rate_limit(user_id: str) -> bool:
         await redis.expire(key, 10)
     return count <= 5
 
+
 @sio.event
 async def connect(sid, environ, auth):
     try:
         # In production, validate JWT session from cookies or headers
-        if auth and 'user_id' in auth:
-            user_id = auth['user_id']
+        if auth and "user_id" in auth:
+            user_id = auth["user_id"]
             # Basic UUID validation
             uuid.UUID(user_id)
-            
-            await sio.save_session(sid, {'user_id': user_id})
+
+            await sio.save_session(sid, {"user_id": user_id})
             await sio.enter_room(sid, str(user_id))
             await presence_service.update_presence(uuid.UUID(user_id), "online")
             print(f"Authenticated user {user_id} connected on {sid}")
@@ -46,38 +48,43 @@ async def connect(sid, environ, auth):
             print(f"Anonymous client connected: {sid}")
     except Exception as e:
         print(f"Connection rejected for {sid}: {str(e)}")
-        return False # Reject connection
+        return False  # Reject connection
+
 
 @sio.event
 async def disconnect(sid):
     session = await sio.get_session(sid)
-    if session and 'user_id' in session:
-        user_id = session['user_id']
+    if session and "user_id" in session:
+        user_id = session["user_id"]
         await presence_service.update_presence(uuid.UUID(user_id), "offline")
     print(f"Client disconnected: {sid}")
+
 
 @sio.event
 async def presence(sid, data):
     session = await sio.get_session(sid)
-    if session and 'user_id' in session:
-        user_id = session['user_id']
-        status = data.get('status', 'online')
+    if session and "user_id" in session:
+        user_id = session["user_id"]
+        status = data.get("status", "online")
         await presence_service.update_presence(uuid.UUID(user_id), status)
+
 
 @sio.event
 async def typing(sid, data):
     session = await sio.get_session(sid)
-    if not session or 'user_id' not in session:
+    if not session or "user_id" not in session:
         return
 
-    user_id = session['user_id']
-    room_id = data.get('room_id')
-    recipient_id = data.get('recipient_id')
+    user_id = session["user_id"]
+    room_id = data.get("room_id")
+    recipient_id = data.get("recipient_id")
 
     # Check block status for DM typing indicators
     if recipient_id:
         async with SessionLocal() as db:
-            if await block_service.is_blocked(db, uuid.UUID(user_id), uuid.UUID(recipient_id)):
+            if await block_service.is_blocked(
+                db, uuid.UUID(user_id), uuid.UUID(recipient_id)
+            ):
                 return  # Silently ignore typing to blocked users
 
     event_data = {"user_id": user_id, "is_typing": True}
@@ -87,21 +94,22 @@ async def typing(sid, data):
     elif recipient_id:
         await sio.emit("user_typing", event_data, room=str(recipient_id), skip_sid=sid)
 
+
 @sio.event
 async def send_dm(sid, data):
     session = await sio.get_session(sid)
-    if not session or 'user_id' not in session:
+    if not session or "user_id" not in session:
         return
 
-    user_id = session['user_id']
+    user_id = session["user_id"]
     if not await check_rate_limit(user_id):
         await sio.emit("error", {"detail": "Rate limit exceeded. Slow down!"}, to=sid)
         return
 
     sender_id = uuid.UUID(user_id)
-    recipient_id = uuid.UUID(data['recipient_id'])
-    content = data['content']
-    msg_type = data.get('type', 'TEXT')
+    recipient_id = uuid.UUID(data["recipient_id"])
+    content = data["content"]
+    msg_type = data.get("type", "TEXT")
 
     async with SessionLocal() as db:
         # Check if either user has blocked the other
@@ -109,111 +117,121 @@ async def send_dm(sid, data):
             await sio.emit("error", {"detail": "Cannot message this user"}, to=sid)
             return
 
-        conv = await chat_service.get_or_create_conversation(db, sender_id, recipient_id)
-        msg = await chat_service.save_message(
-            db, 
-            sender_id=sender_id, 
-            content=content, 
-            type=msg_type, 
-            conversation_id=conv.id
+        conv = await chat_service.get_or_create_conversation(
+            db, sender_id, recipient_id
         )
-        
+        msg = await chat_service.save_message(
+            db,
+            sender_id=sender_id,
+            content=content,
+            type=msg_type,
+            conversation_id=conv.id,
+        )
+
         msg_data = {
             "id": str(msg.id),
             "sender_id": str(msg.sender_id),
             "conversation_id": str(msg.conversation_id),
             "content": msg.content,
             "type": msg.type,
-            "created_at": msg.created_at.isoformat()
+            "created_at": msg.created_at.isoformat(),
         }
-        
+
         await sio.emit("new_dm", msg_data, room=str(recipient_id))
         await sio.emit("new_dm", msg_data, room=str(sender_id))
+
 
 @sio.event
 async def join_room(sid, data):
     session = await sio.get_session(sid)
-    user_id = session.get('user_id') if session else "Anonymous"
-    
-    room_id = data['room_id']
+    user_id = session.get("user_id") if session else "Anonymous"
+
+    room_id = data["room_id"]
     await sio.enter_room(sid, str(room_id))
-    
+
     # Broadcast system message
     system_msg = {
         "id": str(uuid.uuid4()),
-        "sender_id": str(uuid.uuid4()), # System sender ID
+        "sender_id": str(uuid.uuid4()),  # System sender ID
         "room_id": str(room_id),
         "content": f"User {user_id[:8]} joined the room",
         "type": "SYSTEM",
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.utcnow().isoformat(),
     }
     await sio.emit("new_room_message", system_msg, room=str(room_id))
     print(f"Client {sid} joined room {room_id}")
 
+
 @sio.event
 async def send_room_message(sid, data):
     session = await sio.get_session(sid)
-    if not session or 'user_id' not in session:
+    if not session or "user_id" not in session:
         return
-    
-    user_id = session['user_id']
+
+    user_id = session["user_id"]
     if not await check_rate_limit(user_id):
         await sio.emit("error", {"detail": "Rate limit exceeded. Slow down!"}, to=sid)
         return
 
     sender_id = uuid.UUID(user_id)
-    room_id = uuid.UUID(data['room_id'])
-    content = data['content']
-    msg_type = data.get('type', 'TEXT')
+    room_id = uuid.UUID(data["room_id"])
+    content = data["content"]
+    msg_type = data.get("type", "TEXT")
 
     async with SessionLocal() as db:
         msg = await chat_service.save_message(
-            db, 
-            sender_id=sender_id, 
-            content=content, 
-            type=msg_type, 
-            room_id=room_id
+            db, sender_id=sender_id, content=content, type=msg_type, room_id=room_id
         )
-        
+
         msg_data = {
             "id": str(msg.id),
             "sender_id": str(msg.sender_id),
             "room_id": str(msg.room_id),
             "content": msg.content,
             "type": msg.type,
-            "created_at": msg.created_at.isoformat()
+            "created_at": msg.created_at.isoformat(),
         }
-        
+
         await sio.emit("new_room_message", msg_data, room=str(room_id))
+
 
 @sio.event
 async def join_forum(sid, data):
     session = await sio.get_session(sid)
-    if not session or 'user_id' not in session:
+    if not session or "user_id" not in session:
         return
-    
-    user_id = session['user_id']
-    forum_id = data['forum_id']
-    
+
+    user_id = session["user_id"]
+    forum_id = data["forum_id"]
+
     await sio.enter_room(sid, f"forum:{forum_id}")
     await presence_service.join_forum(uuid.UUID(forum_id), uuid.UUID(user_id))
-    
+
     # Broadcast new count
     count = await presence_service.get_forum_active_count(uuid.UUID(forum_id))
-    await sio.emit("forum_stats_update", {"forum_id": forum_id, "active_users": count}, room=f"forum:{forum_id}")
+    await sio.emit(
+        "forum_stats_update",
+        {"forum_id": forum_id, "active_users": count},
+        room=f"forum:{forum_id}",
+    )
+
 
 @sio.event
 async def leave_forum(sid, data):
     session = await sio.get_session(sid)
-    if not session or 'user_id' not in session:
+    if not session or "user_id" not in session:
         return
-    
-    user_id = session['user_id']
-    forum_id = data['forum_id']
-    
+
+    user_id = session["user_id"]
+    forum_id = data["forum_id"]
+
     await sio.leave_room(sid, f"forum:{forum_id}")
     await presence_service.leave_forum(uuid.UUID(forum_id), uuid.UUID(user_id))
-    
+
     # Broadcast new count
     count = await presence_service.get_forum_active_count(uuid.UUID(forum_id))
-    await sio.emit("forum_stats_update", {"forum_id": forum_id, "active_users": count}, room=f"forum:{forum_id}")
+    await sio.emit(
+        "forum_stats_update",
+        {"forum_id": forum_id, "active_users": count},
+        room=f"forum:{forum_id}",
+    )

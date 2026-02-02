@@ -4,6 +4,7 @@ import uuid
 import re
 from datetime import datetime, date
 
+
 class ProfileBase(BaseModel):
     bio: Optional[str] = None
     height: Optional[str] = None
@@ -17,7 +18,7 @@ class ProfileBase(BaseModel):
     location_lat: Optional[float] = None
     location_lng: Optional[float] = None
     privacy_level: str = "PUBLIC"
-    
+
     # Advanced Attributes
     position: Optional[str] = None
     build: Optional[str] = None
@@ -39,7 +40,7 @@ class ProfileBase(BaseModel):
     social_links: Optional[Dict[str, str]] = None
     privacy_settings: Optional[Dict[str, str]] = None
 
-    @field_validator('birthdate')
+    @field_validator("birthdate")
     @classmethod
     def validate_age(cls, v: Optional[date]):
         if v:
@@ -49,37 +50,41 @@ class ProfileBase(BaseModel):
                 raise ValueError("Must be at least 18 years old")
         return v
 
-    @field_validator('social_links')
+    @field_validator("social_links")
     @classmethod
     def validate_social_links(cls, v: Optional[Dict[str, str]]):
         if not v:
             return v
 
         patterns = {
-            'instagram_url': r'^https://(www\.)?instagram\.com/[\w.]+/?$',
-            'x_url': r'^https://(www\.)?(twitter\.com|x\.com)/[\w]+/?$',
-            'tiktok_url': r'^https://(www\.)?tiktok\.com/@[\w.]+/?$',
-            'website_url': r'^https://[\w.-]+\.[a-z]{2,}(/.*)?$'
+            "instagram_url": r"^https://(www\.)?instagram\.com/[\w.]+/?$",
+            "x_url": r"^https://(www\.)?(twitter\.com|x\.com)/[\w]+/?$",
+            "tiktok_url": r"^https://(www\.)?tiktok\.com/@[\w.]+/?$",
+            "website_url": r"^https://[\w.-]+\.[a-z]{2,}(/.*)?$",
         }
 
         for key, url in v.items():
             if not url:
                 continue
-            if not url.startswith('https://'):
-                raise ValueError(f'{key} must use HTTPS')
+            if not url.startswith("https://"):
+                raise ValueError(f"{key} must use HTTPS")
             if key in patterns:
                 if not re.match(patterns[key], url, re.IGNORECASE):
-                    platform = key.replace('_url', '').replace('_', ' ').title()
-                    raise ValueError(f'Invalid {platform} URL format')
+                    platform = key.replace("_url", "").replace("_", " ").title()
+                    raise ValueError(f"Invalid {platform} URL format")
         return v
+
 
 class ProfileCreate(ProfileBase):
     pass
 
+
 class ProfileUpdate(ProfileBase):
     pass
 
+
 from app.schemas.user import UserBase
+
 
 class Profile(ProfileBase):
     id: uuid.UUID
@@ -92,7 +97,11 @@ class Profile(ProfileBase):
         if not self.birthdate:
             return None
         today = date.today()
-        return today.year - self.birthdate.year - ((today.month, today.day) < (self.birthdate.month, self.birthdate.day))
+        return (
+            today.year
+            - self.birthdate.year
+            - ((today.month, today.day) < (self.birthdate.month, self.birthdate.day))
+        )
 
     class Config:
         from_attributes = True

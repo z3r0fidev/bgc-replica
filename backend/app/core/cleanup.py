@@ -1,6 +1,7 @@
 from app.core.redis_config import get_redis
 import asyncio
 
+
 async def cleanup_transient_data():
     """
     Remove expired rate limit keys or other transient Redis data.
@@ -9,6 +10,7 @@ async def cleanup_transient_data():
     redis = await get_redis()
     # Manual cleanup logic for non-TTL keys would go here
     print("Transient data cleanup complete.")
+
 
 if __name__ == "__main__":
     asyncio.run(cleanup_transient_data())

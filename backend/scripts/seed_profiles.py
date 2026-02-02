@@ -21,11 +21,21 @@ BUILDS = ["Slim", "Athletic", "Muscular", "Average", "Large"]
 PRIVACY_MODES = ["OUT", "DOWNLO"]
 HIV_STATUSES = ["Negative", "Positive", "Ask Me"]
 CITIES_TRISTATE = [
-    ("Philadelphia", "PA"), ("Pittsburgh", "PA"), ("Allentown", "PA"),
-    ("New York", "NY"), ("Brooklyn", "NY"), ("Queens", "NY"), ("Bronx", "NY"),
-    ("Newark", "NJ"), ("Jersey City", "NJ"), ("Paterson", "NJ"), ("Trenton", "NJ"),
-    ("Camden", "NJ"), ("Atlantic City", "NJ")
+    ("Philadelphia", "PA"),
+    ("Pittsburgh", "PA"),
+    ("Allentown", "PA"),
+    ("New York", "NY"),
+    ("Brooklyn", "NY"),
+    ("Queens", "NY"),
+    ("Bronx", "NY"),
+    ("Newark", "NJ"),
+    ("Jersey City", "NJ"),
+    ("Paterson", "NJ"),
+    ("Trenton", "NJ"),
+    ("Camden", "NJ"),
+    ("Atlantic City", "NJ"),
 ]
+
 
 async def seed_profiles():
     print("Seeding 50 test profiles...")
@@ -38,15 +48,15 @@ async def seed_profiles():
                 continue
 
             city, state = random.choice(CITIES_TRISTATE)
-            
+
             user = User(
                 email=email,
                 name=fake.name_male(),
                 hashed_password=get_password_hash("password123"),
-                is_active=True
+                is_active=True,
             )
             db.add(user)
-            await db.flush() # get ID
+            await db.flush()  # get ID
 
             profile = Profile(
                 id=user.id,
@@ -60,12 +70,13 @@ async def seed_profiles():
                 privacy_mode=random.choice(PRIVACY_MODES),
                 location_city=city,
                 location_state=state,
-                is_trans_interested=random.choice([True, False])
+                is_trans_interested=random.choice([True, False]),
             )
             db.add(profile)
-        
+
         await db.commit()
     print("Seeding complete.")
+
 
 if __name__ == "__main__":
     asyncio.run(seed_profiles())

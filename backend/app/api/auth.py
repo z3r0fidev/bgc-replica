@@ -22,7 +22,10 @@ from app.services.verification_service import verification_service
 from app.services.password_reset_service import password_reset_service
 from app.services.totp_service import totp_service
 from app.services.audit_service import audit_service, AuditAction
-from app.services.tasks import send_verification_email_task, send_password_reset_email_task
+from app.services.tasks import (
+    send_verification_email_task,
+    send_password_reset_email_task,
+)
 from app.api import deps
 
 from fastapi_limiter.depends import RateLimiter
@@ -36,16 +39,14 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-
 router = APIRouter()
-
 
 
 @router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def login(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ):
     ip_address = get_client_ip(request)
     user_agent = request.headers.get("User-Agent", "")[:512]
@@ -99,7 +100,11 @@ async def login(
     )
 
 
-@router.post("/login/2fa", response_model=Token, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+@router.post(
+    "/login/2fa",
+    response_model=Token,
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def login_2fa(
     http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -164,14 +169,13 @@ async def login_2fa(
     )
 
 
-
-
-
-@router.post("/register", response_model=UserSchema, dependencies=[Depends(RateLimiter(times=3, seconds=3600))])
+@router.post(
+    "/register",
+    response_model=UserSchema,
+    dependencies=[Depends(RateLimiter(times=3, seconds=3600))],
+)
 async def register(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    user_in: UserCreate
+    request: Request, db: Annotated[AsyncSession, Depends(get_db)], user_in: UserCreate
 ):
     ip_address = get_client_ip(request)
     user_agent = request.headers.get("User-Agent", "")[:512]
@@ -212,11 +216,13 @@ async def register(
 
     return new_user
 
+
 @router.post("/logout")
 async def logout():
     # Since we use JWT, logout is primarily handled on the client by deleting the token.
     # If using Redis sessions, we would invalidate the token here.
     return {"message": "Successfully logged out"}
+
 
 @router.get("/me", response_model=UserSchema)
 async def get_me(current_user: Annotated[User, Depends(deps.get_current_user)]):
@@ -284,9 +290,7 @@ async def resend_verification(
         )
 
     # Check rate limit (in addition to FastAPI limiter, check last sent time)
-    last_sent = await verification_service.get_last_verification_sent(
-        db, request.email
-    )
+    last_sent = await verification_service.get_last_verification_sent(db, request.email)
     if last_sent:
         time_since = datetime.utcnow() - last_sent
         if time_since < timedelta(minutes=1):
@@ -394,9 +398,7 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    user = await password_reset_service.reset_password(
-        db, email, request.new_password
-    )
+    user = await password_reset_service.reset_password(db, email, request.new_password)
 
     if not user:
         raise HTTPException(

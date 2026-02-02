@@ -90,9 +90,7 @@ class TestSocialLinksValidation:
         """TikTok URL with www should pass validation."""
         data = {"social_links": {"tiktok_url": "https://www.tiktok.com/@testuser"}}
         profile = ProfileUpdate(**data)
-        assert (
-            profile.social_links["tiktok_url"] == "https://www.tiktok.com/@testuser"
-        )
+        assert profile.social_links["tiktok_url"] == "https://www.tiktok.com/@testuser"
 
     def test_invalid_tiktok_url_missing_at_symbol(self):
         """TikTok URL without @ symbol should fail validation."""
@@ -139,7 +137,9 @@ class TestSocialLinksValidation:
         data = {"social_links": {"website_url": "https://localhost"}}
         with pytest.raises(ValidationError) as exc_info:
             ProfileUpdate(**data)
-        assert "Invalid" in str(exc_info.value) or "website" in str(exc_info.value).lower()
+        assert (
+            "Invalid" in str(exc_info.value) or "website" in str(exc_info.value).lower()
+        )
 
     # Multiple social links tests
     def test_multiple_valid_social_links(self):

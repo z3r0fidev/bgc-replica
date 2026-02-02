@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class NotificationPreferences(BaseModel):
     """User notification preferences."""
+
     # Email notifications
     email_messages: bool = True
     email_friend_requests: bool = True
@@ -28,6 +29,7 @@ class NotificationPreferences(BaseModel):
 
 class NotificationPreferencesUpdate(BaseModel):
     """Partial update for notification preferences."""
+
     email_messages: Optional[bool] = None
     email_friend_requests: Optional[bool] = None
     email_profile_views: Optional[bool] = None
@@ -47,5 +49,6 @@ class NotificationPreferencesUpdate(BaseModel):
 
 class NotificationPreferencesResponse(BaseModel):
     """Response with notification preferences."""
+
     preferences: NotificationPreferences
     message: str = "Notification preferences retrieved"

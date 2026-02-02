@@ -25,7 +25,7 @@ async def search_users(
     min_age: Optional[int] = Query(None),
     max_age: Optional[int] = Query(None),
     ethnicity: Optional[str] = Query(None),
-    location: Optional[str] = Query(None), # city name
+    location: Optional[str] = Query(None),  # city name
     zipcode: Optional[str] = Query(None),
     position: Optional[str] = Query(None),
     build: Optional[str] = Query(None),
@@ -44,9 +44,10 @@ async def search_users(
     limit: int = 20,
     cursor: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(deps.get_current_user_optional)
+    current_user: Optional[User] = Depends(deps.get_current_user_optional),
 ):
     from sqlalchemy.orm import selectinload
+
     query = select(Profile).options(selectinload(Profile.user))
     filters = []
 

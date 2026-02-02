@@ -17,10 +17,10 @@
 
 **Purpose**: Database and infrastructure setup
 
-- [ ] T001 Create `GalleryMedia`, `Album`, `AlbumMedia` models in `backend/app/models/gallery.py`
-- [ ] T002 Create Alembic migration for gallery tables in `backend/alembic/versions/`
-- [ ] T003 Define Pydantic schemas in `backend/app/schemas/gallery.py`
-- [ ] T004 Configure Supabase Storage bucket policies for gallery folder
+- [x] T001 Create `GalleryMedia`, `Album`, `AlbumMedia` models in `backend/app/models/gallery.py`
+- [x] T002 Create Alembic migration for gallery tables in `backend/alembic/versions/`
+- [x] T003 Define Pydantic schemas in `backend/app/schemas/gallery.py`
+- [ ] T004 Configure Supabase Storage bucket policies for gallery folder (manual - Supabase dashboard)
 
 **Checkpoint**: Database ready for gallery operations
 
@@ -34,20 +34,20 @@
 
 ### Backend Implementation
 
-- [ ] T005 [US1] Implement `POST /api/media/upload` endpoint in `backend/app/api/gallery.py`
-- [ ] T006 [US1] Create thumbnail generation service in `backend/app/services/media_processor.py`
-- [ ] T007 [US1] Implement `GET /api/media/` (paginated list) in `backend/app/api/gallery.py`
-- [ ] T008 [US1] Implement `GET /api/media/{id}` in `backend/app/api/gallery.py`
-- [ ] T009 [US1] Implement `DELETE /api/media/{id}` in `backend/app/api/gallery.py`
-- [ ] T010 [P] [US1] Write integration tests in `backend/tests/test_gallery.py`
+- [x] T005 [US1] Implement `POST /api/media/upload` endpoint in `backend/app/api/gallery.py`
+- [x] T006 [US1] Create thumbnail generation service in `backend/app/services/media_processor.py`
+- [x] T007 [US1] Implement `GET /api/media/` (paginated list) in `backend/app/api/gallery.py`
+- [x] T008 [US1] Implement `GET /api/media/{id}` in `backend/app/api/gallery.py`
+- [x] T009 [US1] Implement `DELETE /api/media/{id}` in `backend/app/api/gallery.py`
+- [x] T010 [P] [US1] Write integration tests in `backend/tests/test_gallery.py`
 
 ### Frontend Implementation
 
-- [ ] T011 [P] [US1] Create `MediaUploader` component in `frontend/src/components/gallery/MediaUploader.tsx`
-- [ ] T012 [P] [US1] Create `GalleryGrid` component in `frontend/src/components/gallery/GalleryGrid.tsx`
-- [ ] T013 [US1] Create `MediaLightbox` component in `frontend/src/components/gallery/MediaLightbox.tsx`
-- [ ] T014 [US1] Create gallery page at `frontend/src/app/(protected)/gallery/page.tsx`
-- [ ] T015 [P] [US1] Write unit tests in `frontend/tests/unit/gallery.test.tsx`
+- [x] T011 [P] [US1] Create `MediaUploader` component in `frontend/src/components/gallery/MediaUploader.tsx`
+- [x] T012 [P] [US1] Create `GalleryGrid` component in `frontend/src/components/gallery/GalleryGrid.tsx`
+- [x] T013 [US1] Create `MediaLightbox` component in `frontend/src/components/gallery/MediaLightbox.tsx`
+- [x] T014 [US1] Create gallery page at `frontend/src/app/(protected)/gallery/page.tsx`
+- [x] T015 [P] [US1] Write unit tests in `frontend/tests/unit/gallery.test.tsx`
 
 **Checkpoint**: User Story 1 complete - basic gallery is functional
 
@@ -61,19 +61,19 @@
 
 ### Backend Implementation
 
-- [ ] T016 [US2] Implement album CRUD endpoints in `backend/app/api/albums.py`
-- [ ] T017 [US2] Implement `POST /api/albums/{id}/media` (add media to album)
-- [ ] T018 [US2] Implement `DELETE /api/albums/{id}/media/{media_id}` (remove from album)
-- [ ] T019 [US2] Implement album reordering endpoint
-- [ ] T020 [P] [US2] Write integration tests in `backend/tests/test_albums.py`
+- [x] T016 [US2] Implement album CRUD endpoints in `backend/app/api/gallery.py`
+- [x] T017 [US2] Implement `POST /api/albums/{id}/media` (add media to album)
+- [x] T018 [US2] Implement `DELETE /api/albums/{id}/media/{media_id}` (remove from album)
+- [x] T019 [US2] Implement album reordering endpoint
+- [x] T020 [P] [US2] Write integration tests in `backend/tests/test_gallery.py` (combined with media tests)
 
 ### Frontend Implementation
 
-- [ ] T021 [P] [US2] Create `AlbumCard` component in `frontend/src/components/gallery/AlbumCard.tsx`
-- [ ] T022 [P] [US2] Create `AlbumEditor` component in `frontend/src/components/gallery/AlbumEditor.tsx`
-- [ ] T023 [US2] Create albums list page at `frontend/src/app/(protected)/gallery/albums/page.tsx`
-- [ ] T024 [US2] Create single album page at `frontend/src/app/(protected)/gallery/albums/[id]/page.tsx`
-- [ ] T025 [US2] Implement drag-drop reordering in album view
+- [x] T021 [P] [US2] Create `AlbumCard` component in `frontend/src/components/gallery/AlbumCard.tsx`
+- [x] T022 [P] [US2] Create `AlbumEditor` component in `frontend/src/components/gallery/AlbumEditor.tsx`
+- [x] T023 [US2] Create albums list page at `frontend/src/app/(protected)/gallery/albums/page.tsx`
+- [x] T024 [US2] Create single album page at `frontend/src/app/(protected)/gallery/albums/[id]/page.tsx`
+- [x] T025 [US2] Implement drag-drop reordering in album view
 
 **Checkpoint**: User Story 2 complete - album organization functional
 
@@ -87,18 +87,18 @@
 
 ### Backend Implementation
 
-- [ ] T026 [US3] Implement `PATCH /api/media/{id}` for privacy updates
-- [ ] T027 [US3] Add privacy filtering to `GET /api/users/{id}/gallery`
-- [ ] T028 [US3] Implement `POST /api/albums/{id}/share` (generate share link)
-- [ ] T029 [US3] Implement `GET /api/albums/shared/{token}` (access shared album)
-- [ ] T030 [P] [US3] Write privacy integration tests
+- [x] T026 [US3] Implement `PATCH /api/media/{id}` for privacy updates
+- [x] T027 [US3] Add privacy filtering to `GET /api/users/{id}/gallery`
+- [x] T028 [US3] Implement `POST /api/albums/{id}/share` (generate share link)
+- [x] T029 [US3] Implement `GET /api/albums/shared/{token}` (access shared album)
+- [x] T030 [P] [US3] Write privacy integration tests in `backend/tests/test_gallery.py`
 
 ### Frontend Implementation
 
-- [ ] T031 [P] [US3] Add privacy selector to media/album forms (reuse PrivacyToggle)
-- [ ] T032 [US3] Create public gallery view at `frontend/src/app/(protected)/profile/[id]/gallery/page.tsx`
-- [ ] T033 [US3] Create shared album view at `frontend/src/app/shared/album/[token]/page.tsx`
-- [ ] T034 [US3] Add share dialog to album view
+- [x] T031 [P] [US3] Add privacy selector to media/album forms (reuse PrivacyToggle)
+- [x] T032 [US3] Create public gallery view at `frontend/src/app/(protected)/profile/[id]/gallery/page.tsx`
+- [x] T033 [US3] Create shared album view at `frontend/src/app/shared/album/[token]/page.tsx`
+- [x] T034 [US3] Add share dialog to album view
 
 **Checkpoint**: User Story 3 complete - privacy controls functional
 
@@ -112,15 +112,15 @@
 
 ### Backend Implementation
 
-- [ ] T035 [US4] Extend upload endpoint for video handling
-- [ ] T036 [US4] Implement video thumbnail extraction in `media_processor.py`
-- [ ] T037 [P] [US4] Write video upload tests
+- [x] T035 [US4] Extend upload endpoint for video handling
+- [x] T036 [US4] Implement video thumbnail extraction in `media_processor.py`
+- [x] T037 [P] [US4] Write video upload tests
 
 ### Frontend Implementation
 
-- [ ] T038 [P] [US4] Update MediaUploader for video file types
-- [ ] T039 [US4] Add video player to MediaLightbox
-- [ ] T040 [US4] Add video duration display in gallery grid
+- [x] T038 [P] [US4] Update MediaUploader for video file types
+- [x] T039 [US4] Add video player to MediaLightbox
+- [x] T040 [US4] Add video duration display in gallery grid
 
 **Checkpoint**: User Story 4 complete - video support functional
 
@@ -130,12 +130,12 @@
 
 **Purpose**: Performance, accessibility, and final verification
 
-- [ ] T041 [P] Implement lazy loading for gallery images
-- [ ] T042 [P] Add keyboard navigation to lightbox (arrows, escape)
-- [ ] T043 [P] E2E test for upload flow in `frontend/tests/e2e/gallery-upload.spec.ts`
-- [ ] T044 [P] E2E test for album management in `frontend/tests/e2e/gallery-albums.spec.ts`
-- [ ] T045 Run performance audit (SC-002: gallery load < 500ms)
-- [ ] T046 Accessibility review for lightbox and upload components
+- [x] T041 [P] Implement lazy loading for gallery images
+- [x] T042 [P] Add keyboard navigation to lightbox (arrows, escape)
+- [x] T043 [P] E2E test for upload flow in `frontend/tests/e2e/gallery-upload.spec.ts`
+- [x] T044 [P] E2E test for album management in `frontend/tests/e2e/gallery-albums.spec.ts`
+- [x] T045 Run performance audit (SC-002: gallery load < 500ms)
+- [x] T046 Accessibility review for lightbox and upload components
 
 **Checkpoint**: Phase 6 complete - gallery is production-ready
 

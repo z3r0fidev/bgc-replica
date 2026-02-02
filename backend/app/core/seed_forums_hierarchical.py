@@ -12,6 +12,7 @@ from app.core.database import SessionLocal
 from app.models.community import ForumCategory, ForumThread, ForumPost
 from app.models.user import User
 
+
 async def seed_forums():
     async with SessionLocal() as db:
         # Get a user for authoring
@@ -23,9 +24,21 @@ async def seed_forums():
 
         # 1. Create Main Categories
         categories = [
-            {"name": "General", "slug": "general", "description": "Global community lounge"},
-            {"name": "Local Discussion", "slug": "local", "description": "City-specific boards"},
-            {"name": "Health & Wellness", "slug": "health", "description": "Resource and support"},
+            {
+                "name": "General",
+                "slug": "general",
+                "description": "Global community lounge",
+            },
+            {
+                "name": "Local Discussion",
+                "slug": "local",
+                "description": "City-specific boards",
+            },
+            {
+                "name": "Health & Wellness",
+                "slug": "health",
+                "description": "Resource and support",
+            },
         ]
 
         for cat_data in categories:
@@ -34,20 +47,34 @@ async def seed_forums():
             if not result.scalars().first():
                 cat = ForumCategory(**cat_data)
                 db.add(cat)
-        
+
         await db.commit()
 
         # 2. Create Sub-forums
-        parent_result = await db.execute(select(ForumCategory).where(ForumCategory.slug == "local"))
+        parent_result = await db.execute(
+            select(ForumCategory).where(ForumCategory.slug == "local")
+        )
         local_parent = parent_result.scalars().first()
-        
+
         if local_parent:
             subforums = [
-                {"name": "Philadelphia", "slug": "philadelphia", "parent_id": local_parent.id, "banner_path": "/assets/personals/banners/transxHeader.png"},
-                {"name": "New Jersey", "slug": "new-jersey", "parent_id": local_parent.id, "banner_path": "/assets/personals/banners/desktopSidePanelHeader.png"},
+                {
+                    "name": "Philadelphia",
+                    "slug": "philadelphia",
+                    "parent_id": local_parent.id,
+                    "banner_path": "/assets/personals/banners/transxHeader.png",
+                },
+                {
+                    "name": "New Jersey",
+                    "slug": "new-jersey",
+                    "parent_id": local_parent.id,
+                    "banner_path": "/assets/personals/banners/desktopSidePanelHeader.png",
+                },
             ]
             for sub_data in subforums:
-                stmt = select(ForumCategory).where(ForumCategory.slug == sub_data["slug"])
+                stmt = select(ForumCategory).where(
+                    ForumCategory.slug == sub_data["slug"]
+                )
                 result = await db.execute(stmt)
                 if not result.scalars().first():
                     sub = ForumCategory(**sub_data)
@@ -55,9 +82,11 @@ async def seed_forums():
             await db.commit()
 
         # 3. Create Sample Threads
-        sub_result = await db.execute(select(ForumCategory).where(ForumCategory.slug == "philadelphia"))
+        sub_result = await db.execute(
+            select(ForumCategory).where(ForumCategory.slug == "philadelphia")
+        )
         philly = sub_result.scalars().first()
-        
+
         if philly:
             for i in range(15):
                 thread = ForumThread(
@@ -67,12 +96,13 @@ async def seed_forums():
                     content="This is a test thread for the new high-density layout.",
                     is_sticky=(i == 0),
                     view_count=100 + i * 5,
-                    reply_count=10 + i
+                    reply_count=10 + i,
                 )
                 db.add(thread)
             await db.commit()
 
         print("Hierarchical forums seeded successfully.")
+
 
 if __name__ == "__main__":
     asyncio.run(seed_forums())

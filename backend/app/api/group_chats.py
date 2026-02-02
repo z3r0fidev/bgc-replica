@@ -1,4 +1,5 @@
 """API endpoints for group chat functionality."""
+
 import uuid
 from typing import Annotated, Optional
 from datetime import datetime
@@ -32,13 +33,10 @@ router = APIRouter()
 
 # ============ Helper Functions ============
 
-async def get_group_or_404(
-    db: AsyncSession, group_id: uuid.UUID
-) -> GroupChat:
+
+async def get_group_or_404(db: AsyncSession, group_id: uuid.UUID) -> GroupChat:
     """Get a group chat by ID or raise 404."""
-    result = await db.execute(
-        select(GroupChat).where(GroupChat.id == group_id)
-    )
+    result = await db.execute(select(GroupChat).where(GroupChat.id == group_id))
     group = result.scalars().first()
     if not group:
         raise HTTPException(
@@ -92,14 +90,14 @@ async def require_admin(
 async def get_member_count(db: AsyncSession, group_id: uuid.UUID) -> int:
     """Get the number of members in a group."""
     result = await db.execute(
-        select(func.count(GroupMember.id)).where(
-            GroupMember.group_id == group_id
-        )
+        select(func.count(GroupMember.id)).where(GroupMember.group_id == group_id)
     )
     return result.scalar() or 0
 
 
-def member_to_response(member: GroupMember, user: Optional[User] = None) -> GroupMemberResponse:
+def member_to_response(
+    member: GroupMember, user: Optional[User] = None
+) -> GroupMemberResponse:
     """Convert a GroupMember to response schema."""
     return GroupMemberResponse(
         id=member.id,
@@ -111,11 +109,16 @@ def member_to_response(member: GroupMember, user: Optional[User] = None) -> Grou
         last_read_at=member.last_read_at,
         joined_at=member.joined_at,
         user_name=user.name if user else None,
-        user_avatar=user.profile.avatar_url if user and hasattr(user, 'profile') and user.profile else None,
+        user_avatar=(
+            user.profile.avatar_url
+            if user and hasattr(user, "profile") and user.profile
+            else None
+        ),
     )
 
 
 # ============ Group CRUD Endpoints ============
+
 
 @router.post(
     "",
@@ -246,9 +249,7 @@ async def get_group(
     member_rows = result.all()
 
     members = [member_to_response(m, u) for m, u in member_rows]
-    my_membership = next(
-        (m for m in members if m.user_id == current_user.id), None
-    )
+    my_membership = next((m for m in members if m.user_id == current_user.id), None)
 
     return GroupChatDetail(
         id=group.id,
@@ -326,6 +327,7 @@ async def delete_group(
 
 # ============ Member Management Endpoints ============
 
+
 @router.post("/{group_id}/members", response_model=GroupMemberResponse)
 async def add_member(
     group_id: uuid.UUID,
@@ -338,9 +340,7 @@ async def add_member(
     await require_admin(db, group_id, current_user.id)
 
     # Check if user exists
-    result = await db.execute(
-        select(User).where(User.id == member_in.user_id)
-    )
+    result = await db.execute(select(User).where(User.id == member_in.user_id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(
@@ -472,6 +472,7 @@ async def remove_member(
 
 # ============ Message Endpoints ============
 
+
 @router.post(
     "/{group_id}/messages",
     response_model=GroupMessageResponse,
@@ -539,7 +540,11 @@ async def send_message(
         is_deleted=message.is_deleted,
         created_at=message.created_at,
         sender_name=current_user.name,
-        sender_avatar=current_user.profile.avatar_url if hasattr(current_user, 'profile') and current_user.profile else None,
+        sender_avatar=(
+            current_user.profile.avatar_url
+            if hasattr(current_user, "profile") and current_user.profile
+            else None
+        ),
     )
 
 
@@ -599,7 +604,11 @@ async def get_messages(
             is_deleted=msg.is_deleted,
             created_at=msg.created_at,
             sender_name=user.name,
-            sender_avatar=user.profile.avatar_url if hasattr(user, 'profile') and user.profile else None,
+            sender_avatar=(
+                user.profile.avatar_url
+                if hasattr(user, "profile") and user.profile
+                else None
+            ),
         )
         for msg, user in rows
     ]
@@ -671,11 +680,17 @@ async def edit_message(
         is_deleted=message.is_deleted,
         created_at=message.created_at,
         sender_name=current_user.name,
-        sender_avatar=current_user.profile.avatar_url if hasattr(current_user, 'profile') and current_user.profile else None,
+        sender_avatar=(
+            current_user.profile.avatar_url
+            if hasattr(current_user, "profile") and current_user.profile
+            else None
+        ),
     )
 
 
-@router.delete("/{group_id}/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{group_id}/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_message(
     group_id: uuid.UUID,
     message_id: uuid.UUID,

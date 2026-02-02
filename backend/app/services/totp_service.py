@@ -37,6 +37,7 @@ class TOTPService:
     def hash_backup_code(code: str) -> str:
         """Hash a backup code for storage."""
         import hashlib
+
         return hashlib.sha256(code.encode()).hexdigest()[:20]
 
     def get_totp_uri(self, secret: str, email: str) -> str:
@@ -116,9 +117,7 @@ class TOTPService:
 
         return secret, qr_code, backup_codes
 
-    async def enable_totp(
-        self, db: AsyncSession, user: User, code: str
-    ) -> bool:
+    async def enable_totp(self, db: AsyncSession, user: User, code: str) -> bool:
         """
         Enable TOTP after verifying the code.
 
@@ -142,9 +141,7 @@ class TOTPService:
 
         return True
 
-    async def disable_totp(
-        self, db: AsyncSession, user: User, code: str
-    ) -> bool:
+    async def disable_totp(self, db: AsyncSession, user: User, code: str) -> bool:
         """
         Disable TOTP for a user.
 
@@ -179,9 +176,7 @@ class TOTPService:
 
         return False
 
-    async def verify_backup_code(
-        self, db: AsyncSession, user: User, code: str
-    ) -> bool:
+    async def verify_backup_code(self, db: AsyncSession, user: User, code: str) -> bool:
         """
         Verify and consume a backup code.
 
@@ -235,9 +230,7 @@ class TOTPService:
 
         return backup_codes
 
-    async def verify_2fa(
-        self, db: AsyncSession, user: User, code: str
-    ) -> bool:
+    async def verify_2fa(self, db: AsyncSession, user: User, code: str) -> bool:
         """
         Verify 2FA code (TOTP or backup code) for login.
 

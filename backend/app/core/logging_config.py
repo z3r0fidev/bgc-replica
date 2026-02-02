@@ -3,6 +3,7 @@ import sys
 from logging.handlers import TimedRotatingFileHandler
 import os
 
+
 def setup_logging():
     log_dir = "logs"
     if not os.path.exists(log_dir):
@@ -18,10 +19,7 @@ def setup_logging():
 
     # File Handler (Timed Rotating)
     file_handler = TimedRotatingFileHandler(
-        os.path.join(log_dir, "app.log"),
-        when="midnight",
-        interval=1,
-        backupCount=30
+        os.path.join(log_dir, "app.log"), when="midnight", interval=1, backupCount=30
     )
     file_handler.setFormatter(formatter)
 

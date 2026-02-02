@@ -1,4 +1,5 @@
 """API endpoints for verification badge management."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -20,7 +21,7 @@ router = APIRouter()
 
 
 async def require_admin(
-    current_user: Annotated[User, Depends(deps.get_current_user)]
+    current_user: Annotated[User, Depends(deps.get_current_user)],
 ) -> User:
     """Require that the current user is a superuser."""
     if not current_user.is_superuser:
@@ -37,9 +38,7 @@ async def get_verification_status(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get verification status for a user (public endpoint)."""
-    result = await db.execute(
-        select(Profile).where(Profile.id == user_id)
-    )
+    result = await db.execute(select(Profile).where(Profile.id == user_id))
     profile = result.scalars().first()
 
     if not profile:
@@ -63,9 +62,7 @@ async def verify_user(
     admin: Annotated[User, Depends(require_admin)],
 ):
     """Verify a user (admin only)."""
-    result = await db.execute(
-        select(Profile).where(Profile.id == user_id)
-    )
+    result = await db.execute(select(Profile).where(Profile.id == user_id))
     profile = result.scalars().first()
 
     if not profile:
@@ -98,9 +95,7 @@ async def revoke_verification(
     admin: Annotated[User, Depends(require_admin)],
 ):
     """Revoke verification from a user (admin only)."""
-    result = await db.execute(
-        select(Profile).where(Profile.id == user_id)
-    )
+    result = await db.execute(select(Profile).where(Profile.id == user_id))
     profile = result.scalars().first()
 
     if not profile:
@@ -124,9 +119,7 @@ async def get_verification_details(
     admin: Annotated[User, Depends(require_admin)],
 ):
     """Get full verification details including notes (admin only)."""
-    result = await db.execute(
-        select(Profile).where(Profile.id == user_id)
-    )
+    result = await db.execute(select(Profile).where(Profile.id == user_id))
     profile = result.scalars().first()
 
     if not profile:

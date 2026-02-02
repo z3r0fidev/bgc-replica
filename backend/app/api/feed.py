@@ -8,8 +8,10 @@ from app.api import deps
 from app.models.user import User, Relationship
 from app.models.community import StatusUpdate, PostComment
 from app.schemas.community import (
-    StatusUpdateSchema, StatusUpdateCreate,
-    PostCommentSchema, PostCommentCreate
+    StatusUpdateSchema,
+    StatusUpdateCreate,
+    PostCommentSchema,
+    PostCommentCreate,
 )
 from app.services.feed_service import feed_service
 from app.services.block_service import block_service
@@ -21,31 +23,34 @@ import time
 
 router = APIRouter()
 
+
 @router.get("/", response_model=PaginatedResponse[StatusUpdateSchema])
 async def get_feed(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     feed_type: str = Query("global", pattern="^(global|following)$"),
     limit: int = 20,
-    cursor: Optional[str] = None
+    cursor: Optional[str] = None,
 ):
     user_id = current_user.id if feed_type == "following" else None
-    
+
     # Decode cursor (it's a base64 encoded ISO timestamp, but for Redis we want float)
     dt_cursor = decode_cursor(cursor)
     float_cursor = dt_cursor.timestamp() if dt_cursor else None
-    
-    post_ids = await feed_service.get_feed(user_id=user_id, limit=limit, cursor=float_cursor)
-    
+
+    post_ids = await feed_service.get_feed(
+        user_id=user_id, limit=limit, cursor=float_cursor
+    )
+
     if not post_ids:
         return {
             "items": [],
-            "metadata": {"has_next": False, "next_cursor": None, "count": 0}
+            "metadata": {"has_next": False, "next_cursor": None, "count": 0},
         }
-    
+
     has_next = len(post_ids) > limit
     page_ids = post_ids[:limit]
-    
+
     # Convert string IDs back to UUIDs
     post_uuids = [uuid.UUID(pid) for pid in page_ids]
 
@@ -64,10 +69,11 @@ async def get_feed(
 
     # Re-order and filter out posts from blocked users
     items = [
-        updates[pid] for pid in post_uuids
+        updates[pid]
+        for pid in post_uuids
         if pid in updates and updates[pid].author_id not in block_ids
     ]
-    
+
     # Get next cursor from the last item
     next_cursor = None
     if has_next and items:
@@ -81,64 +87,66 @@ async def get_feed(
         "metadata": {
             "has_next": has_next,
             "next_cursor": next_cursor,
-            "count": len(items)
-        }
+            "count": len(items),
+        },
     }
 
+
 from app.services.tasks import fan_out_post
+
 
 @router.post("/", response_model=StatusUpdateSchema)
 async def create_status_update(
     update_in: StatusUpdateCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    new_update = StatusUpdate(
-        **update_in.model_dump(),
-        author_id=current_user.id
-    )
+    new_update = StatusUpdate(**update_in.model_dump(), author_id=current_user.id)
     db.add(new_update)
     await db.commit()
     await db.refresh(new_update)
-    
+
     # Fan-out in background via Celery
     # 1. Get follower IDs
     stmt = select(Relationship.from_user_id).where(
         Relationship.to_user_id == current_user.id,
         Relationship.type == "FRIEND",
-        Relationship.status == "ACCEPTED"
+        Relationship.status == "ACCEPTED",
     )
     result = await db.execute(stmt)
     follower_ids = result.scalars().all()
-    
+
     # Convert UUIDs to strings for Celery (JSON serializable)
     fan_out_post.delay(
         post_id_str=str(new_update.id),
-        follower_ids_str=[str(fid) for fid in follower_ids]
+        follower_ids_str=[str(fid) for fid in follower_ids],
     )
-    
+
     return new_update
+
 
 @router.get("/{post_id}/comments", response_model=List[PostCommentSchema])
 async def get_post_comments(
-    post_id: uuid.UUID,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    post_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    stmt = select(PostComment).where(PostComment.post_id == post_id).order_by(PostComment.created_at)
+    stmt = (
+        select(PostComment)
+        .where(PostComment.post_id == post_id)
+        .order_by(PostComment.created_at)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
+
 
 @router.post("/{post_id}/comments", response_model=PostCommentSchema)
 async def create_post_comment(
     post_id: uuid.UUID,
     comment_in: PostCommentCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     new_comment = PostComment(
-        **comment_in.model_dump(),
-        post_id=post_id,
-        author_id=current_user.id
+        **comment_in.model_dump(), post_id=post_id, author_id=current_user.id
     )
     db.add(new_comment)
     await db.commit()

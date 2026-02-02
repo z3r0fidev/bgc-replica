@@ -6,26 +6,37 @@ from app.models.user import User, Profile as ProfileModel, Relationship
 from app.schemas.profile import Profile
 from app.schemas.user import UserBase
 
+
 class ProfileService:
-    async def get_friendship_status(self, db: AsyncSession, user_id1: uuid.UUID, user_id2: uuid.UUID) -> bool:
+    async def get_friendship_status(
+        self, db: AsyncSession, user_id1: uuid.UUID, user_id2: uuid.UUID
+    ) -> bool:
         """Checks if two users are friends (accepted relationship)."""
         if user_id1 == user_id2:
             return True
-            
+
         stmt = select(Relationship).where(
             and_(
                 or_(
-                    and_(Relationship.from_user_id == user_id1, Relationship.to_user_id == user_id2),
-                    and_(Relationship.from_user_id == user_id2, Relationship.to_user_id == user_id1)
+                    and_(
+                        Relationship.from_user_id == user_id1,
+                        Relationship.to_user_id == user_id2,
+                    ),
+                    and_(
+                        Relationship.from_user_id == user_id2,
+                        Relationship.to_user_id == user_id1,
+                    ),
                 ),
                 Relationship.type == "FRIEND",
-                Relationship.status == "ACCEPTED"
+                Relationship.status == "ACCEPTED",
             )
         )
         result = await db.execute(stmt)
         return result.scalars().first() is not None
 
-    def apply_privacy_mask(self, profile_obj: Any, is_friend: bool, is_owner: bool) -> Dict[str, Any]:
+    def apply_privacy_mask(
+        self, profile_obj: Any, is_friend: bool, is_owner: bool
+    ) -> Dict[str, Any]:
         """Applies privacy masking to a profile object based on privacy_settings."""
         # Convert to dict if it's a model or schema
         if hasattr(profile_obj, "model_dump"):
@@ -63,33 +74,45 @@ class ProfileService:
                 "social_links": profile_obj.social_links,
                 "privacy_settings": profile_obj.privacy_settings,
                 "last_active": profile_obj.last_active,
-                "user": UserBase.model_validate(profile_obj.user).model_dump() if getattr(profile_obj, "user", None) else None
+                "user": (
+                    UserBase.model_validate(profile_obj.user).model_dump()
+                    if getattr(profile_obj, "user", None)
+                    else None
+                ),
             }
 
         if is_owner:
             return profile_data
 
         privacy_settings = profile_obj.privacy_settings or {}
-        
+
         # Fields to potentially mask
         sensitive_fields = [
-            "pronouns", "birthdate", "gender_identity", "relationship_status", 
-            "looking_for", "occupation", "industry", "education_level", 
-            "university", "social_links"
+            "pronouns",
+            "birthdate",
+            "gender_identity",
+            "relationship_status",
+            "looking_for",
+            "occupation",
+            "industry",
+            "education_level",
+            "university",
+            "social_links",
         ]
 
         for field in sensitive_fields:
             level = privacy_settings.get(field, "PUBLIC")
-            
+
             if level == "PRIVATE":
                 profile_data[field] = None
             elif level == "FRIENDS_ONLY" and not is_friend:
                 profile_data[field] = None
-                
+
         # Special handling for birthdate/age as per data-model.md
         # If privacy is "PARTIAL" (we can use a custom level or handle it specifically)
         # For now we use the standard levels.
-        
+
         return profile_data
+
 
 profile_service = ProfileService()
