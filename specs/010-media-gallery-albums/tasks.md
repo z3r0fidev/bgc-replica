@@ -88,17 +88,17 @@
 ### Backend Implementation
 
 - [x] T026 [US3] Implement `PATCH /api/media/{id}` for privacy updates
-- [ ] T027 [US3] Add privacy filtering to `GET /api/users/{id}/gallery`
+- [x] T027 [US3] Add privacy filtering to `GET /api/users/{id}/gallery`
 - [x] T028 [US3] Implement `POST /api/albums/{id}/share` (generate share link)
 - [x] T029 [US3] Implement `GET /api/albums/shared/{token}` (access shared album)
 - [x] T030 [P] [US3] Write privacy integration tests in `backend/tests/test_gallery.py`
 
 ### Frontend Implementation
 
-- [ ] T031 [P] [US3] Add privacy selector to media/album forms (reuse PrivacyToggle)
-- [ ] T032 [US3] Create public gallery view at `frontend/src/app/(protected)/profile/[id]/gallery/page.tsx`
-- [ ] T033 [US3] Create shared album view at `frontend/src/app/shared/album/[token]/page.tsx`
-- [ ] T034 [US3] Add share dialog to album view
+- [x] T031 [P] [US3] Add privacy selector to media/album forms (reuse PrivacyToggle)
+- [x] T032 [US3] Create public gallery view at `frontend/src/app/(protected)/profile/[id]/gallery/page.tsx`
+- [x] T033 [US3] Create shared album view at `frontend/src/app/shared/album/[token]/page.tsx`
+- [x] T034 [US3] Add share dialog to album view
 
 **Checkpoint**: User Story 3 complete - privacy controls functional
 

@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GalleryGrid, MediaLightbox, SortableAlbumGrid } from "@/components/gallery";
+import { GalleryGrid, MediaLightbox, SortableAlbumGrid, ShareDialog } from "@/components/gallery";
 import { AlbumEditor } from "@/components/gallery/AlbumEditor";
 import {
   ArrowLeft,
@@ -68,6 +68,9 @@ export default function AlbumDetailPage() {
   // Reorder state
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  // Share state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const fetchAlbum = useCallback(async () => {
     try {
@@ -199,30 +202,6 @@ export default function AlbumDetailPage() {
     }
   };
 
-  const handleShareAlbum = async () => {
-    try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(`/api/gallery/albums/${albumId}/share`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ expires_in_days: 7 }),
-      });
-
-      if (!response.ok) throw new Error("Failed to create share link");
-
-      const data = await response.json();
-      const shareUrl = `${window.location.origin}${data.share_url}`;
-
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Share link copied to clipboard!");
-    } catch (error) {
-      toast.error("Failed to create share link");
-    }
-  };
-
   const handleSaveAlbum = (updated: Album) => {
     setAlbum((prev) => (prev ? { ...prev, ...updated } : null));
   };
@@ -350,7 +329,7 @@ export default function AlbumDetailPage() {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button variant="outline" size="sm" onClick={handleShareAlbum}>
+            <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
               <Share2 className="h-4 w-4 mr-2" />
               Share
             </Button>
@@ -414,6 +393,14 @@ export default function AlbumDetailPage() {
         isOpen={editorOpen}
         onClose={() => setEditorOpen(false)}
         onSave={handleSaveAlbum}
+      />
+
+      {/* Share Dialog */}
+      <ShareDialog
+        albumId={albumId}
+        albumTitle={album.title}
+        isOpen={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
       />
 
       {/* Add Media Dialog */}

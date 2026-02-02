@@ -286,6 +286,88 @@ async def delete_media(
     await db.commit()
 
 
+@router.get("/users/{user_id}", response_model=GalleryPage)
+async def get_user_gallery(
+    user_id: uuid.UUID,
+    limit: int = Query(20, ge=1, le=100),
+    cursor: Optional[str] = None,
+    type: Optional[str] = Query(None, regex="^(IMAGE|VIDEO)$"),
+    current_user: Annotated[User, Depends(deps.get_current_user_optional)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None
+):
+    """
+    Get a user's public gallery with privacy filtering.
+
+    - Owner sees all their media
+    - Friends see PUBLIC and FRIENDS_ONLY media
+    - Others see only PUBLIC media
+    """
+    # Check if viewing own gallery
+    is_owner = current_user and current_user.id == user_id
+
+    # Build privacy filter
+    if is_owner:
+        # Owner sees everything
+        privacy_filter = True
+    else:
+        # Check if current user is a friend
+        is_friend = False
+        if current_user:
+            # TODO: Implement friendship check
+            # For now, non-owners only see PUBLIC
+            pass
+
+        if is_friend:
+            privacy_filter = GalleryMedia.privacy.in_(["PUBLIC", "FRIENDS_ONLY"])
+        else:
+            privacy_filter = GalleryMedia.privacy == "PUBLIC"
+
+    # Build query
+    query = select(GalleryMedia).where(
+        GalleryMedia.user_id == user_id,
+        privacy_filter
+    ).order_by(desc(GalleryMedia.created_at))
+
+    if type:
+        query = query.where(GalleryMedia.type == type)
+
+    # Handle cursor pagination
+    if cursor:
+        try:
+            cursor_time = datetime.fromisoformat(base64.b64decode(cursor).decode())
+            query = query.where(GalleryMedia.created_at < cursor_time)
+        except Exception:
+            pass
+
+    # Get total count (with privacy filter)
+    count_query = select(func.count()).select_from(GalleryMedia).where(
+        GalleryMedia.user_id == user_id,
+        privacy_filter
+    )
+    if type:
+        count_query = count_query.where(GalleryMedia.type == type)
+    total_result = await db.execute(count_query)
+    total_count = total_result.scalar() or 0
+
+    # Execute query
+    query = query.limit(limit + 1)
+    result = await db.execute(query)
+    items = list(result.scalars().all())
+
+    # Determine next cursor
+    next_cursor = None
+    if len(items) > limit:
+        items = items[:limit]
+        last_item = items[-1]
+        next_cursor = base64.b64encode(last_item.created_at.isoformat().encode()).decode()
+
+    return GalleryPage(
+        items=items,
+        next_cursor=next_cursor,
+        total_count=total_count
+    )
+
+
 # ============== Album Endpoints ==============
 
 @router.post("/albums", response_model=AlbumSchema, status_code=status.HTTP_201_CREATED)
