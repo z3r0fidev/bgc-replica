@@ -3,6 +3,7 @@ import time
 from app.core.redis_config import get_redis
 import uuid
 
+
 class PresenceService:
     def __init__(self):
         self.presence_key = "presence:online"
@@ -41,7 +42,7 @@ class PresenceService:
         Optional: Remove users who haven't been seen for a long time.
         """
         redis = await get_redis()
-        cutoff = int(time.time()) - 3600 # 1 hour
+        cutoff = int(time.time()) - 3600  # 1 hour
         await redis.zremrangebyscore(self.presence_key, "-inf", cutoff)
 
     async def join_forum(self, forum_id: uuid.UUID, user_id: uuid.UUID):
@@ -55,5 +56,6 @@ class PresenceService:
     async def get_forum_active_count(self, forum_id: uuid.UUID) -> int:
         redis = await get_redis()
         return await redis.scard(f"forum:{forum_id}:active_users")
+
 
 presence_service = PresenceService()

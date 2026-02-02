@@ -8,6 +8,7 @@ from app.schemas.user import UserBase
 
 class BlockedUserInfo(BaseModel):
     """Basic user info for blocked user display."""
+
     id: uuid.UUID
     name: Optional[str] = None
     email: Optional[str] = None
@@ -18,6 +19,7 @@ class BlockedUserInfo(BaseModel):
 
 class BlockedUserSchema(BaseModel):
     """Schema for a blocked user entry."""
+
     id: uuid.UUID
     user: BlockedUserInfo
     blocked_at: datetime
@@ -27,6 +29,7 @@ class BlockedUserSchema(BaseModel):
 
 class BlockStatusSchema(BaseModel):
     """Schema for block status between two users."""
+
     is_blocked: bool
     blocked_by_me: bool
     blocked_by_them: bool
@@ -34,5 +37,6 @@ class BlockStatusSchema(BaseModel):
 
 class BlockResponseSchema(BaseModel):
     """Response schema for block/unblock operations."""
+
     success: bool
     message: str

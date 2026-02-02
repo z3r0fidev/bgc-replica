@@ -18,7 +18,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from app.core.database import Base
 from app.core.config import settings
-from app.models import * # noqa
+from app.models import *  # noqa
 
 target_metadata = Base.metadata
 
@@ -26,6 +26,7 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -63,9 +64,11 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-    
+
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+    configuration["sqlalchemy.url"] = settings.DATABASE_URL.replace(
+        "postgresql://", "postgresql+asyncpg://"
+    )
 
     connectable = async_engine_from_config(
         configuration,

@@ -73,24 +73,24 @@ app = FastAPI(title="BGCLive Replica API")
 if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
     FastAPIInstrumentor.instrument_app(app)
 
+
 @app.on_event("startup")
 async def startup():
     r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
     await FastAPILimiter.init(r)
 
+
 # Instrument Prometheus
 if os.getenv("TESTING") != "true":
     Instrumentator().instrument(app).expose(app)
 
+
 @app.exception_handler(BaseAppException)
 async def app_exception_handler(request: Request, exc: BaseAppException):
     return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "code": exc.code
-        }
+        status_code=exc.status_code, content={"detail": exc.detail, "code": exc.code}
     )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -102,14 +102,16 @@ app.add_middleware(
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CacheControlMiddleware)
 
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to BGCLive Replica API"}
 
+
 @app.get("/health")
 async def health_check():
     health = {"status": "ok", "checks": {}}
-    
+
     # DB Check
     try:
         async with SessionLocal() as db:
@@ -130,6 +132,7 @@ async def health_check():
 
     return health
 
+
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
 app.include_router(social_router, prefix="/api/social", tags=["social"])
@@ -144,9 +147,13 @@ app.include_router(gallery_router, prefix="/api/gallery", tags=["gallery"])
 app.include_router(stories_router, prefix="/api/stories", tags=["stories"])
 app.include_router(block_router, prefix="/api/block", tags=["block"])
 app.include_router(totp_router, prefix="/api/2fa", tags=["2fa"])
-app.include_router(notifications_router, prefix="/api/notifications", tags=["notifications"])
+app.include_router(
+    notifications_router, prefix="/api/notifications", tags=["notifications"]
+)
 app.include_router(sessions_router, prefix="/api/sessions", tags=["sessions"])
-app.include_router(verification_router, prefix="/api/verification", tags=["verification"])
+app.include_router(
+    verification_router, prefix="/api/verification", tags=["verification"]
+)
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="")

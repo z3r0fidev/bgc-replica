@@ -1,11 +1,7 @@
 from celery import Celery
 from app.core.config import settings
 
-celery_app = Celery(
-    "worker",
-    broker=settings.REDIS_URL,
-    backend=settings.REDIS_URL
-)
+celery_app = Celery("worker", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
 
 celery_app.conf.update(
     task_serializer="json",
@@ -17,6 +13,7 @@ celery_app.conf.update(
 
 # Autodiscover tasks in the app
 celery_app.autodiscover_tasks(["app.services"])
+
 
 @celery_app.task
 def test_task(arg):

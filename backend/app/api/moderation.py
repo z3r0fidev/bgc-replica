@@ -27,8 +27,7 @@ def require_admin(user: User) -> User:
     """Require user to be an admin/superuser."""
     if not user.is_superuser:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
     return user
 
@@ -37,14 +36,14 @@ def require_admin(user: User) -> User:
 async def report_content(
     report_in: ReportCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     return await moderation_service.report_content(
         db,
         reporter_id=current_user.id,
         content_type=report_in.content_type,
         content_id=report_in.content_id,
-        reason=report_in.reason
+        reason=report_in.reason,
     )
 
 
@@ -52,7 +51,7 @@ async def report_content(
 async def report_user(
     report_in: UserReportCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Report a user for inappropriate behavior.
@@ -61,16 +60,14 @@ async def report_user(
     """
     if report_in.user_id == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot report yourself"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot report yourself"
         )
 
     # Check if target user exists
     target = await db.get(User, report_in.user_id)
     if not target:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     # Create report with USER content type
@@ -83,7 +80,7 @@ async def report_user(
         reporter_id=current_user.id,
         content_type="USER",
         content_id=report_in.user_id,
-        reason=reason_with_details
+        reason=reason_with_details,
     )
 
 
@@ -91,8 +88,12 @@ async def report_user(
 async def get_moderation_queue(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    status_filter: Optional[str] = Query(None, description="Filter by status: PENDING, RESOLVED, DISMISSED"),
-    content_type: Optional[str] = Query(None, description="Filter by content type: USER, THREAD, POST, STATUS"),
+    status_filter: Optional[str] = Query(
+        None, description="Filter by status: PENDING, RESOLVED, DISMISSED"
+    ),
+    content_type: Optional[str] = Query(
+        None, description="Filter by content type: USER, THREAD, POST, STATUS"
+    ),
     limit: int = Query(50, le=100),
     offset: int = Query(0),
 ):
@@ -121,12 +122,16 @@ async def get_moderation_queue(
     for report in reports:
         # Get reporter info
         reporter = await db.get(User, report.reporter_id)
-        reporter_info = ReporterInfo(
-            id=reporter.id,
-            name=reporter.name,
-            email=reporter.email,
-            image=reporter.image,
-        ) if reporter else ReporterInfo(id=report.reporter_id)
+        reporter_info = (
+            ReporterInfo(
+                id=reporter.id,
+                name=reporter.name,
+                email=reporter.email,
+                image=reporter.image,
+            )
+            if reporter
+            else ReporterInfo(id=report.reporter_id)
+        )
 
         detail = ReportDetailSchema(
             id=report.id,
@@ -203,7 +208,7 @@ async def get_moderation_stats(
         select(func.count(ContentReport.id)).where(
             and_(
                 ContentReport.status == "RESOLVED",
-                ContentReport.created_at >= today_start
+                ContentReport.created_at >= today_start,
             )
         )
     )
@@ -257,12 +262,16 @@ async def get_report_detail(
 
     # Get reporter info
     reporter = await db.get(User, report.reporter_id)
-    reporter_info = ReporterInfo(
-        id=reporter.id,
-        name=reporter.name,
-        email=reporter.email,
-        image=reporter.image,
-    ) if reporter else ReporterInfo(id=report.reporter_id)
+    reporter_info = (
+        ReporterInfo(
+            id=reporter.id,
+            name=reporter.name,
+            email=reporter.email,
+            image=reporter.image,
+        )
+        if reporter
+        else ReporterInfo(id=report.reporter_id)
+    )
 
     detail = ReportDetailSchema(
         id=report.id,
@@ -294,7 +303,7 @@ async def resolve_report(
     report_id: uuid.UUID,
     request: ResolveReportRequest,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Resolve a report with a specific action.
@@ -314,7 +323,7 @@ async def resolve_report(
     if report.status != "PENDING":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Report has already been resolved"
+            detail="Report has already been resolved",
         )
 
     action = request.action.lower()
@@ -322,7 +331,7 @@ async def resolve_report(
     if action not in valid_actions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid action. Must be one of: {', '.join(valid_actions)}"
+            detail=f"Invalid action. Must be one of: {', '.join(valid_actions)}",
         )
 
     # Handle action
@@ -361,7 +370,7 @@ async def resolve_report(
         "status": "success",
         "report_id": str(report_id),
         "action": action_taken,
-        "new_status": report.status
+        "new_status": report.status,
     }
 
 
@@ -370,7 +379,7 @@ async def bulk_resolve_reports(
     report_ids: List[uuid.UUID],
     request: ResolveReportRequest,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Resolve multiple reports at once."""
     require_admin(current_user)
@@ -388,8 +397,4 @@ async def bulk_resolve_reports(
 
     await db.commit()
 
-    return {
-        "status": "success",
-        "resolved_count": resolved,
-        "action": request.action
-    }
+    return {"status": "success", "resolved_count": resolved, "action": request.action}

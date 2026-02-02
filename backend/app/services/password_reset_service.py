@@ -51,9 +51,7 @@ class PasswordResetService:
 
         # Delete any existing reset tokens for this email
         await db.execute(
-            delete(VerificationToken).where(
-                VerificationToken.identifier == identifier
-            )
+            delete(VerificationToken).where(VerificationToken.identifier == identifier)
         )
 
         # Generate new token
@@ -89,9 +87,7 @@ class PasswordResetService:
         hashed_token = self.hash_token(plain_token)
 
         result = await db.execute(
-            select(VerificationToken).where(
-                VerificationToken.token == hashed_token
-            )
+            select(VerificationToken).where(VerificationToken.token == hashed_token)
         )
         token_record = result.scalars().first()
 
@@ -109,7 +105,7 @@ class PasswordResetService:
             return None
 
         # Extract email from identifier
-        email = token_record.identifier[len(self.TOKEN_PREFIX):]
+        email = token_record.identifier[len(self.TOKEN_PREFIX) :]
 
         # Delete the token after successful verification
         await db.delete(token_record)
@@ -160,9 +156,7 @@ class PasswordResetService:
         identifier = f"{self.TOKEN_PREFIX}{email}"
 
         result = await db.execute(
-            select(VerificationToken).where(
-                VerificationToken.identifier == identifier
-            )
+            select(VerificationToken).where(VerificationToken.identifier == identifier)
         )
         token_record = result.scalars().first()
 

@@ -6,6 +6,7 @@ from datetime import datetime
 
 class DeviceInfo(BaseModel):
     """Parsed device information."""
+
     browser: Optional[str] = None
     browser_version: Optional[str] = None
     os: Optional[str] = None
@@ -15,6 +16,7 @@ class DeviceInfo(BaseModel):
 
 class SessionSchema(BaseModel):
     """Schema for a user session."""
+
     id: uuid.UUID
     device_info: Optional[DeviceInfo] = None
     ip_address: Optional[str] = None
@@ -28,12 +30,14 @@ class SessionSchema(BaseModel):
 
 class SessionListResponse(BaseModel):
     """Response for listing sessions."""
+
     sessions: list[SessionSchema]
     total: int
 
 
 class RevokeSessionResponse(BaseModel):
     """Response for revoking sessions."""
+
     success: bool
     message: str
     revoked_count: int = 1
@@ -41,6 +45,7 @@ class RevokeSessionResponse(BaseModel):
 
 class RevokeAllSessionsResponse(BaseModel):
     """Response for revoking all sessions."""
+
     success: bool
     message: str
     revoked_count: int

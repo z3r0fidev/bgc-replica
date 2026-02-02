@@ -5,7 +5,7 @@ Handles media uploads, gallery management, and album operations.
 Spec 010 - Media Gallery & Albums
 """
 
-from typing import List, Annotated, Optional
+from typing import Annotated, Optional
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +43,7 @@ router = APIRouter()
 
 # ============== Media Endpoints ==============
 
+
 @router.post(
     "/upload",
     response_model=MediaUploadResponse,
@@ -52,7 +53,7 @@ async def upload_media(
     file: UploadFile = File(...),
     privacy: str = Query("PUBLIC", regex="^(PUBLIC|FRIENDS_ONLY|PRIVATE)$"),
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Upload a media file (image or video) to the gallery.
@@ -67,15 +68,14 @@ async def upload_media(
     if not media_processor.is_supported_type(content_type):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {content_type}. Supported: JPEG, PNG, WebP, GIF, MP4, WebM"
+            detail=f"Unsupported file type: {content_type}. Supported: JPEG, PNG, WebP, GIF, MP4, WebM",
         )
 
     # Validate file size
     is_valid, error_msg = media_processor.validate_file_size(content, content_type)
     if not is_valid:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=error_msg
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=error_msg
         )
 
     try:
@@ -95,23 +95,19 @@ async def upload_media(
         # Upload original file
         media_id = uuid.uuid4()
         ext = file.filename.split(".")[-1] if file.filename else "bin"
-        storage_path = f"{current_user.id}/gallery/{media_id}.{ext}"
+        _storage_path = f"{current_user.id}/gallery/{media_id}.{ext}"  # noqa: F841
 
         upload_result = await storage_service.upload_file(
-            content,
-            f"{media_id}.{ext}",
-            content_type
+            content, f"{media_id}.{ext}", content_type
         )
 
         # Generate and upload thumbnail (works for both images and videos)
         thumbnail_url = None
         thumb_bytes = media_processor.generate_thumbnail(content, content_type)
         if thumb_bytes:
-            thumb_path = f"{current_user.id}/gallery/thumbs/{media_id}.webp"
+            _thumb_path = f"{current_user.id}/gallery/thumbs/{media_id}.webp"  # noqa: F841
             thumb_result = await storage_service.upload_file(
-                thumb_bytes,
-                f"{media_id}.webp",
-                "image/webp"
+                thumb_bytes, f"{media_id}.webp", "image/webp"
             )
             thumbnail_url = thumb_result["url"]
 
@@ -141,7 +137,7 @@ async def upload_media(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {str(e)}"
+            detail=f"Upload failed: {str(e)}",
         )
 
 
@@ -151,15 +147,17 @@ async def list_my_media(
     cursor: Optional[str] = None,
     type: Optional[str] = Query(None, regex="^(IMAGE|VIDEO)$"),
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     List current user's gallery media (paginated).
     """
     # Build base query
-    query = select(GalleryMedia).where(
-        GalleryMedia.user_id == current_user.id
-    ).order_by(desc(GalleryMedia.created_at))
+    query = (
+        select(GalleryMedia)
+        .where(GalleryMedia.user_id == current_user.id)
+        .order_by(desc(GalleryMedia.created_at))
+    )
 
     if type:
         query = query.where(GalleryMedia.type == type)
@@ -173,8 +171,10 @@ async def list_my_media(
             pass
 
     # Get total count
-    count_query = select(func.count()).select_from(GalleryMedia).where(
-        GalleryMedia.user_id == current_user.id
+    count_query = (
+        select(func.count())
+        .select_from(GalleryMedia)
+        .where(GalleryMedia.user_id == current_user.id)
     )
     if type:
         count_query = count_query.where(GalleryMedia.type == type)
@@ -191,27 +191,23 @@ async def list_my_media(
     if len(items) > limit:
         items = items[:limit]
         last_item = items[-1]
-        next_cursor = base64.b64encode(last_item.created_at.isoformat().encode()).decode()
+        next_cursor = base64.b64encode(
+            last_item.created_at.isoformat().encode()
+        ).decode()
 
-    return GalleryPage(
-        items=items,
-        next_cursor=next_cursor,
-        total_count=total_count
-    )
+    return GalleryPage(items=items, next_cursor=next_cursor, total_count=total_count)
 
 
 @router.get("/{media_id}", response_model=GalleryMediaSchema)
 async def get_media(
     media_id: uuid.UUID,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Get a single media item by ID.
     """
-    result = await db.execute(
-        select(GalleryMedia).where(GalleryMedia.id == media_id)
-    )
+    result = await db.execute(select(GalleryMedia).where(GalleryMedia.id == media_id))
     media = result.scalars().first()
 
     if not media:
@@ -236,15 +232,14 @@ async def update_media(
     media_id: uuid.UUID,
     update: MediaUpdate,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Update media privacy settings.
     """
     result = await db.execute(
         select(GalleryMedia).where(
-            GalleryMedia.id == media_id,
-            GalleryMedia.user_id == current_user.id
+            GalleryMedia.id == media_id, GalleryMedia.user_id == current_user.id
         )
     )
     media = result.scalars().first()
@@ -265,15 +260,14 @@ async def update_media(
 async def delete_media(
     media_id: uuid.UUID,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Delete a media item.
     """
     result = await db.execute(
         select(GalleryMedia).where(
-            GalleryMedia.id == media_id,
-            GalleryMedia.user_id == current_user.id
+            GalleryMedia.id == media_id, GalleryMedia.user_id == current_user.id
         )
     )
     media = result.scalars().first()
@@ -299,7 +293,7 @@ async def get_user_gallery(
     cursor: Optional[str] = None,
     type: Optional[str] = Query(None, regex="^(IMAGE|VIDEO)$"),
     current_user: Annotated[User, Depends(deps.get_current_user_optional)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Get a user's public gallery with privacy filtering.
@@ -329,10 +323,11 @@ async def get_user_gallery(
             privacy_filter = GalleryMedia.privacy == "PUBLIC"
 
     # Build query
-    query = select(GalleryMedia).where(
-        GalleryMedia.user_id == user_id,
-        privacy_filter
-    ).order_by(desc(GalleryMedia.created_at))
+    query = (
+        select(GalleryMedia)
+        .where(GalleryMedia.user_id == user_id, privacy_filter)
+        .order_by(desc(GalleryMedia.created_at))
+    )
 
     if type:
         query = query.where(GalleryMedia.type == type)
@@ -346,9 +341,10 @@ async def get_user_gallery(
             pass
 
     # Get total count (with privacy filter)
-    count_query = select(func.count()).select_from(GalleryMedia).where(
-        GalleryMedia.user_id == user_id,
-        privacy_filter
+    count_query = (
+        select(func.count())
+        .select_from(GalleryMedia)
+        .where(GalleryMedia.user_id == user_id, privacy_filter)
     )
     if type:
         count_query = count_query.where(GalleryMedia.type == type)
@@ -365,22 +361,21 @@ async def get_user_gallery(
     if len(items) > limit:
         items = items[:limit]
         last_item = items[-1]
-        next_cursor = base64.b64encode(last_item.created_at.isoformat().encode()).decode()
+        next_cursor = base64.b64encode(
+            last_item.created_at.isoformat().encode()
+        ).decode()
 
-    return GalleryPage(
-        items=items,
-        next_cursor=next_cursor,
-        total_count=total_count
-    )
+    return GalleryPage(items=items, next_cursor=next_cursor, total_count=total_count)
 
 
 # ============== Album Endpoints ==============
+
 
 @router.post("/albums", response_model=AlbumSchema, status_code=status.HTTP_201_CREATED)
 async def create_album(
     album_data: AlbumCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Create a new album.
@@ -406,7 +401,7 @@ async def create_album(
         cover_url=None,
         privacy=new_album.privacy,
         media_count=0,
-        created_at=new_album.created_at
+        created_at=new_album.created_at,
     )
 
 
@@ -415,16 +410,17 @@ async def list_my_albums(
     limit: int = Query(20, ge=1, le=100),
     cursor: Optional[str] = None,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     List current user's albums.
     """
-    query = select(Album).where(
-        Album.user_id == current_user.id
-    ).options(
-        selectinload(Album.cover_media)
-    ).order_by(desc(Album.created_at))
+    query = (
+        select(Album)
+        .where(Album.user_id == current_user.id)
+        .options(selectinload(Album.cover_media))
+        .order_by(desc(Album.created_at))
+    )
 
     if cursor:
         try:
@@ -445,28 +441,31 @@ async def list_my_albums(
 
     # Get media counts for each album
     album_ids = [a.id for a in albums]
-    count_query = select(
-        AlbumMedia.album_id,
-        func.count(AlbumMedia.media_id).label('count')
-    ).where(
-        AlbumMedia.album_id.in_(album_ids)
-    ).group_by(AlbumMedia.album_id)
+    count_query = (
+        select(AlbumMedia.album_id, func.count(AlbumMedia.media_id).label("count"))
+        .where(AlbumMedia.album_id.in_(album_ids))
+        .group_by(AlbumMedia.album_id)
+    )
     count_result = await db.execute(count_query)
     counts = {row.album_id: row.count for row in count_result}
 
     items = []
     for album in albums:
-        items.append(AlbumSchema(
-            id=album.id,
-            user_id=album.user_id,
-            title=album.title,
-            description=album.description,
-            cover_media_id=album.cover_media_id,
-            cover_url=album.cover_media.thumbnail_url if album.cover_media else None,
-            privacy=album.privacy,
-            media_count=counts.get(album.id, 0),
-            created_at=album.created_at
-        ))
+        items.append(
+            AlbumSchema(
+                id=album.id,
+                user_id=album.user_id,
+                title=album.title,
+                description=album.description,
+                cover_media_id=album.cover_media_id,
+                cover_url=(
+                    album.cover_media.thumbnail_url if album.cover_media else None
+                ),
+                privacy=album.privacy,
+                media_count=counts.get(album.id, 0),
+                created_at=album.created_at,
+            )
+        )
 
     return AlbumPage(items=items, next_cursor=next_cursor)
 
@@ -475,15 +474,17 @@ async def list_my_albums(
 async def get_album(
     album_id: uuid.UUID,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Get an album with all its media.
     """
     result = await db.execute(
-        select(Album).where(Album.id == album_id).options(
+        select(Album)
+        .where(Album.id == album_id)
+        .options(
             selectinload(Album.cover_media),
-            selectinload(Album.media_associations).selectinload(AlbumMedia.media)
+            selectinload(Album.media_associations).selectinload(AlbumMedia.media),
         )
     )
     album = result.scalars().first()
@@ -529,7 +530,7 @@ async def get_album(
         privacy=album.privacy,
         media_count=len(media_list),
         created_at=album.created_at,
-        media=media_list
+        media=media_list,
     )
 
 
@@ -538,16 +539,15 @@ async def update_album(
     album_id: uuid.UUID,
     update: AlbumUpdate,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Update album details.
     """
     result = await db.execute(
-        select(Album).where(
-            Album.id == album_id,
-            Album.user_id == current_user.id
-        ).options(selectinload(Album.cover_media))
+        select(Album)
+        .where(Album.id == album_id, Album.user_id == current_user.id)
+        .options(selectinload(Album.cover_media))
     )
     album = result.scalars().first()
 
@@ -565,7 +565,7 @@ async def update_album(
         media_result = await db.execute(
             select(GalleryMedia).where(
                 GalleryMedia.id == update.cover_media_id,
-                GalleryMedia.user_id == current_user.id
+                GalleryMedia.user_id == current_user.id,
             )
         )
         if media_result.scalars().first():
@@ -576,7 +576,9 @@ async def update_album(
 
     # Get media count
     count_result = await db.execute(
-        select(func.count()).select_from(AlbumMedia).where(AlbumMedia.album_id == album.id)
+        select(func.count())
+        .select_from(AlbumMedia)
+        .where(AlbumMedia.album_id == album.id)
     )
     media_count = count_result.scalar() or 0
 
@@ -589,7 +591,7 @@ async def update_album(
         cover_url=album.cover_media.thumbnail_url if album.cover_media else None,
         privacy=album.privacy,
         media_count=media_count,
-        created_at=album.created_at
+        created_at=album.created_at,
     )
 
 
@@ -597,16 +599,13 @@ async def update_album(
 async def delete_album(
     album_id: uuid.UUID,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Delete an album (media items are NOT deleted).
     """
     result = await db.execute(
-        select(Album).where(
-            Album.id == album_id,
-            Album.user_id == current_user.id
-        )
+        select(Album).where(Album.id == album_id, Album.user_id == current_user.id)
     )
     album = result.scalars().first()
 
@@ -622,17 +621,14 @@ async def add_media_to_album(
     album_id: uuid.UUID,
     data: AlbumMediaAdd,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Add media items to an album.
     """
     # Verify album ownership
     result = await db.execute(
-        select(Album).where(
-            Album.id == album_id,
-            Album.user_id == current_user.id
-        )
+        select(Album).where(Album.id == album_id, Album.user_id == current_user.id)
     )
     album = result.scalars().first()
 
@@ -651,8 +647,7 @@ async def add_media_to_album(
         # Check if media belongs to user
         media_result = await db.execute(
             select(GalleryMedia).where(
-                GalleryMedia.id == media_id,
-                GalleryMedia.user_id == current_user.id
+                GalleryMedia.id == media_id, GalleryMedia.user_id == current_user.id
             )
         )
         if not media_result.scalars().first():
@@ -661,8 +656,7 @@ async def add_media_to_album(
         # Check if already in album
         existing = await db.execute(
             select(AlbumMedia).where(
-                AlbumMedia.album_id == album_id,
-                AlbumMedia.media_id == media_id
+                AlbumMedia.album_id == album_id, AlbumMedia.media_id == media_id
             )
         )
         if existing.scalars().first():
@@ -670,11 +664,7 @@ async def add_media_to_album(
 
         # Add to album
         max_pos += 1
-        assoc = AlbumMedia(
-            album_id=album_id,
-            media_id=media_id,
-            position=max_pos
-        )
+        assoc = AlbumMedia(album_id=album_id, media_id=media_id, position=max_pos)
         db.add(assoc)
         added_count += 1
 
@@ -682,7 +672,9 @@ async def add_media_to_album(
 
     # Get total count
     count_result = await db.execute(
-        select(func.count()).select_from(AlbumMedia).where(AlbumMedia.album_id == album_id)
+        select(func.count())
+        .select_from(AlbumMedia)
+        .where(AlbumMedia.album_id == album_id)
     )
     total = count_result.scalar() or 0
 
@@ -694,7 +686,7 @@ async def reorder_album_media(
     album_id: uuid.UUID,
     data: AlbumBulkReorder,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Reorder media within an album.
@@ -702,12 +694,11 @@ async def reorder_album_media(
     """
     # Verify album ownership
     result = await db.execute(
-        select(Album).where(
-            Album.id == album_id,
-            Album.user_id == current_user.id
-        ).options(
+        select(Album)
+        .where(Album.id == album_id, Album.user_id == current_user.id)
+        .options(
             selectinload(Album.cover_media),
-            selectinload(Album.media_associations).selectinload(AlbumMedia.media)
+            selectinload(Album.media_associations).selectinload(AlbumMedia.media),
         )
     )
     album = result.scalars().first()
@@ -723,7 +714,7 @@ async def reorder_album_media(
     if requested_ids != current_media_ids:
         raise HTTPException(
             status_code=400,
-            detail="Media IDs must match exactly the media in the album"
+            detail="Media IDs must match exactly the media in the album",
         )
 
     # Update positions
@@ -767,26 +758,25 @@ async def reorder_album_media(
         privacy=album.privacy,
         media_count=len(media_list),
         created_at=album.created_at,
-        media=media_list
+        media=media_list,
     )
 
 
-@router.delete("/albums/{album_id}/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/albums/{album_id}/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def remove_media_from_album(
     album_id: uuid.UUID,
     media_id: uuid.UUID,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Remove a media item from an album.
     """
     # Verify album ownership
     result = await db.execute(
-        select(Album).where(
-            Album.id == album_id,
-            Album.user_id == current_user.id
-        )
+        select(Album).where(Album.id == album_id, Album.user_id == current_user.id)
     )
     if not result.scalars().first():
         raise HTTPException(status_code=404, detail="Album not found")
@@ -794,8 +784,7 @@ async def remove_media_from_album(
     # Delete association
     assoc_result = await db.execute(
         select(AlbumMedia).where(
-            AlbumMedia.album_id == album_id,
-            AlbumMedia.media_id == media_id
+            AlbumMedia.album_id == album_id, AlbumMedia.media_id == media_id
         )
     )
     assoc = assoc_result.scalars().first()
@@ -810,16 +799,13 @@ async def create_share_link(
     album_id: uuid.UUID,
     data: ShareLinkCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Generate a shareable link for an album.
     """
     result = await db.execute(
-        select(Album).where(
-            Album.id == album_id,
-            Album.user_id == current_user.id
-        )
+        select(Album).where(Album.id == album_id, Album.user_id == current_user.id)
     )
     album = result.scalars().first()
 
@@ -839,26 +825,23 @@ async def create_share_link(
     share_url = f"/shared/album/{share_token}"
 
     return ShareLinkResponse(
-        share_url=share_url,
-        share_token=share_token,
-        expires_at=expires_at
+        share_url=share_url, share_token=share_token, expires_at=expires_at
     )
 
 
 @router.get("/albums/shared/{token}", response_model=AlbumWithMedia)
 async def get_shared_album(
-    token: str,
-    db: Annotated[AsyncSession, Depends(get_db)] = None
+    token: str, db: Annotated[AsyncSession, Depends(get_db)] = None
 ):
     """
     Access a shared album (no authentication required).
     """
     result = await db.execute(
-        select(Album).where(
-            Album.share_token == token
-        ).options(
+        select(Album)
+        .where(Album.share_token == token)
+        .options(
             selectinload(Album.cover_media),
-            selectinload(Album.media_associations).selectinload(AlbumMedia.media)
+            selectinload(Album.media_associations).selectinload(AlbumMedia.media),
         )
     )
     album = result.scalars().first()
@@ -902,5 +885,5 @@ async def get_shared_album(
         privacy=album.privacy,
         media_count=len(media_list),
         created_at=album.created_at,
-        media=media_list
+        media=media_list,
     )

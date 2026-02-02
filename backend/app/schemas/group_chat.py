@@ -1,14 +1,16 @@
 """Schemas for group chat functionality."""
+
 import uuid
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-
 # ============ Group Chat Schemas ============
+
 
 class GroupChatCreate(BaseModel):
     """Schema for creating a group chat."""
+
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     avatar_url: Optional[str] = Field(None, max_length=1024)
@@ -17,6 +19,7 @@ class GroupChatCreate(BaseModel):
 
 class GroupChatUpdate(BaseModel):
     """Schema for updating a group chat."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     avatar_url: Optional[str] = Field(None, max_length=1024)
@@ -26,6 +29,7 @@ class GroupChatUpdate(BaseModel):
 
 class GroupChatResponse(BaseModel):
     """Response schema for a group chat."""
+
     id: uuid.UUID
     name: str
     description: Optional[str]
@@ -44,19 +48,23 @@ class GroupChatResponse(BaseModel):
 
 class GroupChatDetail(GroupChatResponse):
     """Detailed group chat response with members."""
+
     members: List["GroupMemberResponse"] = []
     my_membership: Optional["GroupMemberResponse"] = None
 
 
 # ============ Group Member Schemas ============
 
+
 class GroupMemberAdd(BaseModel):
     """Schema for adding a member to a group."""
+
     user_id: uuid.UUID
 
 
 class GroupMemberUpdate(BaseModel):
     """Schema for updating a member's settings."""
+
     role: Optional[str] = Field(None, pattern="^(admin|member)$")
     nickname: Optional[str] = Field(None, max_length=50)
     is_muted: Optional[bool] = None
@@ -64,6 +72,7 @@ class GroupMemberUpdate(BaseModel):
 
 class GroupMemberResponse(BaseModel):
     """Response schema for a group member."""
+
     id: uuid.UUID
     group_id: uuid.UUID
     user_id: uuid.UUID
@@ -82,8 +91,10 @@ class GroupMemberResponse(BaseModel):
 
 # ============ Group Message Schemas ============
 
+
 class GroupMessageCreate(BaseModel):
     """Schema for sending a message in a group."""
+
     content: str = Field(..., min_length=1, max_length=5000)
     message_type: str = Field(default="text", pattern="^(text|image|system)$")
     reply_to_id: Optional[uuid.UUID] = None
@@ -91,11 +102,13 @@ class GroupMessageCreate(BaseModel):
 
 class GroupMessageUpdate(BaseModel):
     """Schema for editing a message."""
+
     content: str = Field(..., min_length=1, max_length=5000)
 
 
 class GroupMessageResponse(BaseModel):
     """Response schema for a group message."""
+
     id: uuid.UUID
     group_id: uuid.UUID
     sender_id: uuid.UUID
@@ -115,6 +128,7 @@ class GroupMessageResponse(BaseModel):
 
 class GroupMessageList(BaseModel):
     """Paginated list of group messages."""
+
     messages: List[GroupMessageResponse]
     total: int
     has_more: bool
@@ -122,8 +136,10 @@ class GroupMessageList(BaseModel):
 
 # ============ List Schemas ============
 
+
 class GroupChatList(BaseModel):
     """Paginated list of group chats."""
+
     groups: List[GroupChatResponse]
     total: int
 

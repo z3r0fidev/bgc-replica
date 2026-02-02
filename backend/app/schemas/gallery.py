@@ -9,11 +9,12 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 import uuid
 
-
 # ============== Media Schemas ==============
+
 
 class MediaUploadResponse(BaseModel):
     """Response after successful media upload."""
+
     id: uuid.UUID
     type: Literal["IMAGE", "VIDEO"]
     url: str
@@ -30,11 +31,13 @@ class MediaUploadResponse(BaseModel):
 
 class MediaUpdate(BaseModel):
     """Request to update media privacy."""
+
     privacy: Optional[Literal["PUBLIC", "FRIENDS_ONLY", "PRIVATE"]] = None
 
 
 class GalleryMedia(BaseModel):
     """Full media item details."""
+
     id: uuid.UUID
     user_id: uuid.UUID
     type: Literal["IMAGE", "VIDEO"]
@@ -56,11 +59,13 @@ class GalleryMedia(BaseModel):
 
 class GalleryMediaWithPosition(GalleryMedia):
     """Media item with position (for album context)."""
+
     position: int = 0
 
 
 class GalleryPage(BaseModel):
     """Paginated list of media items."""
+
     items: List[GalleryMedia]
     next_cursor: Optional[str] = None
     total_count: int = 0
@@ -68,8 +73,10 @@ class GalleryPage(BaseModel):
 
 # ============== Album Schemas ==============
 
+
 class AlbumCreate(BaseModel):
     """Request to create a new album."""
+
     title: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     privacy: Literal["PUBLIC", "FRIENDS_ONLY", "PRIVATE"] = "PUBLIC"
@@ -77,6 +84,7 @@ class AlbumCreate(BaseModel):
 
 class AlbumUpdate(BaseModel):
     """Request to update an album."""
+
     title: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     privacy: Optional[Literal["PUBLIC", "FRIENDS_ONLY", "PRIVATE"]] = None
@@ -85,23 +93,31 @@ class AlbumUpdate(BaseModel):
 
 class AlbumMediaAdd(BaseModel):
     """Request to add media to an album."""
+
     media_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=50)
 
 
 class AlbumMediaReorder(BaseModel):
     """Request to reorder media within an album."""
+
     media_id: uuid.UUID
     new_position: int = Field(..., ge=0)
 
 
 class AlbumBulkReorder(BaseModel):
     """Request to bulk reorder all media within an album."""
-    media_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=1000,
-        description="Ordered list of media IDs representing the new order")
+
+    media_ids: List[uuid.UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Ordered list of media IDs representing the new order",
+    )
 
 
 class AlbumBase(BaseModel):
     """Base album response."""
+
     id: uuid.UUID
     user_id: uuid.UUID
     title: str
@@ -118,29 +134,35 @@ class AlbumBase(BaseModel):
 
 class Album(AlbumBase):
     """Album without media list."""
+
     pass
 
 
 class AlbumWithMedia(AlbumBase):
     """Album with full media list."""
+
     media: List[GalleryMediaWithPosition] = []
 
 
 class AlbumPage(BaseModel):
     """Paginated list of albums."""
+
     items: List[Album]
     next_cursor: Optional[str] = None
 
 
 # ============== Share Schemas ==============
 
+
 class ShareLinkCreate(BaseModel):
     """Request to generate a share link."""
+
     expires_in_days: int = Field(default=7, ge=1, le=30)
 
 
 class ShareLinkResponse(BaseModel):
     """Response with share link details."""
+
     share_url: str
     share_token: str
     expires_at: datetime
@@ -148,14 +170,17 @@ class ShareLinkResponse(BaseModel):
 
 # ============== Response Helpers ==============
 
+
 class MediaAddResponse(BaseModel):
     """Response after adding media to album."""
+
     added_count: int
     album_media_count: int
 
 
 class UploadProgress(BaseModel):
     """Upload progress tracking (for frontend)."""
+
     upload_id: str
     filename: str
     progress: float = Field(..., ge=0, le=100)

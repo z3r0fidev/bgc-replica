@@ -5,6 +5,7 @@ import time
 import uuid
 from typing import List, Optional
 
+
 # Celery tasks are usually synchronous, but we can wrap async calls
 def run_async(coro):
     loop = asyncio.new_event_loop()
@@ -13,6 +14,7 @@ def run_async(coro):
         return loop.run_until_complete(coro)
     finally:
         loop.close()
+
 
 @celery_app.task(name="app.services.tasks.fan_out_post")
 def fan_out_post(post_id_str: str, follower_ids_str: List[str]):
@@ -43,8 +45,10 @@ def send_verification_email_task(
         token: Plain verification token
         user_name: Optional user name for personalization
     """
+
     async def _send_email():
         from app.services.email_service import email_service
+
         return await email_service.send_verification_email(
             to_email=to_email,
             token=token,
@@ -66,8 +70,10 @@ def send_password_reset_email_task(
         token: Plain reset token
         user_name: Optional user name for personalization
     """
+
     async def _send_email():
         from app.services.email_service import email_service
+
         return await email_service.send_password_reset_email(
             to_email=to_email,
             token=token,

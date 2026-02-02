@@ -15,10 +15,12 @@ import io
 @pytest.fixture
 def mock_storage():
     with patch("app.api.gallery.storage_service") as mock:
-        mock.upload_file = MagicMock(return_value={
-            "url": "https://storage.example.com/test.jpg",
-            "storage_path": "test-user/gallery/test.jpg"
-        })
+        mock.upload_file = MagicMock(
+            return_value={
+                "url": "https://storage.example.com/test.jpg",
+                "storage_path": "test-user/gallery/test.jpg",
+            }
+        )
         mock.delete_file = MagicMock()
         yield mock
 
@@ -27,7 +29,9 @@ class TestMediaUpload:
     """Tests for POST /api/gallery/upload"""
 
     @pytest.mark.asyncio
-    async def test_upload_image_success(self, client: AsyncClient, auth_headers: dict, mock_storage):
+    async def test_upload_image_success(
+        self, client: AsyncClient, auth_headers: dict, mock_storage
+    ):
         """Should upload an image and return media object"""
         # Create a fake image file
         image_content = b"fake image content" * 100
@@ -46,7 +50,9 @@ class TestMediaUpload:
         assert "url" in data
 
     @pytest.mark.asyncio
-    async def test_upload_with_privacy(self, client: AsyncClient, auth_headers: dict, mock_storage):
+    async def test_upload_with_privacy(
+        self, client: AsyncClient, auth_headers: dict, mock_storage
+    ):
         """Should respect privacy parameter"""
         image_content = b"fake image content" * 100
         files = {"file": ("test.jpg", io.BytesIO(image_content), "image/jpeg")}
@@ -62,9 +68,17 @@ class TestMediaUpload:
         assert data["privacy"] == "PRIVATE"
 
     @pytest.mark.asyncio
-    async def test_upload_unsupported_type(self, client: AsyncClient, auth_headers: dict):
+    async def test_upload_unsupported_type(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         """Should reject unsupported file types"""
-        files = {"file": ("test.exe", io.BytesIO(b"fake content"), "application/octet-stream")}
+        files = {
+            "file": (
+                "test.exe",
+                io.BytesIO(b"fake content"),
+                "application/octet-stream",
+            )
+        }
 
         response = await client.post(
             "/api/gallery/upload",
@@ -100,7 +114,9 @@ class TestMediaUpload:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_upload_video_mp4(self, client: AsyncClient, auth_headers: dict, mock_storage):
+    async def test_upload_video_mp4(
+        self, client: AsyncClient, auth_headers: dict, mock_storage
+    ):
         """Should upload MP4 video and return media object"""
         video_content = b"fake video content" * 1000
         files = {"file": ("test.mp4", io.BytesIO(video_content), "video/mp4")}
@@ -118,7 +134,9 @@ class TestMediaUpload:
         assert "url" in data
 
     @pytest.mark.asyncio
-    async def test_upload_video_webm(self, client: AsyncClient, auth_headers: dict, mock_storage):
+    async def test_upload_video_webm(
+        self, client: AsyncClient, auth_headers: dict, mock_storage
+    ):
         """Should upload WebM video"""
         video_content = b"fake webm content" * 1000
         files = {"file": ("test.webm", io.BytesIO(video_content), "video/webm")}
@@ -134,7 +152,9 @@ class TestMediaUpload:
         assert data["type"] == "VIDEO"
 
     @pytest.mark.asyncio
-    async def test_upload_video_with_privacy(self, client: AsyncClient, auth_headers: dict, mock_storage):
+    async def test_upload_video_with_privacy(
+        self, client: AsyncClient, auth_headers: dict, mock_storage
+    ):
         """Should upload video with privacy setting"""
         video_content = b"fake video" * 1000
         files = {"file": ("private.mp4", io.BytesIO(video_content), "video/mp4")}
@@ -151,7 +171,9 @@ class TestMediaUpload:
         assert data["type"] == "VIDEO"
 
     @pytest.mark.asyncio
-    async def test_upload_video_too_large(self, client: AsyncClient, auth_headers: dict):
+    async def test_upload_video_too_large(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         """Should reject videos exceeding 100MB limit"""
         # 105MB video (exceeds 100MB limit)
         large_content = b"x" * (105 * 1024 * 1024)
@@ -181,7 +203,9 @@ class TestMediaList:
         assert "total_count" in data
 
     @pytest.mark.asyncio
-    async def test_list_media_with_filter(self, client: AsyncClient, auth_headers: dict):
+    async def test_list_media_with_filter(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         """Should filter by media type"""
         response = await client.get(
             "/api/gallery/?type=IMAGE",
@@ -223,7 +247,9 @@ class TestMediaDelete:
     """Tests for DELETE /api/gallery/{id}"""
 
     @pytest.mark.asyncio
-    async def test_delete_nonexistent_media(self, client: AsyncClient, auth_headers: dict):
+    async def test_delete_nonexistent_media(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         """Should return 404 for nonexistent media"""
         fake_id = str(uuid.uuid4())
 
@@ -246,7 +272,7 @@ class TestAlbumCRUD:
             json={
                 "title": "Test Album",
                 "description": "A test album",
-                "privacy": "PUBLIC"
+                "privacy": "PUBLIC",
             },
             headers=auth_headers,
         )
@@ -257,7 +283,9 @@ class TestAlbumCRUD:
         assert data["media_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_create_album_validation(self, client: AsyncClient, auth_headers: dict):
+    async def test_create_album_validation(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         """Should validate album title"""
         response = await client.post(
             "/api/gallery/albums",
@@ -292,7 +320,9 @@ class TestAlbumCRUD:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_nonexistent_album(self, client: AsyncClient, auth_headers: dict):
+    async def test_delete_nonexistent_album(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         """Should return 404 when deleting nonexistent album"""
         fake_id = str(uuid.uuid4())
 
@@ -308,7 +338,9 @@ class TestAlbumSharing:
     """Tests for album sharing functionality"""
 
     @pytest.mark.asyncio
-    async def test_share_nonexistent_album(self, client: AsyncClient, auth_headers: dict):
+    async def test_share_nonexistent_album(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         """Should return 404 when sharing nonexistent album"""
         fake_id = str(uuid.uuid4())
 
@@ -332,7 +364,9 @@ class TestPrivacy:
     """Tests for privacy enforcement"""
 
     @pytest.mark.asyncio
-    async def test_update_media_privacy(self, client: AsyncClient, auth_headers: dict, mock_storage):
+    async def test_update_media_privacy(
+        self, client: AsyncClient, auth_headers: dict, mock_storage
+    ):
         """Should update media privacy"""
         # First upload
         files = {"file": ("test.jpg", io.BytesIO(b"content" * 100), "image/jpeg")}

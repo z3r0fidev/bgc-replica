@@ -10,6 +10,7 @@ from app.models.user import AuthLog
 
 class AuditAction:
     """Constants for audit log actions."""
+
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILED = "login_failed"
     LOGIN_2FA_REQUIRED = "login_2fa_required"
@@ -174,10 +175,12 @@ class AuditService:
             .where(
                 and_(
                     AuthLog.user_id == user_id,
-                    AuthLog.action.in_([
-                        AuditAction.LOGIN_SUCCESS,
-                        AuditAction.LOGIN_2FA_SUCCESS,
-                    ]),
+                    AuthLog.action.in_(
+                        [
+                            AuditAction.LOGIN_SUCCESS,
+                            AuditAction.LOGIN_2FA_SUCCESS,
+                        ]
+                    ),
                 )
             )
             .order_by(AuthLog.created_at.desc())

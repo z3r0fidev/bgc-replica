@@ -13,6 +13,7 @@ DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncp
 engine = create_async_engine(DATABASE_URL)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+
 async def seed_posts():
     async with AsyncSessionLocal() as db:
         # Fetch some users who have personal profiles
@@ -20,13 +21,21 @@ async def seed_posts():
             select(User).join(Profile).where(Profile.is_personal == True).limit(20)
         )
         users = result.scalars().all()
-        
+
         if not users:
             print("No personal profiles found. Please seed profiles first.")
             return
 
-        categories = ["transx", "milfy", "gay", "queer", "reviewed", "alligator", "aaok"]
-        
+        categories = [
+            "transx",
+            "milfy",
+            "gay",
+            "queer",
+            "reviewed",
+            "alligator",
+            "aaok",
+        ]
+
         contents = [
             "<p>Looking for someone to hang out with this weekend in Philly! #chill</p>",
             "<p>New in town, wanting to explore the city. Anyone free for a drink? 🍸</p>",
@@ -34,7 +43,7 @@ async def seed_posts():
             "<p>Just moved here from Jersey. Love the vibe! Let's connect.</p>",
             "<p>Any trans-friendly spaces recommended in the area?</p>",
             "<p>Looking for a regular workout partner. 💪</p>",
-            "<p>Late night adventures? Anyone? 🌙</p>"
+            "<p>Late night adventures? Anyone? 🌙</p>",
         ]
 
         for user in users:
@@ -46,12 +55,13 @@ async def seed_posts():
                     category_slug=random.choice(categories),
                     content=random.choice(contents),
                     follow_count=random.randint(0, 50),
-                    comment_count=random.randint(0, 20)
+                    comment_count=random.randint(0, 20),
                 )
                 db.add(new_post)
-        
+
         await db.commit()
         print(f"Successfully seeded posts for {len(users)} users.")
+
 
 if __name__ == "__main__":
     asyncio.run(seed_posts())

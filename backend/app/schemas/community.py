@@ -6,6 +6,7 @@ from app.schemas.user import UserBase
 
 # --- Forums ---
 
+
 class ForumCategorySchema(BaseModel):
     id: uuid.UUID
     name: str
@@ -16,8 +17,10 @@ class ForumCategorySchema(BaseModel):
     banner_path: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
+
 class ForumCategoryTree(ForumCategorySchema):
     children: List["ForumCategoryTree"] = []
+
 
 class ForumPostSchema(BaseModel):
     id: uuid.UUID
@@ -29,6 +32,7 @@ class ForumPostSchema(BaseModel):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+
 class ForumThreadSchema(BaseModel):
     id: uuid.UUID
     category_id: uuid.UUID
@@ -38,11 +42,12 @@ class ForumThreadSchema(BaseModel):
     reply_count: int
     created_at: datetime
     last_activity: datetime
-    
+
     # Author Info
     author: Optional[UserBase] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class ForumThreadCreate(BaseModel):
     category_id: uuid.UUID
@@ -50,13 +55,16 @@ class ForumThreadCreate(BaseModel):
     content: str
     media_url: Optional[str] = None
 
+
 class ForumPostCreate(BaseModel):
     thread_id: uuid.UUID
     parent_id: Optional[uuid.UUID] = None
     content: str
     media_url: Optional[str] = None
 
+
 # --- Feed ---
+
 
 class StatusUpdateSchema(BaseModel):
     id: uuid.UUID
@@ -66,9 +74,11 @@ class StatusUpdateSchema(BaseModel):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+
 class StatusUpdateCreate(BaseModel):
     content: str
     image_url: Optional[str] = None
+
 
 class PostCommentSchema(BaseModel):
     id: uuid.UUID
@@ -78,10 +88,13 @@ class PostCommentSchema(BaseModel):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+
 class PostCommentCreate(BaseModel):
     content: str
 
+
 # --- Groups ---
+
 
 class GroupSchema(BaseModel):
     id: uuid.UUID
@@ -92,12 +105,15 @@ class GroupSchema(BaseModel):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+
 class GroupCreate(BaseModel):
     name: str
     description: Optional[str] = None
     is_private: bool = False
 
+
 # --- Moderation ---
+
 
 class ReportSchema(BaseModel):
     id: uuid.UUID
@@ -127,6 +143,7 @@ class ReportedUserInfo(BaseModel):
 
 class ReportDetailSchema(BaseModel):
     """Detailed report info for moderation queue."""
+
     id: uuid.UUID
     reporter: ReporterInfo
     content_type: str
@@ -150,6 +167,7 @@ class ReportCreate(BaseModel):
 
 class UserReportCreate(BaseModel):
     """Schema for reporting a user."""
+
     user_id: uuid.UUID
     reason: str  # HARASSMENT, SPAM, INAPPROPRIATE, FAKE_PROFILE, OTHER
     details: Optional[str] = None
@@ -157,11 +175,13 @@ class UserReportCreate(BaseModel):
 
 class ResolveReportRequest(BaseModel):
     """Request to resolve a report."""
+
     action: str  # dismiss, warn_user, delete_content, ban_user
 
 
 class ModerationStatsSchema(BaseModel):
     """Statistics for the moderation dashboard."""
+
     pending_count: int
     resolved_today: int
     total_reports: int

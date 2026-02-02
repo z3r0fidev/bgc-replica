@@ -112,15 +112,17 @@ class SessionService:
                 current_session_token is not None
                 and session.session_token == current_session_token
             )
-            session_list.append({
-                "id": session.id,
-                "device_info": session.device_info,
-                "ip_address": session.ip_address,
-                "last_active": session.last_active,
-                "created_at": session.created_at,
-                "expires": session.expires,
-                "is_current": is_current,
-            })
+            session_list.append(
+                {
+                    "id": session.id,
+                    "device_info": session.device_info,
+                    "ip_address": session.ip_address,
+                    "last_active": session.last_active,
+                    "created_at": session.created_at,
+                    "expires": session.expires,
+                    "is_current": is_current,
+                }
+            )
 
         return session_list, len(session_list)
 
@@ -157,10 +159,7 @@ class SessionService:
             return False
 
         # Prevent revoking current session
-        if (
-            current_session_token
-            and session.session_token == current_session_token
-        ):
+        if current_session_token and session.session_token == current_session_token:
             return False
 
         await db.delete(session)
@@ -210,9 +209,7 @@ class SessionService:
             )
             revoked_count = len(all_sessions) - 1
         else:
-            await db.execute(
-                delete(Session).where(Session.user_id == user_id)
-            )
+            await db.execute(delete(Session).where(Session.user_id == user_id))
             revoked_count = len(all_sessions)
 
         await db.commit()

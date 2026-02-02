@@ -15,21 +15,20 @@ import json
 
 try:
     from PIL import Image
+
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
 
+
 # Check if ffmpeg is available
 def check_ffmpeg() -> bool:
     try:
-        subprocess.run(
-            ["ffmpeg", "-version"],
-            capture_output=True,
-            check=True
-        )
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
         return True
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
+
 
 FFMPEG_AVAILABLE = check_ffmpeg()
 
@@ -38,8 +37,8 @@ class MediaProcessor:
     """Service for processing uploaded media files."""
 
     THUMBNAIL_SIZE = (300, 300)
-    SUPPORTED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
-    SUPPORTED_VIDEO_TYPES = {'video/mp4', 'video/webm', 'video/quicktime'}
+    SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    SUPPORTED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
 
     def __init__(self):
         self.pil_available = PIL_AVAILABLE
@@ -47,7 +46,10 @@ class MediaProcessor:
 
     def is_supported_type(self, content_type: str) -> bool:
         """Check if the content type is supported."""
-        return content_type in self.SUPPORTED_IMAGE_TYPES or content_type in self.SUPPORTED_VIDEO_TYPES
+        return (
+            content_type in self.SUPPORTED_IMAGE_TYPES
+            or content_type in self.SUPPORTED_VIDEO_TYPES
+        )
 
     def is_image(self, content_type: str) -> bool:
         """Check if content type is an image."""
@@ -65,7 +67,9 @@ class MediaProcessor:
             return "VIDEO"
         return "UNKNOWN"
 
-    def get_image_dimensions(self, file_content: bytes) -> Tuple[Optional[int], Optional[int]]:
+    def get_image_dimensions(
+        self, file_content: bytes
+    ) -> Tuple[Optional[int], Optional[int]]:
         """Extract width and height from an image."""
         if not self.pil_available:
             return None, None
@@ -76,7 +80,9 @@ class MediaProcessor:
         except Exception:
             return None, None
 
-    def generate_thumbnail(self, file_content: bytes, content_type: str) -> Optional[bytes]:
+    def generate_thumbnail(
+        self, file_content: bytes, content_type: str
+    ) -> Optional[bytes]:
         """
         Generate a WebP thumbnail for an image or video.
         Returns the thumbnail bytes or None if generation fails.
@@ -94,11 +100,13 @@ class MediaProcessor:
             img = Image.open(BytesIO(file_content))
 
             # Convert to RGB if necessary (for PNG with alpha, etc.)
-            if img.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', img.size, (255, 255, 255))
-                if img.mode == 'P':
-                    img = img.convert('RGBA')
-                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            if img.mode in ("RGBA", "LA", "P"):
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                if img.mode == "P":
+                    img = img.convert("RGBA")
+                background.paste(
+                    img, mask=img.split()[-1] if img.mode == "RGBA" else None
+                )
                 img = background
 
             # Create thumbnail maintaining aspect ratio
@@ -106,7 +114,7 @@ class MediaProcessor:
 
             # Save as WebP
             output = BytesIO()
-            img.save(output, format='WEBP', quality=80)
+            img.save(output, format="WEBP", quality=80)
             output.seek(0)
 
             return output.read()
@@ -134,12 +142,12 @@ class MediaProcessor:
             # Save to bytes
             output = BytesIO()
             format_map = {
-                'image/jpeg': 'JPEG',
-                'image/png': 'PNG',
-                'image/webp': 'WEBP',
-                'image/gif': 'GIF'
+                "image/jpeg": "JPEG",
+                "image/png": "PNG",
+                "image/webp": "WEBP",
+                "image/gif": "GIF",
             }
-            img_format = format_map.get(content_type, 'JPEG')
+            img_format = format_map.get(content_type, "JPEG")
             img_no_exif.save(output, format=img_format, quality=95)
             output.seek(0)
 
@@ -161,16 +169,24 @@ class MediaProcessor:
 
         if self.is_image(content_type):
             if size > MAX_IMAGE_SIZE:
-                return False, f"Image too large. Maximum size is {MAX_IMAGE_SIZE // (1024*1024)}MB"
+                return (
+                    False,
+                    f"Image too large. Maximum size is {MAX_IMAGE_SIZE // (1024*1024)}MB",
+                )
         elif self.is_video(content_type):
             if size > MAX_VIDEO_SIZE:
-                return False, f"Video too large. Maximum size is {MAX_VIDEO_SIZE // (1024*1024)}MB"
+                return (
+                    False,
+                    f"Video too large. Maximum size is {MAX_VIDEO_SIZE // (1024*1024)}MB",
+                )
         else:
             return False, f"Unsupported file type: {content_type}"
 
         return True, ""
 
-    def generate_video_thumbnail(self, file_content: bytes, content_type: str) -> Optional[bytes]:
+    def generate_video_thumbnail(
+        self, file_content: bytes, content_type: str
+    ) -> Optional[bytes]:
         """
         Generate a WebP thumbnail from a video using ffmpeg.
         Extracts a frame from 1 second into the video.
@@ -181,29 +197,39 @@ class MediaProcessor:
         try:
             # Write video to temp file
             ext_map = {
-                'video/mp4': '.mp4',
-                'video/webm': '.webm',
-                'video/quicktime': '.mov'
+                "video/mp4": ".mp4",
+                "video/webm": ".webm",
+                "video/quicktime": ".mov",
             }
-            ext = ext_map.get(content_type, '.mp4')
+            ext = ext_map.get(content_type, ".mp4")
 
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as video_file:
                 video_file.write(file_content)
                 video_path = video_file.name
 
             # Output thumbnail path
-            thumb_path = video_path + '_thumb.jpg'
+            thumb_path = video_path + "_thumb.jpg"
 
             try:
                 # Extract frame at 1 second (or first frame if video is shorter)
-                subprocess.run([
-                    'ffmpeg', '-y',
-                    '-i', video_path,
-                    '-ss', '00:00:01',
-                    '-vframes', '1',
-                    '-q:v', '2',
-                    thumb_path
-                ], capture_output=True, check=True, timeout=30)
+                subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-y",
+                        "-i",
+                        video_path,
+                        "-ss",
+                        "00:00:01",
+                        "-vframes",
+                        "1",
+                        "-q:v",
+                        "2",
+                        thumb_path,
+                    ],
+                    capture_output=True,
+                    check=True,
+                    timeout=30,
+                )
 
                 # Read and convert to WebP
                 if os.path.exists(thumb_path):
@@ -211,7 +237,7 @@ class MediaProcessor:
                     img.thumbnail(self.THUMBNAIL_SIZE, Image.Resampling.LANCZOS)
 
                     output = BytesIO()
-                    img.save(output, format='WEBP', quality=80)
+                    img.save(output, format="WEBP", quality=80)
                     output.seek(0)
                     return output.read()
 
@@ -227,7 +253,9 @@ class MediaProcessor:
 
         return None
 
-    def get_video_duration(self, file_content: bytes, content_type: str) -> Optional[int]:
+    def get_video_duration(
+        self, file_content: bytes, content_type: str
+    ) -> Optional[int]:
         """
         Get video duration in seconds using ffprobe.
         """
@@ -236,27 +264,36 @@ class MediaProcessor:
 
         try:
             ext_map = {
-                'video/mp4': '.mp4',
-                'video/webm': '.webm',
-                'video/quicktime': '.mov'
+                "video/mp4": ".mp4",
+                "video/webm": ".webm",
+                "video/quicktime": ".mov",
             }
-            ext = ext_map.get(content_type, '.mp4')
+            ext = ext_map.get(content_type, ".mp4")
 
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as video_file:
                 video_file.write(file_content)
                 video_path = video_file.name
 
             try:
-                result = subprocess.run([
-                    'ffprobe',
-                    '-v', 'error',
-                    '-show_entries', 'format=duration',
-                    '-of', 'json',
-                    video_path
-                ], capture_output=True, text=True, check=True, timeout=30)
+                result = subprocess.run(
+                    [
+                        "ffprobe",
+                        "-v",
+                        "error",
+                        "-show_entries",
+                        "format=duration",
+                        "-of",
+                        "json",
+                        video_path,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=30,
+                )
 
                 data = json.loads(result.stdout)
-                duration = float(data['format']['duration'])
+                duration = float(data["format"]["duration"])
                 return int(duration)
 
             finally:
@@ -268,7 +305,9 @@ class MediaProcessor:
 
         return None
 
-    def get_video_dimensions(self, file_content: bytes, content_type: str) -> Tuple[Optional[int], Optional[int]]:
+    def get_video_dimensions(
+        self, file_content: bytes, content_type: str
+    ) -> Tuple[Optional[int], Optional[int]]:
         """
         Get video width and height using ffprobe.
         """
@@ -277,30 +316,40 @@ class MediaProcessor:
 
         try:
             ext_map = {
-                'video/mp4': '.mp4',
-                'video/webm': '.webm',
-                'video/quicktime': '.mov'
+                "video/mp4": ".mp4",
+                "video/webm": ".webm",
+                "video/quicktime": ".mov",
             }
-            ext = ext_map.get(content_type, '.mp4')
+            ext = ext_map.get(content_type, ".mp4")
 
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as video_file:
                 video_file.write(file_content)
                 video_path = video_file.name
 
             try:
-                result = subprocess.run([
-                    'ffprobe',
-                    '-v', 'error',
-                    '-select_streams', 'v:0',
-                    '-show_entries', 'stream=width,height',
-                    '-of', 'json',
-                    video_path
-                ], capture_output=True, text=True, check=True, timeout=30)
+                result = subprocess.run(
+                    [
+                        "ffprobe",
+                        "-v",
+                        "error",
+                        "-select_streams",
+                        "v:0",
+                        "-show_entries",
+                        "stream=width,height",
+                        "-of",
+                        "json",
+                        video_path,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=30,
+                )
 
                 data = json.loads(result.stdout)
-                if data.get('streams'):
-                    stream = data['streams'][0]
-                    return stream.get('width'), stream.get('height')
+                if data.get("streams"):
+                    stream = data["streams"][0]
+                    return stream.get("width"), stream.get("height")
 
             finally:
                 if os.path.exists(video_path):

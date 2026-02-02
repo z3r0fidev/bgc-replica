@@ -30,9 +30,7 @@ class VerificationService:
         """Hash a plain token for comparison."""
         return hashlib.sha256(plain_token.encode()).hexdigest()
 
-    async def create_verification_token(
-        self, db: AsyncSession, email: str
-    ) -> str:
+    async def create_verification_token(self, db: AsyncSession, email: str) -> str:
         """
         Create a new verification token for the given email.
         Deletes any existing tokens for the same email.
@@ -46,9 +44,7 @@ class VerificationService:
         """
         # Delete any existing tokens for this email
         await db.execute(
-            delete(VerificationToken).where(
-                VerificationToken.identifier == email
-            )
+            delete(VerificationToken).where(VerificationToken.identifier == email)
         )
 
         # Generate new token
@@ -68,9 +64,7 @@ class VerificationService:
 
         return plain_token
 
-    async def verify_token(
-        self, db: AsyncSession, plain_token: str
-    ) -> Optional[str]:
+    async def verify_token(self, db: AsyncSession, plain_token: str) -> Optional[str]:
         """
         Verify a token and return the associated email if valid.
 
@@ -84,9 +78,7 @@ class VerificationService:
         hashed_token = self.hash_token(plain_token)
 
         result = await db.execute(
-            select(VerificationToken).where(
-                VerificationToken.token == hashed_token
-            )
+            select(VerificationToken).where(VerificationToken.token == hashed_token)
         )
         token_record = result.scalars().first()
 
@@ -108,9 +100,7 @@ class VerificationService:
 
         return email
 
-    async def mark_email_verified(
-        self, db: AsyncSession, email: str
-    ) -> Optional[User]:
+    async def mark_email_verified(self, db: AsyncSession, email: str) -> Optional[User]:
         """
         Mark a user's email as verified.
 
@@ -148,9 +138,7 @@ class VerificationService:
             Datetime of last token creation, None if no token exists
         """
         result = await db.execute(
-            select(VerificationToken).where(
-                VerificationToken.identifier == email
-            )
+            select(VerificationToken).where(VerificationToken.identifier == email)
         )
         token_record = result.scalars().first()
 
