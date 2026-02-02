@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useRef } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
 
 type SocketContextType = {
@@ -16,7 +16,7 @@ const SocketContext = createContext<SocketContextType>({
 export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -37,7 +37,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       setIsConnected(false);
     });
 
-    socketRef.current = socketInstance;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSocket(socketInstance);
 
     // Presence Heartbeat
     const interval = setInterval(() => {
@@ -52,8 +53,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  const value = useMemo(() => ({ socket, isConnected }), [socket, isConnected]);
+
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, isConnected }}>
+    <SocketContext.Provider value={value}>
       {children}
     </SocketContext.Provider>
   );
