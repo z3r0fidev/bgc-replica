@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from app.core.database import SessionLocal
 from app.models.user import User  # noqa: F401
 from app.models.community import ForumCategory

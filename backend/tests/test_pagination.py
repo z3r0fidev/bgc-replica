@@ -1,4 +1,3 @@
-import pytest
 from app.core.pagination import encode_cursor, decode_cursor, get_pagination_metadata
 from datetime import datetime
 

@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 import random
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -18,7 +17,7 @@ async def seed_posts():
     async with AsyncSessionLocal() as db:
         # Fetch some users who have personal profiles
         result = await db.execute(
-            select(User).join(Profile).where(Profile.is_personal == True).limit(20)
+            select(User).join(Profile).where(Profile.is_personal).limit(20)
         )
         users = result.scalars().all()
 

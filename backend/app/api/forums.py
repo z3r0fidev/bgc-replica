@@ -1,7 +1,7 @@
 from typing import List, Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_
+from sqlalchemy import select
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User

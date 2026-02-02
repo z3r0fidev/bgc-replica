@@ -5,7 +5,7 @@ Spec 010 - Media Gallery & Albums
 """
 
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
 

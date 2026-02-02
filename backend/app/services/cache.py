@@ -1,9 +1,6 @@
-import json
-from typing import Any, Optional, Type, TypeVar, Callable, Awaitable
+from typing import Optional, Type, TypeVar, Callable, Awaitable
 from pydantic import BaseModel
 from app.core.redis_config import get_redis
-from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
 
 T = TypeVar("T", bound=BaseModel)
 

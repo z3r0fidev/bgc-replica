@@ -2,7 +2,6 @@ from app.core.celery_config import celery_app
 from app.core.redis_config import get_redis
 import asyncio
 import time
-import uuid
 from typing import List, Optional
 
 

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import time
 from app.core.redis_config import get_redis
 import uuid

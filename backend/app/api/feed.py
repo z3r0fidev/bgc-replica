@@ -1,7 +1,7 @@
 from typing import List, Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.api import deps
@@ -19,7 +19,6 @@ import uuid
 
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import encode_cursor, decode_cursor
-import time
 
 router = APIRouter()
 

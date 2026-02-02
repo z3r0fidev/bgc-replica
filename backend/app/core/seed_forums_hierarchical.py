@@ -1,7 +1,6 @@
 import asyncio
 import os
 import sys
-import uuid
 from sqlalchemy import select
 
 # Add the parent directory to sys.path to allow imports from app
@@ -9,7 +8,7 @@ backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(backend_root)
 
 from app.core.database import SessionLocal
-from app.models.community import ForumCategory, ForumThread, ForumPost
+from app.models.community import ForumCategory, ForumThread
 from app.models.user import User
 
 

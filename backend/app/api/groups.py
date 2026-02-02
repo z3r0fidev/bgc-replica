@@ -1,11 +1,11 @@
 from typing import List, Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User
-from app.models.community import CommunityGroup, GroupMembership, StatusUpdate
+from app.models.community import CommunityGroup, GroupMembership
 from app.schemas.community import GroupSchema, GroupCreate, StatusUpdateSchema
 import uuid
 

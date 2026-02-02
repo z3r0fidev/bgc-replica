@@ -2,10 +2,7 @@ import asyncio
 import os
 import sys
 import random
-import uuid
 from faker import Faker
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 
 # Add the parent directory to sys.path to allow imports from app

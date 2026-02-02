@@ -185,7 +185,7 @@ async def list_my_groups(
         select(func.count(GroupChat.id)).where(
             and_(
                 GroupChat.id.in_(member_query),
-                GroupChat.is_active == True,
+                GroupChat.is_active,
             )
         )
     )
@@ -197,7 +197,7 @@ async def list_my_groups(
         .where(
             and_(
                 GroupChat.id.in_(member_query),
-                GroupChat.is_active == True,
+                GroupChat.is_active,
             )
         )
         .order_by(GroupChat.last_message_at.desc().nullslast())
@@ -439,7 +439,7 @@ async def remove_member(
     current_user: Annotated[User, Depends(deps.get_current_user)],
 ):
     """Remove a member from a group. Admins can remove others, users can leave."""
-    group = await get_group_or_404(db, group_id)
+    await get_group_or_404(db, group_id)
     membership = await require_membership(db, group_id, current_user.id)
     target_membership = await get_membership(db, group_id, user_id)
 
@@ -501,7 +501,7 @@ async def send_message(
                 and_(
                     GroupMessage.id == message_in.reply_to_id,
                     GroupMessage.group_id == group_id,
-                    GroupMessage.is_deleted == False,
+                    not GroupMessage.is_deleted,
                 )
             )
         )
@@ -563,7 +563,7 @@ async def get_messages(
     # Build query
     conditions = [
         GroupMessage.group_id == group_id,
-        GroupMessage.is_deleted == False,
+        not GroupMessage.is_deleted,
     ]
     if before:
         conditions.append(GroupMessage.created_at < before)
@@ -573,7 +573,7 @@ async def get_messages(
         select(func.count(GroupMessage.id)).where(
             and_(
                 GroupMessage.group_id == group_id,
-                GroupMessage.is_deleted == False,
+                not GroupMessage.is_deleted,
             )
         )
     )

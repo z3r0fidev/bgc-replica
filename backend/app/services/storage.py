@@ -29,7 +29,7 @@ class StorageService:
         unique_name = f"{uuid.uuid4()}.{ext}"
         path = f"media/{unique_name}"
 
-        response = self.supabase.storage.from_(self.bucket_name).upload(
+        self.supabase.storage.from_(self.bucket_name).upload(
             path=path,
             file=file_content,
             file_options={

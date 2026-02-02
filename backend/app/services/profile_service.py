@@ -1,9 +1,8 @@
 import uuid
-from typing import Optional, List, Dict, Any
+from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
-from app.models.user import User, Profile as ProfileModel, Relationship
-from app.schemas.profile import Profile
+from app.models.user import Relationship
 from app.schemas.user import UserBase
 
 

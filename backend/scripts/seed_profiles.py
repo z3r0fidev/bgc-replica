@@ -3,7 +3,6 @@ import os
 import sys
 import random
 from faker import Faker
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 # Add the parent directory to sys.path to allow imports from app

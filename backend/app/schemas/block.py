@@ -3,7 +3,6 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 import uuid
 
-from app.schemas.user import UserBase
 
 
 class BlockedUserInfo(BaseModel):

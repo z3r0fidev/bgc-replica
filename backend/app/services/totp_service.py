@@ -5,7 +5,6 @@ from typing import List, Optional, Tuple
 
 import pyotp
 import qrcode
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User

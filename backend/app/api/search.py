@@ -1,7 +1,7 @@
-from typing import List, Optional, Annotated
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, desc
+from sqlalchemy import select, and_
 from app.core.database import get_db
 from app.models.user import User, Profile
 from app.schemas.profile import Profile as ProfileSchema

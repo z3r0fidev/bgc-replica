@@ -1,6 +1,6 @@
 from typing import List, Annotated, Optional
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from app.core.database import get_db
@@ -80,7 +80,7 @@ async def get_original_programming(
     Fetch BGC Original Video Programming.
     """
     stmt = (
-        select(Media).where(Media.is_original == True).order_by(desc(Media.created_at))
+        select(Media).where(Media.is_original).order_by(desc(Media.created_at))
     )
     return await paginate_query(db, stmt, Media, limit, cursor)
 

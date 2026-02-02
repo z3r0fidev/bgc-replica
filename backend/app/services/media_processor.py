@@ -7,7 +7,6 @@ Spec 010 - Media Gallery & Albums
 
 from typing import Optional, Tuple
 from io import BytesIO
-import uuid
 import subprocess
 import tempfile
 import os

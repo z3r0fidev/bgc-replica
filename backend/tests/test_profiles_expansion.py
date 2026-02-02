@@ -1,7 +1,10 @@
 import pytest
 from httpx import AsyncClient
-import uuid
 from datetime import date
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 @pytest.mark.asyncio

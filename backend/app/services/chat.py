@@ -1,9 +1,9 @@
 from typing import List, Optional
 import uuid
 from datetime import datetime
-from sqlalchemy import select, or_, and_
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.chat import Message, ChatRoom, Conversation
+from app.models.chat import Message, Conversation
 from app.services.location import search_users_nearby
 import bleach
 

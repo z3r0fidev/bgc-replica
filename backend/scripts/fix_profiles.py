@@ -1,5 +1,5 @@
 import asyncio
-from sqlalchemy import select, update
+from sqlalchemy import update
 from app.core.database import SessionLocal
 from app.models.user import Profile
 

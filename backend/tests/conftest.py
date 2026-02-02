@@ -70,7 +70,6 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 from app.models.user import User
-from app.core.security import create_access_token
 import uuid
 
 

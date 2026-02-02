@@ -1,5 +1,5 @@
-from typing import List, Annotated, Optional, Dict
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Body
+from typing import Annotated, Optional, Dict
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.core.database import get_db
@@ -135,7 +135,6 @@ async def update_privacy_settings(
     return {"status": "ok", "privacy_settings": new_settings}
 
 
-from app.services.profile_service import profile_service
 
 
 @router.get("/{user_id}", response_model=Profile)

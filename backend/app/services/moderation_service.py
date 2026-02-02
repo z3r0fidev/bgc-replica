@@ -1,7 +1,6 @@
-from typing import Optional
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from app.models.community import ContentReport, ForumThread, ForumPost, StatusUpdate
 
 

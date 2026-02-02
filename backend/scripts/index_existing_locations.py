@@ -2,7 +2,6 @@ import asyncio
 import os
 import sys
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from dotenv import load_dotenv
 
 # Add the parent directory to sys.path to allow imports from app
@@ -21,7 +20,7 @@ async def index_existing_locations():
     print("Indexing existing profiles in Redis for geospatial search...")
 
     async with SessionLocal() as db:
-        result = await db.execute(select(Profile).where(Profile.location_lat != None))
+        result = await db.execute(select(Profile).where(Profile.location_lat is not None))
         profiles = result.scalars().all()
 
         count = 0

@@ -1,6 +1,4 @@
 import pytest
-import asyncio
-import time
 import uuid
 from app.services.presence import presence_service
 
