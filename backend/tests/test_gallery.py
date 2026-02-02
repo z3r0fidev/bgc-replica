@@ -99,6 +99,72 @@ class TestMediaUpload:
 
         assert response.status_code == 401
 
+    @pytest.mark.asyncio
+    async def test_upload_video_mp4(self, client: AsyncClient, auth_headers: dict, mock_storage):
+        """Should upload MP4 video and return media object"""
+        video_content = b"fake video content" * 1000
+        files = {"file": ("test.mp4", io.BytesIO(video_content), "video/mp4")}
+
+        response = await client.post(
+            "/api/gallery/upload",
+            files=files,
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["type"] == "VIDEO"
+        assert "id" in data
+        assert "url" in data
+
+    @pytest.mark.asyncio
+    async def test_upload_video_webm(self, client: AsyncClient, auth_headers: dict, mock_storage):
+        """Should upload WebM video"""
+        video_content = b"fake webm content" * 1000
+        files = {"file": ("test.webm", io.BytesIO(video_content), "video/webm")}
+
+        response = await client.post(
+            "/api/gallery/upload",
+            files=files,
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["type"] == "VIDEO"
+
+    @pytest.mark.asyncio
+    async def test_upload_video_with_privacy(self, client: AsyncClient, auth_headers: dict, mock_storage):
+        """Should upload video with privacy setting"""
+        video_content = b"fake video" * 1000
+        files = {"file": ("private.mp4", io.BytesIO(video_content), "video/mp4")}
+
+        response = await client.post(
+            "/api/gallery/upload?privacy=FRIENDS_ONLY",
+            files=files,
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["privacy"] == "FRIENDS_ONLY"
+        assert data["type"] == "VIDEO"
+
+    @pytest.mark.asyncio
+    async def test_upload_video_too_large(self, client: AsyncClient, auth_headers: dict):
+        """Should reject videos exceeding 100MB limit"""
+        # 105MB video (exceeds 100MB limit)
+        large_content = b"x" * (105 * 1024 * 1024)
+        files = {"file": ("large.mp4", io.BytesIO(large_content), "video/mp4")}
+
+        response = await client.post(
+            "/api/gallery/upload",
+            files=files,
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 413
+
 
 class TestMediaList:
     """Tests for GET /api/gallery/"""

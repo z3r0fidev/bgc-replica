@@ -112,15 +112,15 @@
 
 ### Backend Implementation
 
-- [ ] T035 [US4] Extend upload endpoint for video handling
-- [ ] T036 [US4] Implement video thumbnail extraction in `media_processor.py`
-- [ ] T037 [P] [US4] Write video upload tests
+- [x] T035 [US4] Extend upload endpoint for video handling
+- [x] T036 [US4] Implement video thumbnail extraction in `media_processor.py`
+- [x] T037 [P] [US4] Write video upload tests
 
 ### Frontend Implementation
 
-- [ ] T038 [P] [US4] Update MediaUploader for video file types
-- [ ] T039 [US4] Add video player to MediaLightbox
-- [ ] T040 [US4] Add video duration display in gallery grid
+- [x] T038 [P] [US4] Update MediaUploader for video file types
+- [x] T039 [US4] Add video player to MediaLightbox
+- [x] T040 [US4] Add video duration display in gallery grid
 
 **Checkpoint**: User Story 4 complete - video support functional
 
@@ -130,12 +130,12 @@
 
 **Purpose**: Performance, accessibility, and final verification
 
-- [ ] T041 [P] Implement lazy loading for gallery images
-- [ ] T042 [P] Add keyboard navigation to lightbox (arrows, escape)
-- [ ] T043 [P] E2E test for upload flow in `frontend/tests/e2e/gallery-upload.spec.ts`
-- [ ] T044 [P] E2E test for album management in `frontend/tests/e2e/gallery-albums.spec.ts`
-- [ ] T045 Run performance audit (SC-002: gallery load < 500ms)
-- [ ] T046 Accessibility review for lightbox and upload components
+- [x] T041 [P] Implement lazy loading for gallery images
+- [x] T042 [P] Add keyboard navigation to lightbox (arrows, escape)
+- [x] T043 [P] E2E test for upload flow in `frontend/tests/e2e/gallery-upload.spec.ts`
+- [x] T044 [P] E2E test for album management in `frontend/tests/e2e/gallery-albums.spec.ts`
+- [x] T045 Run performance audit (SC-002: gallery load < 500ms)
+- [x] T046 Accessibility review for lightbox and upload components
 
 **Checkpoint**: Phase 6 complete - gallery is production-ready
 

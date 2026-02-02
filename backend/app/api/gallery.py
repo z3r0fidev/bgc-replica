@@ -79,12 +79,18 @@ async def upload_media(
         )
 
     try:
-        # Get dimensions for images
+        # Get dimensions and process based on type
         width, height = None, None
+        duration_seconds = None
+
         if media_processor.is_image(content_type):
             # Strip EXIF data for privacy
             content = media_processor.strip_exif(content, content_type)
             width, height = media_processor.get_image_dimensions(content)
+        elif media_processor.is_video(content_type):
+            # Extract video metadata
+            width, height = media_processor.get_video_dimensions(content, content_type)
+            duration_seconds = media_processor.get_video_duration(content, content_type)
 
         # Upload original file
         media_id = uuid.uuid4()
@@ -97,18 +103,17 @@ async def upload_media(
             content_type
         )
 
-        # Generate and upload thumbnail
+        # Generate and upload thumbnail (works for both images and videos)
         thumbnail_url = None
-        if media_processor.is_image(content_type):
-            thumb_bytes = media_processor.generate_thumbnail(content, content_type)
-            if thumb_bytes:
-                thumb_path = f"{current_user.id}/gallery/thumbs/{media_id}.webp"
-                thumb_result = await storage_service.upload_file(
-                    thumb_bytes,
-                    f"{media_id}.webp",
-                    "image/webp"
-                )
-                thumbnail_url = thumb_result["url"]
+        thumb_bytes = media_processor.generate_thumbnail(content, content_type)
+        if thumb_bytes:
+            thumb_path = f"{current_user.id}/gallery/thumbs/{media_id}.webp"
+            thumb_result = await storage_service.upload_file(
+                thumb_bytes,
+                f"{media_id}.webp",
+                "image/webp"
+            )
+            thumbnail_url = thumb_result["url"]
 
         # Create database record
         new_media = GalleryMedia(
@@ -123,6 +128,7 @@ async def upload_media(
             width=width,
             height=height,
             size_bytes=len(content),
+            duration_seconds=duration_seconds,
             privacy=privacy,
         )
 
