@@ -8,7 +8,13 @@ interface ForumCategoryTree {
   children: ForumCategoryTree[];
 }
 
-const buildTree = (categories: any[]): ForumCategoryTree[] => {
+interface FlatCategory {
+  id: string;
+  name: string;
+  parent_id: string | null;
+}
+
+const buildTree = (categories: FlatCategory[]): ForumCategoryTree[] => {
   const categoryMap: Record<string, ForumCategoryTree> = {};
   categories.forEach(cat => {
     categoryMap[cat.id] = { ...cat, children: [] };
@@ -22,7 +28,7 @@ const buildTree = (categories: any[]): ForumCategoryTree[] => {
         parent.children.push(categoryMap[cat.id]);
       }
     } else {
-      tree.append ? {} : tree.push(categoryMap[cat.id]);
+      tree.push(categoryMap[cat.id]);
     }
   });
   return tree;
