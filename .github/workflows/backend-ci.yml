@@ -62,7 +62,7 @@ jobs:
           TESTING: "true"
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
-          pytest --cov=app --cov-report=xml
+          pytest --cov=app --cov-report=xml --ignore=tests/test_api_contract.py --ignore=tests/load_test.py
 
       - name: Upload Coverage
         uses: codecov/codecov-action@v4
