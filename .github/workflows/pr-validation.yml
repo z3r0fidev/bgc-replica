@@ -82,6 +82,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/test_db' }}
           REDIS_URL: ${{ secrets.REDIS_URL || 'redis://localhost:6379/0' }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci-only' }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-nextauth-secret' }}
           TESTING: "true"
           PYTHONPATH: ${{ github.workspace }}/backend
         run: pytest --cov=app --cov-report=xml --cov-fail-under=50
