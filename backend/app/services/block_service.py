@@ -1,8 +1,15 @@
 from typing import List, Set, Optional
 import uuid
+import json
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, delete
 from app.models.user import Relationship, User
+from app.core.redis_config import get_redis
+
+logger = logging.getLogger(__name__)
+
+BLOCK_IDS_CACHE_TTL = 300  # 5 minutes
 
 
 class BlockService:
@@ -32,6 +39,11 @@ class BlockService:
         db.add(new_block)
         await db.commit()
         await db.refresh(new_block)
+
+        # Invalidate cache for both users
+        await self._invalidate_block_cache(blocker_id)
+        await self._invalidate_block_cache(blocked_id)
+
         return new_block
 
     async def unblock_user(
@@ -51,6 +63,11 @@ class BlockService:
             )
         )
         await db.commit()
+
+        # Invalidate cache for both users
+        await self._invalidate_block_cache(blocker_id)
+        await self._invalidate_block_cache(blocked_id)
+
         return result.rowcount > 0
 
     async def get_blocked_users(
@@ -141,6 +158,11 @@ class BlockService:
         This includes users the current user has blocked AND users who blocked them.
         Used for efficient query filtering.
         """
+        # Try to get from cache first
+        cached = await self._get_cached_block_ids(user_id)
+        if cached is not None:
+            return cached
+
         result = await db.execute(
             select(Relationship.from_user_id, Relationship.to_user_id).where(
                 and_(
@@ -161,7 +183,47 @@ class BlockService:
             else:
                 block_ids.add(from_id)
 
+        # Cache the result
+        await self._cache_block_ids(user_id, block_ids)
+
         return block_ids
+
+    async def _get_cached_block_ids(
+        self, user_id: uuid.UUID
+    ) -> Optional[Set[uuid.UUID]]:
+        """Get block IDs from cache."""
+        try:
+            redis = await get_redis()
+            cache_key = f"blocks:{user_id}"
+            cached_data = await redis.get(cache_key)
+            if cached_data:
+                id_list = json.loads(cached_data)
+                return {uuid.UUID(id_str) for id_str in id_list}
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to get block IDs from cache: {e}")
+            return None
+
+    async def _cache_block_ids(
+        self, user_id: uuid.UUID, block_ids: Set[uuid.UUID]
+    ) -> None:
+        """Cache block IDs with TTL."""
+        try:
+            redis = await get_redis()
+            cache_key = f"blocks:{user_id}"
+            id_list = [str(id) for id in block_ids]
+            await redis.setex(cache_key, BLOCK_IDS_CACHE_TTL, json.dumps(id_list))
+        except Exception as e:
+            logger.warning(f"Failed to cache block IDs: {e}")
+
+    async def _invalidate_block_cache(self, user_id: uuid.UUID) -> None:
+        """Invalidate block cache for a user."""
+        try:
+            redis = await get_redis()
+            cache_key = f"blocks:{user_id}"
+            await redis.delete(cache_key)
+        except Exception as e:
+            logger.warning(f"Failed to invalidate block cache: {e}")
 
     async def _get_block_relationship(
         self, db: AsyncSession, from_user_id: uuid.UUID, to_user_id: uuid.UUID

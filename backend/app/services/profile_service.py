@@ -1,9 +1,16 @@
 import uuid
-from typing import Dict, Any
+import json
+import logging
+from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from app.models.user import Relationship
 from app.schemas.user import UserBase
+from app.core.redis_config import get_redis
+
+logger = logging.getLogger(__name__)
+
+FRIENDSHIP_STATUS_CACHE_TTL = 600  # 10 minutes
 
 
 class ProfileService:
@@ -13,6 +20,11 @@ class ProfileService:
         """Checks if two users are friends (accepted relationship)."""
         if user_id1 == user_id2:
             return True
+
+        # Try to get from cache first
+        cached = await self._get_cached_friendship_status(user_id1, user_id2)
+        if cached is not None:
+            return cached
 
         stmt = select(Relationship).where(
             and_(
@@ -31,7 +43,58 @@ class ProfileService:
             )
         )
         result = await db.execute(stmt)
-        return result.scalars().first() is not None
+        is_friend = result.scalars().first() is not None
+
+        # Cache the result
+        await self._cache_friendship_status(user_id1, user_id2, is_friend)
+
+        return is_friend
+
+    async def _get_friendship_cache_key(
+        self, user_id1: uuid.UUID, user_id2: uuid.UUID
+    ) -> str:
+        """Generate a consistent cache key for friendship status (sorted to ensure consistency)."""
+        ids = sorted([str(user_id1), str(user_id2)])
+        return f"friendship:{ids[0]}:{ids[1]}"
+
+    async def _get_cached_friendship_status(
+        self, user_id1: uuid.UUID, user_id2: uuid.UUID
+    ) -> Optional[bool]:
+        """Get friendship status from cache."""
+        try:
+            redis = await get_redis()
+            cache_key = await self._get_friendship_cache_key(user_id1, user_id2)
+            cached_data = await redis.get(cache_key)
+            if cached_data is not None:
+                return json.loads(cached_data)
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to get friendship status from cache: {e}")
+            return None
+
+    async def _cache_friendship_status(
+        self, user_id1: uuid.UUID, user_id2: uuid.UUID, is_friend: bool
+    ) -> None:
+        """Cache friendship status with TTL."""
+        try:
+            redis = await get_redis()
+            cache_key = await self._get_friendship_cache_key(user_id1, user_id2)
+            await redis.setex(
+                cache_key, FRIENDSHIP_STATUS_CACHE_TTL, json.dumps(is_friend)
+            )
+        except Exception as e:
+            logger.warning(f"Failed to cache friendship status: {e}")
+
+    async def invalidate_friendship_cache(
+        self, user_id1: uuid.UUID, user_id2: uuid.UUID
+    ) -> None:
+        """Invalidate friendship cache for a pair of users."""
+        try:
+            redis = await get_redis()
+            cache_key = await self._get_friendship_cache_key(user_id1, user_id2)
+            await redis.delete(cache_key)
+        except Exception as e:
+            logger.warning(f"Failed to invalidate friendship cache: {e}")
 
     def apply_privacy_mask(
         self, profile_obj: Any, is_friend: bool, is_owner: bool
