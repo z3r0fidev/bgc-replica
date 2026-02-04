@@ -48,6 +48,10 @@ export default function TopicalHubPage() {
     );
   }
 
+  if (!topicData) {
+    return null;
+  }
+
   return (
     <div className="container max-w-6xl py-10 mx-auto px-4">
       <div className="bg-primary/5 rounded-[3rem] p-8 md:p-12 mb-12 border-2 border-primary/10">
@@ -106,7 +110,7 @@ export default function TopicalHubPage() {
                 <Card key={thread.id}>
                   <CardHeader>
                     <CardTitle>{thread.title}</CardTitle>
-                    <CardDescription>{thread.description}</CardDescription>
+                    {thread.content && <CardDescription>{thread.content}</CardDescription>}
                   </CardHeader>
                 </Card>
               ))
