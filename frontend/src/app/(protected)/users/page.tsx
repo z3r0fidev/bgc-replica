@@ -70,17 +70,17 @@ export default function SearchPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
       
       // Clean up filters for API (remove "ALL" and empty strings)
-      const cleanFilters: Record<string, string | boolean> = {}
+      const cleanFilters: Record<string, string> = {}
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== "ALL" && value !== "" && value !== null) {
           if (key === "trans_interested") {
-            cleanFilters[key] = value === "YES"
+            cleanFilters[key] = value === "YES" ? "true" : "false"
           } else if (key === "zipcode") {
-            cleanFilters["zipcode"] = value // Ensure it matches backend param if added
+            cleanFilters["zipcode"] = String(value) // Ensure it matches backend param if added
           } else if (key === "location" && value === "My Current Location") {
             // Don't send the placeholder text to API
           } else {
-            cleanFilters[key] = value
+            cleanFilters[key] = String(value)
           }
         }
       })
