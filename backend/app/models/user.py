@@ -39,6 +39,13 @@ class User(Base):
     # Notification Preferences
     notification_preferences: Mapped[Optional[dict]] = mapped_column(JSONB)
 
+    # Suspension/Ban fields
+    suspended_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    suspended_until: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    suspension_reason: Mapped[Optional[str]] = mapped_column(String(500))
+    banned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    ban_reason: Mapped[Optional[str]] = mapped_column(String(500))
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
 
@@ -364,6 +371,28 @@ class AuthLog(Base):
     user_agent: Mapped[Optional[str]] = mapped_column(String(512))
     event_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
     success: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
+
+
+class AdminActionLog(Base):
+    """Audit log for admin actions."""
+
+    __tablename__ = "admin_action_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    admin_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    target_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(50), index=True)
+    reason: Mapped[Optional[str]] = mapped_column(String(500))
+    action_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, index=True
     )
