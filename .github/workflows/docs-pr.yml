@@ -1,0 +1,17 @@
+name: Docs PR
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '**.md'
+      - 'docs/**'
+      - '!backend/**'
+      - '!frontend/**'
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docs-only PR - Quality check pass-through
+        run: echo "Documentation-only PR - no code quality checks needed"
