@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
 
 type SocketContextType = {
@@ -22,7 +22,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     const socketInstance = io(apiUrl, {
-      path: "/ws/socket.io",
+      path: "/socket.io",
       addTrailingSlash: false,
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,
@@ -37,6 +37,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       setIsConnected(false);
     });
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSocket(socketInstance);
 
     // Presence Heartbeat
@@ -52,8 +53,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  const value = useMemo(() => ({ socket, isConnected }), [socket, isConnected]);
+
   return (
-    <SocketContext.Provider value={{ socket, isConnected }}>
+    <SocketContext.Provider value={value}>
       {children}
     </SocketContext.Provider>
   );

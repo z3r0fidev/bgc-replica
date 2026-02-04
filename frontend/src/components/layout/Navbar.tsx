@@ -42,6 +42,7 @@ export function Navbar() {
     { name: "Forums", href: "/forums", icon: MessageSquare },
     { name: "Media", href: "/media/original", icon: Video },
     { name: "Stories", href: "/stories", icon: BookOpen },
+    { name: "Personals", href: "/personals", icon: Search },
     { name: "Chat", href: "/chat", icon: MessageSquare },
     { name: "Users", href: "/users", icon: Users },
     { name: "Groups", href: "/groups", icon: LayoutDashboard },

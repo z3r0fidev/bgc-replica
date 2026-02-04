@@ -1,0 +1,92 @@
+openapi: 3.0.0
+info:
+  title: User Profile Expansion API
+  version: 1.0.0
+paths:
+  /api/profiles/me:
+    patch:
+      summary: Update specific profile module
+      description: Supports partial updates for Identity, Lifestyle, Professional, or Social links.
+      security:
+        - OAuth2PasswordBearer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtendedProfile'
+
+  /api/profiles/me/privacy:
+    put:
+      summary: Bulk update privacy settings
+      security:
+        - OAuth2PasswordBearer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+                enum: [PUBLIC, FRIENDS_ONLY, PRIVATE]
+      responses:
+        '200':
+          description: Privacy settings updated
+
+components:
+  schemas:
+    ExtendedProfile:
+      type: object
+      properties:
+        display_name: { type: string }
+        pronouns: { type: string }
+        age: { type: integer }
+        gender_identity: { type: string }
+        relationship_status: { type: string }
+        looking_for:
+          type: array
+          items: { type: string }
+        occupation: { type: string }
+        industry: { type: string }
+        education_level: { type: string }
+        university: { type: string }
+        social_links:
+          type: object
+          properties:
+            instagram: { type: string }
+            x: { type: string }
+            tiktok: { type: string }
+            website: { type: string }
+        privacy_settings:
+          type: object
+          additionalProperties:
+            type: string
+
+    ProfileUpdate:
+      type: object
+      properties:
+        # Module: Identity
+        display_name: { type: string }
+        pronouns: { type: string }
+        birthdate: { type: string, format: date }
+        gender_identity: { type: string }
+        # Module: Lifestyle
+        relationship_status: { type: string }
+        looking_for:
+          type: array
+          items: { type: string }
+        # Module: Professional
+        occupation: { type: string }
+        industry: { type: string }
+        education_level: { type: string }
+        university: { type: string }
+        # Module: Social
+        social_links:
+          type: object
+          additionalProperties: { type: string }

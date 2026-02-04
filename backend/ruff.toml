@@ -1,0 +1,15 @@
+[lint]
+# Ignore rules that conflict with our patterns
+ignore = [
+    "E402",  # Module level import not at top of file (needed for scripts, alembic)
+]
+
+[lint.per-file-ignores]
+# Alembic migrations need imports after config setup
+"alembic/*" = ["E402", "F401"]
+# Scripts need imports after path setup
+"scripts/*" = ["E402"]
+# Test fixtures need imports after setup
+"tests/conftest.py" = ["E402"]
+# SQLAlchemy models use forward references
+"app/models/*" = ["F821"]

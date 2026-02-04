@@ -1,15 +1,28 @@
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, JSON, Index, Float, CheckConstraint
+from sqlalchemy import (
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Text,
+    Index,
+    Float,
+    CheckConstraint,
+    Date,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from app.core.database import Base
+
 
 class User(Base):
     __tablename__ = "users"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     name: Mapped[Optional[str]] = mapped_column(String(255))
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True)
     email_verified: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -17,54 +30,89 @@ class User(Base):
     hashed_password: Mapped[Optional[str]] = mapped_column(String(1024))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
+    # Two-Factor Authentication
+    totp_secret: Mapped[Optional[str]] = mapped_column(String(32))
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    backup_codes: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(20)))
+
+    # Notification Preferences
+    notification_preferences: Mapped[Optional[dict]] = mapped_column(JSONB)
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB)
-    
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    accounts: Mapped[List["Account"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    sessions: Mapped[List["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    authenticators: Mapped[List["Authenticator"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    accounts: Mapped[List["Account"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    sessions: Mapped[List["Session"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    authenticators: Mapped[List["Authenticator"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
     # Phase 2 Relationships
-    profile: Mapped[Optional["Profile"]] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
-    media: Mapped[List["Media"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    stories: Mapped[List["Story"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    
+    profile: Mapped[Optional["Profile"]] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    media: Mapped[List["Media"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    stories: Mapped[List["Story"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
     # Social Graph Relationships
     relationships_sent: Mapped[List["Relationship"]] = relationship(
         "Relationship",
         foreign_keys="[Relationship.from_user_id]",
         back_populates="from_user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
     relationships_received: Mapped[List["Relationship"]] = relationship(
         "Relationship",
         foreign_keys="[Relationship.to_user_id]",
         back_populates="to_user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
-    
+
     ratings_sent: Mapped[List["ProfileRating"]] = relationship(
         "ProfileRating",
         foreign_keys="[ProfileRating.from_user_id]",
         back_populates="from_user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
     ratings_received: Mapped[List["ProfileRating"]] = relationship(
         "ProfileRating",
         foreign_keys="[ProfileRating.to_user_id]",
         back_populates="to_user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
+
+    # Gallery Relationships (Spec 010)
+    gallery_media: Mapped[List["GalleryMedia"]] = relationship(
+        "GalleryMedia", back_populates="user", cascade="all, delete-orphan"
+    )
+    albums: Mapped[List["Album"]] = relationship(
+        "Album", back_populates="user", cascade="all, delete-orphan"
+    )
+
 
 class Account(Base):
     __tablename__ = "accounts"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     provider: Mapped[str] = mapped_column(String(255))
     provider_account_id: Mapped[str] = mapped_column(String(255))
     refresh_token: Mapped[Optional[str]] = mapped_column(Text)
@@ -74,56 +122,90 @@ class Account(Base):
     scope: Mapped[Optional[str]] = mapped_column(String(255))
     id_token: Mapped[Optional[str]] = mapped_column(Text)
     session_state: Mapped[Optional[str]] = mapped_column(String(255))
-    
+
     user: Mapped["User"] = relationship(back_populates="accounts")
-    
+
     __table_args__ = (
-        Index("ix_accounts_provider_provider_account_id", "provider", "provider_account_id", unique=True),
+        Index(
+            "ix_accounts_provider_provider_account_id",
+            "provider",
+            "provider_account_id",
+            unique=True,
+        ),
     )
+
 
 class Session(Base):
     __tablename__ = "sessions"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     session_token: Mapped[str] = mapped_column(String(1024), unique=True, index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     expires: Mapped[datetime] = mapped_column(DateTime, index=True)
-    
+
+    # Device tracking fields
+    device_info: Mapped[Optional[dict]] = mapped_column(JSONB)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512))
+    last_active: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     user: Mapped["User"] = relationship(back_populates="sessions")
+
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     identifier: Mapped[str] = mapped_column(String(255))
     token: Mapped[str] = mapped_column(String(1024), unique=True)
     expires: Mapped[datetime] = mapped_column(DateTime)
 
+
 class Authenticator(Base):
     __tablename__ = "authenticators"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     credential_id: Mapped[str] = mapped_column(String(1024), unique=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     provider_account_id: Mapped[str] = mapped_column(String(255))
     credential_public_key: Mapped[str] = mapped_column(Text)
     counter: Mapped[int] = mapped_column()
     credential_device_type: Mapped[str] = mapped_column(String(255))
     credential_backed_up: Mapped[bool] = mapped_column(Boolean)
     transports: Mapped[Optional[str]] = mapped_column(String(255))
-    
+
     user: Mapped["User"] = relationship(back_populates="authenticators")
-    
+
     __table_args__ = (
-        Index("ix_authenticators_user_id_credential_id", "user_id", "credential_id", unique=True),
+        Index(
+            "ix_authenticators_user_id_credential_id",
+            "user_id",
+            "credential_id",
+            unique=True,
+        ),
     )
+
 
 # Phase 2 Models
 
+
 class Profile(Base):
     __tablename__ = "profiles"
-    
-    id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     bio: Mapped[Optional[str]] = mapped_column(Text)
     height: Mapped[Optional[str]] = mapped_column(String(50))
     weight: Mapped[Optional[int]] = mapped_column()
@@ -136,73 +218,156 @@ class Profile(Base):
     location_lat: Mapped[Optional[float]] = mapped_column(Float)
     location_lng: Mapped[Optional[float]] = mapped_column(Float)
     privacy_level: Mapped[str] = mapped_column(String(50), default="PUBLIC")
-    
+
     # Advanced Profile Attributes (Extrapolated from BGCLive)
     position: Mapped[Optional[str]] = mapped_column(String(100))
     build: Mapped[Optional[str]] = mapped_column(String(100))
     hiv_status: Mapped[Optional[str]] = mapped_column(String(100))
-    privacy_mode: Mapped[str] = mapped_column(String(50), default="OUT") # OUT, DOWNLO
+    privacy_mode: Mapped[str] = mapped_column(String(50), default="OUT")  # OUT, DOWNLO
     is_trans_interested: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+    is_personal: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    # Extended Profile Fields (Social Expansion)
+    display_name: Mapped[Optional[str]] = mapped_column(String(255), index=True)
+    pronouns: Mapped[Optional[str]] = mapped_column(String(50))
+    birthdate: Mapped[Optional[datetime.date]] = mapped_column(Date)
+    gender_identity: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    relationship_status: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    looking_for: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(100)))
+    occupation: Mapped[Optional[str]] = mapped_column(String(255))
+    industry: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    education_level: Mapped[Optional[str]] = mapped_column(String(100))
+    university: Mapped[Optional[str]] = mapped_column(String(255))
+    social_links: Mapped[Optional[dict]] = mapped_column(JSONB)
+    privacy_settings: Mapped[Optional[dict]] = mapped_column(JSONB)
+
+    # Verification Badge
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    verification_type: Mapped[Optional[str]] = mapped_column(
+        String(50)
+    )  # identity, celebrity, official
+    verification_notes: Mapped[Optional[str]] = mapped_column(String(500))
+
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
+
     user: Mapped["User"] = relationship(back_populates="profile")
+
 
 class Media(Base):
     __tablename__ = "media"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     url: Mapped[str] = mapped_column(String(1024))
     storage_path: Mapped[str] = mapped_column(String(1024))
-    type: Mapped[str] = mapped_column(String(50)) # IMAGE, VIDEO
+    type: Mapped[str] = mapped_column(String(50))  # IMAGE, VIDEO
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_original: Mapped[bool] = mapped_column(Boolean, default=False) # BGC Original
+    is_original: Mapped[bool] = mapped_column(Boolean, default=False)  # BGC Original
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
+
     user: Mapped["User"] = relationship(back_populates="media")
+
 
 class Story(Base):
     __tablename__ = "stories"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     title: Mapped[str] = mapped_column(String(512))
     content: Mapped[str] = mapped_column(Text)
     cover_url: Mapped[Optional[str]] = mapped_column(String(1024))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
     user: Mapped["User"] = relationship(back_populates="stories")
+
 
 class Relationship(Base):
     __tablename__ = "relationships"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    from_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    to_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    type: Mapped[str] = mapped_column(String(50)) # FRIEND, FAVORITE, BLOCKED
-    status: Mapped[str] = mapped_column(String(50)) # PENDING, ACCEPTED, REJECTED
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
-    from_user: Mapped["User"] = relationship("User", foreign_keys=[from_user_id], back_populates="relationships_sent")
-    to_user: Mapped["User"] = relationship("User", foreign_keys=[to_user_id], back_populates="relationships_received")
-    
-    __table_args__ = (
-        Index("ix_relationships_from_to_type", "from_user_id", "to_user_id", "type", unique=True),
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    from_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    to_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    type: Mapped[str] = mapped_column(String(50))  # FRIEND, FAVORITE, BLOCKED
+    status: Mapped[str] = mapped_column(String(50))  # PENDING, ACCEPTED, REJECTED
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    from_user: Mapped["User"] = relationship(
+        "User", foreign_keys=[from_user_id], back_populates="relationships_sent"
+    )
+    to_user: Mapped["User"] = relationship(
+        "User", foreign_keys=[to_user_id], back_populates="relationships_received"
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_relationships_from_to_type",
+            "from_user_id",
+            "to_user_id",
+            "type",
+            unique=True,
+        ),
+    )
+
 
 class ProfileRating(Base):
     __tablename__ = "profile_ratings"
-    
-    from_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    to_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+
+    from_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    to_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     score: Mapped[int] = mapped_column(CheckConstraint("score >= 1 AND score <= 10"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
-    from_user: Mapped["User"] = relationship("User", foreign_keys=[from_user_id], back_populates="ratings_sent")
-    to_user: Mapped["User"] = relationship("User", foreign_keys=[to_user_id], back_populates="ratings_received")
+
+    from_user: Mapped["User"] = relationship(
+        "User", foreign_keys=[from_user_id], back_populates="ratings_sent"
+    )
+    to_user: Mapped["User"] = relationship(
+        "User", foreign_keys=[to_user_id], back_populates="ratings_received"
+    )
+
+
+class AuthLog(Base):
+    """Audit log for authentication events."""
+
+    __tablename__ = "auth_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(50), index=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512))
+    event_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
+
 
 # Additional Indices for performance
 

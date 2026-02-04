@@ -8,17 +8,26 @@ The following tasks represent the Frontend E2E testing suite that has been defer
 - [x] **T021 [US2]**: Create E2E test for Google Login flow (mocked) in `frontend/tests/e2e/auth-google.spec.ts`
 - [x] **T022 [US2]**: Create E2E test for Email/Password Signup and Login flows in `frontend/tests/e2e/auth-credentials.spec.ts`
 - [x] **T040 [US2]**: Create E2E test for Sign Out and Protected Route redirection in `frontend/tests/e2e/auth-protection.spec.ts`
-- [ ] **T029 [US3]**: Create E2E test for Passkey registration/login (mocked WebAuthn) in `frontend/tests/e2e/auth-passkey.spec.ts`
+- [x] **T029 [US3]**: Create E2E test for Passkey registration/login (mocked WebAuthn) in `frontend/tests/e2e/auth-passkey.spec.ts`
 
 ## Phase 4: Community Features (Specs 004)
 
-- [ ] **T041**: E2E test for Forum posting in `frontend/tests/e2e/community-forums.spec.ts`
-- [ ] **T042**: E2E test for Social Feed flow in `frontend/tests/e2e/community-feed.spec.ts`
+- [x] **T041**: E2E test for Forum posting in `frontend/tests/e2e/community-forums.spec.ts`
+- [x] **T042**: E2E test for Social Feed flow in `frontend/tests/e2e/community-feed.spec.ts`
 
 ## Phase 5: PWA Modernization & Performance (Specs 005)
 
-- [ ] **T018**: E2E test for Deep-linking in `frontend/tests/e2e/pwa-deep-link.spec.ts`
-- [ ] **T019**: E2E test for Share Target in `frontend/tests/e2e/pwa-share.spec.ts`
+- [x] **T018**: E2E test for Deep-linking in `frontend/tests/e2e/pwa-deep-link.spec.ts`
+- [x] **T019**: E2E test for Share Target in `frontend/tests/e2e/pwa-share.spec.ts`
 
 ## Execution Instructions
 These tests should be implemented using **Playwright**. Ensure the development servers (frontend and backend) are running or mocked appropriately before execution.
+
+---
+
+## Status: COMPLETE
+
+All E2E tests have been implemented as of January 31, 2026. Run with:
+```bash
+cd frontend && npm run test:e2e
+```

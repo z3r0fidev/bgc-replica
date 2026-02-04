@@ -7,12 +7,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Rss, Hash, Loader2, Info } from "lucide-react";
 import { FeedItem } from "@/components/feed/feed-item";
+import type { FeedPost, ForumThread } from "@/types/feed";
+
+interface TopicData {
+  name: string;
+  description: string;
+  forumThreads: ForumThread[];
+  feedPosts: FeedPost[];
+}
 
 export default function TopicalHubPage() {
   const params = useParams();
   const slug = params.slug as string;
   const [isLoading, setIsLoading] = useState(true);
-  const [topicData, setTopicData] = useState<any>(null);
+  const [topicData, setTopicData] = useState<TopicData | null>(null);
 
   // Formatting slug for display (e.g. "hot-topics" -> "Hot Topics")
   const displayName = slug.split("-").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
@@ -38,6 +46,10 @@ export default function TopicalHubPage() {
         <span>Curating topical content...</span>
       </div>
     );
+  }
+
+  if (!topicData) {
+    return null;
   }
 
   return (
@@ -76,7 +88,7 @@ export default function TopicalHubPage() {
                 </CardContent>
               </Card>
             ) : (
-              topicData.feedPosts.map((post: any) => (
+              topicData.feedPosts.map((post) => (
                 <FeedItem key={post.id} post={post} />
               ))
             )}
@@ -94,11 +106,11 @@ export default function TopicalHubPage() {
                 </CardContent>
               </Card>
             ) : (
-              topicData.forumThreads.map((thread: any) => (
+              topicData.forumThreads.map((thread) => (
                 <Card key={thread.id}>
                   <CardHeader>
                     <CardTitle>{thread.title}</CardTitle>
-                    <CardDescription>{thread.description}</CardDescription>
+                    {thread.content && <CardDescription>{thread.content}</CardDescription>}
                   </CardHeader>
                 </Card>
               ))

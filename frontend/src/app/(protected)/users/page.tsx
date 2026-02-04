@@ -67,18 +67,20 @@ export default function SearchPage() {
     setIsLoading(true)
     try {
       const token = localStorage.getItem("access_token")
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
       
       // Clean up filters for API (remove "ALL" and empty strings)
-      const cleanFilters: any = {}
+      const cleanFilters: Record<string, string> = {}
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== "ALL" && value !== "" && value !== null) {
           if (key === "trans_interested") {
-            cleanFilters[key] = value === "YES"
+            cleanFilters[key] = value === "YES" ? "true" : "false"
+          } else if (key === "zipcode") {
+            cleanFilters["zipcode"] = String(value) // Ensure it matches backend param if added
           } else if (key === "location" && value === "My Current Location") {
             // Don't send the placeholder text to API
           } else {
-            cleanFilters[key] = value
+            cleanFilters[key] = String(value)
           }
         }
       })
@@ -295,7 +297,7 @@ export default function SearchPage() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col gap-6 overflow-hidden">
+      <main className="flex-1 flex flex-col gap-6 min-h-0">
         <div className="flex items-center gap-4 px-2 shrink-0">
           <div className="relative flex-1">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -303,7 +305,7 @@ export default function SearchPage() {
           </div>
         </div>
 
-        <ScrollArea className="flex-1 px-2">
+        <div className="flex-1 px-2 overflow-y-auto custom-scrollbar">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-40 gap-4 text-muted-foreground">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -315,10 +317,22 @@ export default function SearchPage() {
                 <Link key={profile.id} href={`/users/${profile.id}`}>
                   <Card className="overflow-hidden hover:ring-2 hover:ring-primary transition-all group neo-brutal">
                     <div className="aspect-[3/4] bg-muted relative">
-                      {/* Placeholder for primary photo */}
-                      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground italic">
-                        No Photo
-                      </div>
+                      {profile.user?.image ? (
+                        <img 
+                          src={profile.user.image} 
+                          alt={profile.user.name || "User"} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`;
+                          }}
+                        />
+                      ) : (
+                        <img 
+                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                       {/* Online indicator */}
                       <div className="absolute top-2 right-2">
                         <Badge className="bg-green-500 hover:bg-green-600 border-none">Online</Badge>
@@ -326,7 +340,7 @@ export default function SearchPage() {
                     </div>
                     <CardContent className="p-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-lg truncate">User {profile.id.slice(0, 8)}</h3>
+                        <h3 className="font-bold text-lg truncate">{profile.user?.name || `User ${profile.id.slice(0, 4)}`}</h3>
                         <span className="text-sm font-medium">{profile.height}</span>
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground gap-1">
@@ -353,7 +367,7 @@ export default function SearchPage() {
               )}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </main>
     </div>
   )

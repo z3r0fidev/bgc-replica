@@ -1,7 +1,7 @@
-from typing import List, Annotated
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from typing import Annotated, Optional, Dict
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User, Profile as ProfileModel, Media, ProfileRating
@@ -9,16 +9,18 @@ from app.schemas.profile import Profile, ProfileUpdate
 from app.schemas.media import Media as MediaSchema
 from app.schemas.social import ProfileRatingCreate
 from app.services.storage import storage_service
+from app.services.cache import profile_cache
+from app.services.profile_service import profile_service
 import uuid
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 
-from sqlalchemy.orm import selectinload
 
 @router.get("/me", response_model=Profile)
 async def get_my_profile(
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
         select(ProfileModel)
@@ -34,34 +36,114 @@ async def get_my_profile(
         await db.refresh(profile)
     return profile
 
+
 @router.put("/me", response_model=Profile)
 async def update_my_profile(
     profile_in: ProfileUpdate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(ProfileModel).where(ProfileModel.id == current_user.id))
+    result = await db.execute(
+        select(ProfileModel).where(ProfileModel.id == current_user.id)
+    )
     profile = result.scalars().first()
-    
+
     update_data = profile_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(profile, field, value)
-    
+
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
-    
+
     # Invalidate cache
     await profile_cache.invalidate(str(current_user.id))
-    
+
     return profile
 
-from app.services.cache import profile_cache
+
+@router.patch("/me", response_model=Profile)
+async def patch_my_profile(
+    profile_in: ProfileUpdate,
+    current_user: Annotated[User, Depends(deps.get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(ProfileModel).where(ProfileModel.id == current_user.id)
+    )
+    profile = result.scalars().first()
+
+    if not profile:
+        profile = ProfileModel(id=current_user.id)
+        db.add(profile)
+        await db.flush()  # Ensure it's attached
+
+    update_data = profile_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if field == "social_links" and profile.social_links:
+            # Merge JSONB links
+            merged_links = {**(profile.social_links or {}), **(value or {})}
+            setattr(profile, field, merged_links)
+        else:
+            setattr(profile, field, value)
+
+    db.add(profile)
+    await db.commit()
+    await db.refresh(profile)
+
+    # Invalidate cache
+    await profile_cache.invalidate(str(current_user.id))
+
+    # Load author relationship for the response
+    # (Actually we return Profile which has user via relationship)
+    # But we might need to refresh with selectinload to be sure for the pydantic model
+    result = await db.execute(
+        select(ProfileModel)
+        .where(ProfileModel.id == profile.id)
+        .options(selectinload(ProfileModel.user))
+    )
+    return result.scalars().first()
+
+
+@router.put("/me/privacy")
+async def update_privacy_settings(
+    privacy_settings: Annotated[Dict[str, str], Body(...)],
+    current_user: Annotated[User, Depends(deps.get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(ProfileModel).where(ProfileModel.id == current_user.id)
+    )
+    profile = result.scalars().first()
+
+    if not profile:
+        profile = ProfileModel(id=current_user.id)
+        db.add(profile)
+        await db.flush()
+
+    # Merge or replace privacy settings
+    current_settings = profile.privacy_settings or {}
+    new_settings = {**current_settings, **privacy_settings}
+    profile.privacy_settings = new_settings
+
+    db.add(profile)
+    await db.commit()
+
+    # Invalidate cache
+    await profile_cache.invalidate(str(current_user.id))
+
+    return {"status": "ok", "privacy_settings": new_settings}
+
+
+
 
 @router.get("/{user_id}", response_model=Profile)
 async def get_user_profile(
     user_id: uuid.UUID,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[
+        Optional[User], Depends(deps.get_current_user_optional)
+    ] = None,
 ):
     async def fetch_from_db():
         result = await db.execute(
@@ -69,69 +151,91 @@ async def get_user_profile(
             .where(ProfileModel.id == user_id)
             .options(selectinload(ProfileModel.user))
         )
-        return result.scalars().first()
+        profile_obj = result.scalars().first()
+        if profile_obj:
+            # Return as Pydantic for caching
+            return Profile.model_validate(profile_obj)
+        return None
 
-    profile = await profile_cache.get_or_set(
-        str(user_id),
-        Profile,
-        fetch_from_db
+    unmasked_profile = await profile_cache.get_or_set(
+        str(user_id), Profile, fetch_from_db
     )
-    
-    if not profile:
+
+    if not unmasked_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return profile
+
+    is_owner = current_user.id == user_id if current_user else False
+    is_friend = False
+    if current_user and not is_owner:
+        is_friend = await profile_service.get_friendship_status(
+            db, current_user.id, user_id
+        )
+
+    # Apply masking to the pydantic model or convert back/forth
+    # profile_service.apply_privacy_mask expects ProfileModel
+    # I'll update it to handle dict or pydantic
+
+    masked_data = profile_service.apply_privacy_mask(
+        unmasked_profile, is_friend, is_owner
+    )
+    return masked_data
+
 
 @router.post("/me/media", response_model=MediaSchema)
 async def upload_gallery_media(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
 ):
     content = await file.read()
-    upload_result = await storage_service.upload_file(content, file.filename, file.content_type)
-    
+    upload_result = await storage_service.upload_file(
+        content, file.filename, file.content_type
+    )
+
     new_media = Media(
         user_id=current_user.id,
         url=upload_result["url"],
         storage_path=upload_result["storage_path"],
-        type="IMAGE" if file.content_type.startswith("image") else "VIDEO"
+        type="IMAGE" if file.content_type.startswith("image") else "VIDEO",
     )
     db.add(new_media)
     await db.commit()
     await db.refresh(new_media)
     return new_media
 
+
 @router.post("/{user_id}/rate")
 async def rate_user_profile(
     user_id: uuid.UUID,
     rating_in: ProfileRatingCreate,
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Check if rating already exists
-    result = await db.execute(select(ProfileRating).where(
-        and_(
-            ProfileRating.from_user_id == current_user.id,
-            ProfileRating.to_user_id == user_id
+    result = await db.execute(
+        select(ProfileRating).where(
+            and_(
+                ProfileRating.from_user_id == current_user.id,
+                ProfileRating.to_user_id == user_id,
+            )
         )
-    ))
+    )
     existing = result.scalars().first()
-    
+
     if existing:
         existing.score = rating_in.score
     else:
         new_rating = ProfileRating(
-            from_user_id=current_user.id,
-            to_user_id=user_id,
-            score=rating_in.score
+            from_user_id=current_user.id, to_user_id=user_id, score=rating_in.score
         )
         db.add(new_rating)
-    
-    await db.commit()
-    
-    # Calculate average
-    avg_result = await db.execute(select(func.avg(ProfileRating.score)).where(ProfileRating.to_user_id == user_id))
-    average = avg_result.scalar() or 0.0
-    
-    return {"average_rating": float(average)}
 
+    await db.commit()
+
+    # Calculate average
+    avg_result = await db.execute(
+        select(func.avg(ProfileRating.score)).where(ProfileRating.to_user_id == user_id)
+    )
+    average = avg_result.scalar() or 0.0
+
+    return {"average_rating": float(average)}
