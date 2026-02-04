@@ -57,3 +57,4 @@ jobs:
           # Mock vars to allow build to pass without real keys
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: mock-key
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
