@@ -209,9 +209,13 @@ export default function AlbumDetailPage() {
   const handleReorder = async (newItems: GalleryMedia[]) => {
     if (!album) return;
 
-    // Optimistically update local state
+    // Optimistically update local state - add position to items
+    const itemsWithPosition = newItems.map((item, index) => ({
+      ...item,
+      position: index,
+    }));
     setAlbum((prev) =>
-      prev ? { ...prev, media: newItems } : null
+      prev ? { ...prev, media: itemsWithPosition } : null
     );
 
     // Save to server
