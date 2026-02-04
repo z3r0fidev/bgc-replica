@@ -121,7 +121,7 @@ bgc-replica/
 
 ## Current Development Status
 
-### Completed Specifications
+### Completed Specifications & Feature Phases
 1. **Spec 001-009**: Core platform features (auth, profiles, forums, chat)
 2. **Spec 013**: Profile Expansion (identity, lifestyle, professional, privacy controls)
 3. **Security Features** (2026-01-29):
@@ -147,23 +147,25 @@ bgc-replica/
    - Offline mode support
    - Enhanced install prompts
    - Network status detection
+10. **Admin Dashboard & Performance Optimization** (2026-02-04, PR #5, commit 4d6f0b1):
+    - GZipMiddleware for response compression
+    - Sentry sampling rate tuned to 10%
+    - Redis caching for block IDs (5-min TTL) and friendship status (10-min TTL)
+    - Admin dashboard: user management, suspend/ban/restore, search, pagination
+    - Analytics dashboard with DAU/WAU/MAU charts (Recharts)
+    - System health monitoring (DB + Redis stats, auto-refresh)
+    - Batch comments endpoint (eliminates N+1 queries on feed)
+    - Virtual scrolling in chat window (@tanstack/react-virtual)
+    - New UI components: Progress, Separator, Table
+    - E2E test suite for admin features
 
-### Recent Commits
-**2026-01-30** (Pending):
-- Production deployment configurations
-- Rate limiting expansion
-- TypeScript type safety improvements
-- Group chats feature
-- Verification badges system
-- PWA offline support
-- CI/CD workflow enhancements
-
-**2026-01-29**:
-1. **bd32b05**: Notification preferences settings (731 lines, 8 files)
-2. **33b40b5**: Admin moderation queue (999 lines, 5 files)
-3. **42a0da9**: Two-factor authentication (1,353 lines, 12 files)
-4. **85c9892**: Email verification with Resend (797 lines, 14 files)
-5. **9979ce8**: Password reset flow
+### Recent Commits (chronological, newest first)
+- **4d6f0b1** (2026-02-04): feat(admin): Add comprehensive admin dashboard with performance optimizations (#5) -- 28 files, 4961 insertions
+- **61aaf06**: Release: Merge production-readiness into main (#4)
+- **0ddaa96**: docs: Update project status to include Phase 9 (DevOps & CI/CD) completion
+- **8abf4d1**: ci(e2e): Add GitHub Actions workflow for Playwright end-to-end testing
+- **bd91416**: ci(frontend): Add GitHub Actions workflow for Next.js frontend linting, testing, and build
+- **db1343b**: ci(backend): Add GitHub Actions workflow for Python backend linting and testing
 
 ### Extracted Features (Standalone Subprojects)
 - **Personals** (Specs 010, 012): Moved to `bgc-personals/` subdirectory
@@ -172,16 +174,17 @@ bgc-replica/
   - Ports: 3001 (frontend), 8001 (backend)
 
 ### Active Branch
-- **Branch**: `013-profile-expansion`
-- **Status**: All recent security & moderation features committed and pushed
-- **PR**: https://github.com/z3r0fidev/bgc-replica/pull/2
+- **Branch**: `main`
+- **HEAD**: `4d6f0b1`
+- **Status**: Clean working tree, up to date with origin/main
 
 ### Next Priorities
-1. Deploy security features (2FA, email verification) to production
-2. Configure Resend API key and Celery workers
-3. E2E tests for 2FA and email verification flows
-4. User documentation for security features
-5. Admin training for moderation queue
+1. Load-test and rate-limit admin API endpoints
+2. Benchmark GZip and Redis cache effectiveness in staging
+3. Profile chat virtual-scroll performance at scale
+4. Deploy security features (2FA, email verification) to production
+5. Admin dashboard user guide and deployment runbook updates
+6. E2E tests for 2FA and email verification flows
 
 ## Dependencies
 
@@ -192,6 +195,8 @@ bgc-replica/
 - `socket.io-client`: 4.8.1
 - `zod`: 3.24.1
 - `@supabase/supabase-js`: 2.49.2
+- `recharts`: Added in PR #5 for admin analytics charts
+- `@tanstack/react-virtual`: Added in PR #5 for chat virtual scrolling
 
 ### Backend Package Highlights
 - `fastapi`: 0.115.6
@@ -297,17 +302,25 @@ bgc-replica/
 
 ## Known Technical Debt
 
-1. **Performance**: Profile load time optimization pending (T025)
+1. **Performance**:
+   - Profile load time optimization pending (T025)
+   - Chat virtual-scroll performance under 1000+ messages untested at scale
+   - GZip and Redis cache hit ratios not yet benchmarked in staging
 2. **Accessibility**: Form focus management needs audit (T028)
-3. **Testing**:
-   - E2E test coverage for personals posting incomplete
+3. **Security / Admin**:
+   - Admin API endpoints lack dedicated rate limiting (user-facing endpoints are protected)
+   - Admin action audit trail completeness review pending
+4. **Testing**:
+   - E2E test coverage for personals posting incomplete (now in bgc-personals subproject)
    - E2E tests for 2FA login flow needed
    - Email delivery testing in production environment
-4. **Documentation**:
+   - Admin dashboard load testing under concurrent access needed
+5. **Documentation**:
    - API documentation needs OpenAPI spec export
    - User guide for 2FA setup needed
-   - Admin guide for moderation queue needed
-5. **Monitoring**:
+   - Admin dashboard user guide needed (user management, analytics, health)
+   - Deployment runbook needs updating with new health endpoints
+6. **Monitoring**:
    - Production alerting and dashboards not configured
    - Email delivery monitoring needed
    - 2FA adoption rate tracking needed
