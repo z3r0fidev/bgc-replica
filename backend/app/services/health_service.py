@@ -5,7 +5,6 @@ from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.core.redis_config import get_redis
-from app.core.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
