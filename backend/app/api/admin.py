@@ -12,7 +12,6 @@ from app.schemas.admin import (
     AdminUserListItem,
     AdminUserDetail,
     AdminUserListResponse,
-    UserSearchParams,
     SuspendUserRequest,
     BanUserRequest,
     AdminActionLogItem,
@@ -65,7 +64,7 @@ async def get_admin_stats(
     active_result = await db.execute(
         select(func.count(User.id)).where(
             and_(
-                User.is_active == True,
+                User.is_active.is_(True),
                 User.banned_at.is_(None),
                 or_(User.suspended_until.is_(None), User.suspended_until < now),
             )
@@ -89,7 +88,7 @@ async def get_admin_stats(
 
     # Admin users
     admin_result = await db.execute(
-        select(func.count(User.id)).where(User.is_superuser == True)
+        select(func.count(User.id)).where(User.is_superuser.is_(True))
     )
     admin_users = admin_result.scalar() or 0
 

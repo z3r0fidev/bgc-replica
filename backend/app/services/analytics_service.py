@@ -41,7 +41,7 @@ class AnalyticsService:
         # Daily Active Users
         dau_result = await db.execute(
             select(func.count(User.id)).where(
-                and_(User.last_login_at >= day_ago, User.is_active == True)
+                and_(User.last_login_at >= day_ago, User.is_active.is_(True))
             )
         )
         dau = dau_result.scalar() or 0
@@ -49,7 +49,7 @@ class AnalyticsService:
         # Weekly Active Users
         wau_result = await db.execute(
             select(func.count(User.id)).where(
-                and_(User.last_login_at >= week_ago, User.is_active == True)
+                and_(User.last_login_at >= week_ago, User.is_active.is_(True))
             )
         )
         wau = wau_result.scalar() or 0
@@ -57,7 +57,7 @@ class AnalyticsService:
         # Monthly Active Users
         mau_result = await db.execute(
             select(func.count(User.id)).where(
-                and_(User.last_login_at >= month_ago, User.is_active == True)
+                and_(User.last_login_at >= month_ago, User.is_active.is_(True))
             )
         )
         mau = mau_result.scalar() or 0
@@ -126,7 +126,7 @@ class AnalyticsService:
 
         # Total verified profiles
         verified_result = await db.execute(
-            select(func.count(Profile.id)).where(Profile.is_verified == True)
+            select(func.count(Profile.id)).where(Profile.is_verified.is_(True))
         )
         verified_profiles = verified_result.scalar() or 0
 

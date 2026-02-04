@@ -1,7 +1,7 @@
 """Health service for system monitoring."""
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.core.redis_config import get_redis
