@@ -92,7 +92,6 @@ export interface AnalyticsEngagement {
   date: string;
   posts: number;
   comments: number;
-  messages: number;
 }
 
 export interface AnalyticsOverview {
@@ -100,7 +99,9 @@ export interface AnalyticsOverview {
   engagement: AnalyticsEngagement[];
   total_posts: number;
   total_comments: number;
-  total_messages: number;
+  total_threads: number;
+  total_forum_posts: number;
+  verified_profiles: number;
   dau: number;
   wau: number;
   mau: number;
