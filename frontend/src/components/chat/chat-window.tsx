@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useChat } from "@/hooks/use-chat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Send, Image as ImageIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TypingIndicator } from "./typing-indicator";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 interface ChatWindowProps {
   conversationId?: string;
@@ -24,13 +24,22 @@ export function ChatWindow({ conversationId, roomId, recipientName, currentUserI
   const [input, setInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const lastTypingTime = useRef<number>(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
+  // Virtual scrolling for performance with large message lists
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 60, // Estimated message height
+    overscan: 5,
+  });
+
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (messages.length > 0) {
+      virtualizer.scrollToIndex(messages.length - 1, { align: "end" });
     }
-  }, [messages]);
+  }, [messages.length, virtualizer]);
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -97,37 +106,63 @@ export function ChatWindow({ conversationId, roomId, recipientName, currentUserI
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden p-0 bg-muted/5 relative">
-        <ScrollArea className="h-full p-4" ref={scrollRef}>
-          <div className="space-y-4 pb-8">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex w-max max-w-[80%] flex-col gap-2 rounded-lg px-3 py-2 text-sm shadow-sm",
-                  msg.sender_id === currentUserId
-                    ? "ml-auto bg-primary text-primary-foreground"
-                    : "bg-card border"
-                )}
-              >
-                {msg.type === "IMAGE" ? (
-                  <motion.img 
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    src={msg.url || msg.content} 
-                    alt="Shared" 
-                    className="rounded-md max-h-60 w-auto object-contain cursor-grab active:cursor-grabbing" 
-                  />
-                ) : (
-                  msg.content
-                )}
-                <span className="text-[10px] opacity-70 self-end">
-                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            ))}
+        <div
+          ref={parentRef}
+          className="h-full overflow-auto p-4"
+        >
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const msg = messages[virtualItem.index];
+              return (
+                <div
+                  key={virtualItem.key}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                  className="py-2"
+                >
+                  <div
+                    className={cn(
+                      "flex w-max max-w-[80%] flex-col gap-2 rounded-lg px-3 py-2 text-sm shadow-sm",
+                      msg.sender_id === currentUserId
+                        ? "ml-auto bg-primary text-primary-foreground"
+                        : "bg-card border"
+                    )}
+                  >
+                    {msg.type === "IMAGE" ? (
+                      <motion.img
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={0.2}
+                        src={msg.url || msg.content}
+                        alt="Shared"
+                        className="rounded-md max-h-60 w-auto object-contain cursor-grab active:cursor-grabbing"
+                      />
+                    ) : (
+                      msg.content
+                    )}
+                    <span className="text-[10px] opacity-70 self-end">
+                      {new Date(msg.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </ScrollArea>
+        </div>
         {typingUsers.size > 0 && (
           <div className="absolute bottom-0 left-0 w-full bg-background/80 backdrop-blur-sm border-t">
             <TypingIndicator username={Array.from(typingUsers)[0].slice(0, 8)} />

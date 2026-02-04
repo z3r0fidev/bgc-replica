@@ -8,6 +8,7 @@ from app.models.user import User, Relationship
 from app.schemas.social import Relationship as RelationshipSchema
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
+from app.services.profile_service import profile_service
 import uuid
 
 router = APIRouter()
@@ -100,6 +101,10 @@ async def accept_friend_request(
     rel.status = "ACCEPTED"
     await db.commit()
     await db.refresh(rel)
+
+    # Invalidate friendship cache
+    await profile_service.invalidate_friendship_cache(user_id, current_user.id)
+
     return rel
 
 
