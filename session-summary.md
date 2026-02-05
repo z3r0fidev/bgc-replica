@@ -2,6 +2,120 @@
 
 ---
 
+## Session: 2026-02-04 (Session 2) - Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests
+
+### Session Information
+- **Date**: 2026-02-04
+- **Duration**: Single session
+- **Branch**: `main`
+- **Focus**: Close out the five outstanding follow-up items from the PR #5 closure session
+
+### High-Level Summary
+
+Five concrete items from the "Outstanding Tasks" checklist were completed in this session.
+Rate limiting was added to all 14 admin API endpoints using a three-tier strategy (Read /
+Update / Sensitive). Unit tests were written for the two service modules that shipped with
+no coverage in PR #5 (block_service, health_service). A Locust load-test harness was created
+for the admin dashboard, and a Playwright stress test was created for the chat virtual scroll.
+All work is test and configuration code; no new features or API contracts were introduced.
+
+### Files Changed
+
+| File | Change | Lines |
+|------|--------|-------|
+| `backend/app/api/admin.py` | Modified -- RateLimiter on all 14 endpoints | +70 / -16 |
+| `backend/tests/test_block_service.py` | New -- 22 unit test cases | 404 |
+| `backend/tests/test_health_service.py` | New -- 17 unit test cases | 457 |
+| `backend/tests/load_test_admin.py` | New -- Locust harness, 3 user classes | 312 |
+| `frontend/tests/e2e/chat-virtual-scroll-stress.spec.ts` | New -- Playwright stress, 4 blocks | 330 |
+
+### Rate Limiting Detail
+
+Three tiers applied to the 14 endpoints based on operation sensitivity:
+
+- **Read (30 req / 60 s)** -- 10 endpoints: stats, user list, user detail, action logs,
+  analytics overview/users/engagement, health overview/database/redis.
+- **Update (10 req / 60 s)** -- 1 endpoint: PATCH /users/{id}.
+- **Sensitive (5 req / 60 s)** -- 5 endpoints: suspend, ban, restore, make-admin, revoke-admin.
+
+No new dependencies. Reuses `fastapi_limiter` + Redis already in production.
+
+### Unit Test Coverage
+
+**block_service (22 cases)**:
+- block_user: success, idempotent re-block, self-block guard
+- unblock_user: success, not-blocked no-op
+- get_blocked_users: populated, empty
+- is_blocked: true, false
+- get_block_status: blocked-by-me, blocked-by-them, mutual, neither
+- get_block_ids: cache hit, cache miss + write-through
+- Cache operations: get hit/miss/error, set success/error, invalidate success/error
+
+**health_service (17 cases)**:
+- get_database_stats: success, no-rows, exception (status: down)
+- get_redis_stats: full info, empty info, connection error
+- get_error_summary: success, custom hours, no-rows, DB error
+- get_comprehensive_health: healthy, DB-down, Redis-down, degraded, both-down, timestamp
+- Integration: singleton check, default hours
+
+### Load Test Design
+
+Three Locust user classes:
+- AdminUser -- read-heavy, task weights mirror dashboard usage patterns, 429 tracked as failure
+- AdminWriteUser -- PATCH at low frequency, weight 1, 404 expected on synthetic UUIDs
+- DashboardRefreshSimulator -- 30 s refresh cycle (/stats + /health)
+
+Custom event hook on test stop prints total requests, failures, failure rate, avg/p95/p99.
+
+### Stress Test Design
+
+Four Playwright describe blocks:
+- Large Message Count -- 1 000 messages, render time < 2 s, DOM count < 50
+- Rapid Scrolling -- 50 iterations, FPS >= 30, scroll-to-top < 500 ms
+- Memory Usage -- 10 scroll cycles, heap growth < 100 MB, unmount cleanup check
+- Paint Performance -- CDP paint-rect overlay, layout metric capture
+
+### Key Decisions and Rationale
+
+1. **Three-tier admin rate limits**: Mirrors existing user-facing endpoint pattern.
+   Sensitive operations at 5/60 s blocks automation without impeding legitimate admin work.
+2. **Pure-mock unit tests**: No test database or Redis broker required. All Redis paths
+   patched; error-resilience paths explicitly tested.
+3. **Locust for load testing**: Ships p95/p99 reporting and browser UI; no value in
+   reimplementing.
+4. **Synthetic message injection**: Avoids WebSocket + backend stack for a pure renderer
+   stress test.
+5. **CDP for paint metrics**: Playwright does not expose layout/paint metrics natively.
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] Benchmark GZip compression savings on representative payloads
+- [ ] Verify Redis cache hit ratios in staging
+- [ ] Run load_test_admin.py against staging, record baseline p95/p99
+- [ ] Admin dashboard user guide
+- [ ] Deployment runbook update (health endpoints)
+- [ ] E2E tests for 2FA login flow (carried from earlier sessions)
+- [ ] Production email delivery verification (Resend + Celery)
+
+### Blockers / Challenges
+
+None. All five items from the previous session's follow-up list were completed
+straightforwardly. The rate-limiting pattern was already established on user-facing
+endpoints, so admin.py followed the same dependency-injection approach with no
+architectural decisions required.
+
+### Session Statistics
+
+- **Files Created**: 4
+- **Files Modified**: 1
+- **Net Lines Added**: ~1 503
+- **Unit Test Cases**: 39
+- **Load Test User Classes**: 3
+- **Stress Test Describe Blocks**: 4
+- **Admin Endpoints Rate-Limited**: 14
+
+---
+
 ## Session: 2026-02-04 - Admin Dashboard & Performance Optimization (PR #5 Closure)
 
 ### Session Information

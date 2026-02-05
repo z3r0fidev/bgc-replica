@@ -1,100 +1,106 @@
 # Session Context
 
-**Last Updated**: 2026-02-04 (Session Closing)
+**Last Updated**: 2026-02-04 (Session 2 Closing)
 **Current Branch**: `main`
-**Session Status**: Closed - Admin Dashboard & Performance Optimization merged
+**Session Status**: Closed - Admin hardening (rate limits, unit tests, load/stress tests) committed
 
 ## Current State
 
-### Latest Merged Work - Admin Dashboard & Performance Optimization (PR #5, Commit 4d6f0b1)
-PR #5 was merged to main. This was a multi-phase effort covering performance quick wins, a full
-admin dashboard, analytics, system health monitoring, and deep performance optimizations.
-28 files changed, 4961 insertions, 66 deletions.
+### Latest Commit -- Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests
+5 files changed in this session's commit (1 modified, 4 new). All items close out the
+"Outstanding Tasks / Follow-Up Items" list that was carried forward from the PR #5 closure session.
 
-### What Was Shipped (4d6f0b1)
+#### Rate Limiting on admin.py (modified)
+Every one of the 14 admin API endpoints in `backend/app/api/admin.py` now carries a
+`RateLimiter` dependency. Three tiers were applied based on operation sensitivity:
 
-#### Phase 4.1 -- Performance Quick Wins
-- **GZipMiddleware** added to `backend/app/main.py` for response compression
-- **Sentry sampling rate** reduced from 1.0 to 0.1 (10%) to cut noise and cost
-- **Redis caching for block IDs**: 5-minute TTL via `block_service.py`
-- **Redis caching for friendship status**: 10-minute TTL via `profile_service.py`
+| Tier | Limit | Endpoints |
+|------|-------|-----------|
+| Read | 30 req / 60 s | GET /stats, GET /users, GET /users/{id}, GET /action-logs, GET /analytics/overview, GET /analytics/users, GET /analytics/engagement, GET /health, GET /health/database, GET /health/redis |
+| Update | 10 req / 60 s | PATCH /users/{id} |
+| Sensitive | 5 req / 60 s | POST /users/{id}/suspend, POST /users/{id}/ban, POST /users/{id}/restore, POST /users/{id}/make-admin, POST /users/{id}/revoke-admin |
 
-#### Phase 1 -- Admin Dashboard Core
-- **Migration**: `c3d4e5f6a7b8_add_admin_action_logs.py` -- admin_action_logs table, user suspension fields
-- **Backend**: `backend/app/api/admin.py` (611 lines) -- full user management API
-  - User list with search, filter, pagination
-  - Actions: suspend, ban, restore, make-admin, revoke-admin
-- **Frontend pages** (all under `/admin/`):
-  - `page.tsx` -- dashboard overview with stats cards
-  - `layout.tsx` -- admin sidebar navigation
-  - `users/page.tsx` -- user list with search/filter/pagination (586 lines)
-  - `users/[id]/page.tsx` -- individual user detail and action page (559 lines)
-- **Admin schemas**: `backend/app/schemas/admin.py` (128 lines)
-- **Admin types**: `frontend/src/types/admin.ts` (126 lines)
-- **Admin service**: `frontend/src/services/adminService.ts` (243 lines)
+All rate limits use the existing `fastapi_limiter` + Redis backend that is already in place
+for user-facing endpoints. No new dependencies were introduced.
 
-#### Phase 2 -- Analytics & Reporting
-- **Backend**: `backend/app/services/analytics_service.py` (160 lines) -- user growth and engagement metrics
-- **Frontend**: `admin/analytics/page.tsx` (313 lines) -- Recharts integration for DAU/WAU/MAU charts
-- **New dependency**: `recharts` added to `frontend/package.json`
+#### Unit Tests -- BlockService (new, 404 lines)
+`backend/tests/test_block_service.py` -- 22 test cases across 7 classes:
+- TestBlockUser: success, already-blocked idempotency, self-block guard
+- TestUnblockUser: success, not-blocked no-op
+- TestGetBlockedUsers: populated list, empty list
+- TestIsBlocked: true/false paths
+- TestGetBlockStatus: four combinations (blocked-by-me, blocked-by-them, mutual, none)
+- TestGetBlockIds: cache-hit short-circuit, cache-miss DB fallback with write-through
+- TestCacheOperations: Redis hit, miss, error resilience for get/set/invalidate
 
-#### Phase 3 -- System Health Monitoring
-- **Backend**: `backend/app/services/health_service.py` (153 lines) -- database and Redis connection stats, cache hit ratio
-- **Frontend**: `admin/health/page.tsx` (297 lines) -- real-time health dashboard with auto-refresh
+#### Unit Tests -- HealthService (new, 457 lines)
+`backend/tests/test_health_service.py` -- 17 test cases across 5 classes:
+- TestGetDatabaseStats: success, no-rows fallback, exception handling (status: down)
+- TestGetRedisStats: success, minimal-info defaults, connection error
+- TestGetErrorSummary: success, custom time window, no-rows, DB error
+- TestGetComprehensiveHealth: all-healthy, DB-down (unhealthy), Redis-down (unhealthy),
+  degraded (errors but services up), both-down, timestamp validity
+- TestHealthServiceIntegration: singleton existence, default hours parameter
 
-#### Phase 4.2-4.3 -- Deep Performance Optimization
-- **Batch comments endpoint** in `backend/app/api/feed.py` (34 lines added) to eliminate N+1 queries
-- **Virtual scrolling** in `frontend/src/components/chat/chat-window.tsx` using `@tanstack/react-virtual`
-  - 107 lines added, 66 lines removed from the existing chat window
+#### Load Test -- Admin Dashboard (new, 312 lines)
+`backend/tests/load_test_admin.py` -- Locust-based load harness with three user classes:
+- AdminUser (weight default): read-heavy workload hitting all 14 endpoints; task weights
+  mirror expected dashboard usage (stats 5x, user-list 4x, search 3x, filters 3x, health 3x, etc.)
+- AdminWriteUser (weight 1): write operations (PATCH /users/{id}) at lower frequency
+  (5-10 s wait); 404 on random UUIDs is expected and marked as success.
+- DashboardRefreshSimulator: 30-second refresh cycle hitting /stats + /health back-to-back,
+  matching the auto-refresh behaviour of the frontend health page.
+- Custom event hook prints p50/p95/p99 latency and failure rate on test stop.
 
-#### New UI Components
-- `frontend/src/components/ui/progress.tsx` (35 lines) -- Progress bar
-- `frontend/src/components/ui/separator.tsx` (32 lines) -- Horizontal rule / separator
-- `frontend/src/components/ui/table.tsx` (116 lines) -- Accessible data table
+#### Stress Test -- Chat Virtual Scroll (new, 330 lines)
+`frontend/tests/e2e/chat-virtual-scroll-stress.spec.ts` -- Playwright stress suite with
+four describe blocks:
+- Large Message Count Performance: injects 1 000 synthetic messages, asserts render time
+  under 2 s and rendered DOM count under 50 (overscan window only).
+- Rapid Scrolling Stress: 50-iteration scroll loop with per-frame timing; asserts average
+  FPS >= 30. Includes a scroll-to-top sub-test (target < 500 ms).
+- Memory Usage: 10 full top-to-bottom scroll cycles; asserts heap growth < 100 MB.
+  Unmount sub-test verifies cleanup with GC if available.
+- Paint Performance: CDP-based paint-rect and layout metric capture during scroll; ensures
+  virtual scroll limits repaint surface to the visible viewport.
 
-#### Testing
-- `frontend/tests/e2e/admin.spec.ts` expanded with 306 lines of E2E coverage for admin features
+### Previously Shipped -- Admin Dashboard & Performance Optimization (PR #5, Commit 4d6f0b1)
+See previous session entry in conversation-context.md for the full 28-file breakdown.
+Key points: GZipMiddleware, Sentry 10% sampling, Redis block/friendship caches,
+full admin user-management API, analytics (Recharts), health monitoring, batch comments,
+chat virtual scrolling (@tanstack/react-virtual), Progress/Separator/Table UI primitives,
+admin E2E tests.
 
 ### Repository Health
 - **Branch**: `main`, up to date with `origin/main`
-- **Working tree**: Clean, nothing to commit
+- **Working tree**: Clean after this session's commit
 - **No divergence** between local and remote
 
 ## Current Objectives
 
-### Completed (as of 2026-02-04)
+### Completed (cumulative)
 - [x] PR #5 merged to main (admin dashboard + perf optimizations)
-- [x] GZipMiddleware and Sentry sampling tuned
-- [x] Redis caching for blocks and friendships
-- [x] Full admin user-management dashboard
-- [x] Analytics with Recharts charts
-- [x] System health monitoring dashboard
-- [x] Virtual scrolling in chat
-- [x] Batch comments endpoint (N+1 fix)
-- [x] New UI components (Progress, Separator, Table)
-- [x] E2E tests for admin features
-- [x] Context files updated for session continuity
+- [x] Rate limiting added to all 14 admin API endpoints (3-tier strategy)
+- [x] Unit tests for block_service.py (22 cases, cache paths covered)
+- [x] Unit tests for health_service.py (17 cases, degraded/unhealthy states covered)
+- [x] Locust load test for admin dashboard (3 user classes, custom reporting)
+- [x] Playwright stress test for chat virtual scroll (1 000+ messages, FPS, memory, paint)
 
 ### Next Session Priorities
-1. **Admin Dashboard Hardening**
-   - Load-test admin endpoints under concurrent access
-   - Add rate limiting to admin API endpoints
-   - Review admin action audit trail completeness
-
-2. **Performance Validation**
+1. **Remaining Validation (from original follow-up list)**
    - Benchmark GZip compression savings on representative payloads
    - Verify Redis cache hit ratios in a staging environment
-   - Profile chat window scroll performance with 1000+ messages
+   - Run the load test against a staging instance and record baseline p95/p99
 
-3. **Continued Testing & QA**
-   - E2E tests for 2FA login flow (carried from previous sessions)
-   - Test email delivery in production (Resend + Celery)
-   - Verify notification preferences persist across sessions
-
-4. **Documentation**
-   - Admin dashboard user guide (how to use user management, analytics, health)
-   - Rate limiting documentation for API consumers
+2. **Documentation**
+   - Admin dashboard user guide (user management, analytics, health)
+   - Rate limiting documentation for API consumers (include admin tiers)
    - Deployment runbook update with new health endpoints
+
+3. **Carried-forward items**
+   - E2E tests for 2FA login flow
+   - Production email delivery verification (Resend + Celery)
+   - Admin dashboard user guide
 
 ## Environment Status
 
@@ -108,24 +114,38 @@ admin dashboard, analytics, system health monitoring, and deep performance optim
 
 ### Branch & Git State
 - Active branch: `main`
-- HEAD: `4d6f0b1` -- feat(admin): Add comprehensive admin dashboard with performance optimizations (#5)
 - All changes pushed, working tree clean
 - Remote: https://github.com/z3r0fidev/bgc-replica
 
 ## Key Decisions
 
-### Performance Architecture (PR #5)
-1. **GZip at middleware level**: Catches all responses automatically, minimal config
-2. **Sentry 10% sampling**: Full traces are expensive; 10% is sufficient for p99 detection
-3. **Redis TTL strategy**: Block IDs at 5 min (changes infrequently), friendships at 10 min (hot path)
-4. **Virtual scrolling**: @tanstack/react-virtual chosen for React ecosystem fit and low bundle overhead
-5. **Batch comments endpoint**: Single DB round-trip replaces per-post comment fetches
+### Admin Rate Limiting (this session)
+1. **Three-tier model**: Read / Update / Sensitive mirrors the existing pattern used on
+   user-facing endpoints. Sensitive actions (suspend, ban, restore, privilege changes) are
+   capped at 5 req/60 s -- tight enough to block scripted abuse, loose enough that a human
+   admin doing legitimate bulk work will not hit the ceiling.
+2. **No new infrastructure**: Reuses fastapi_limiter + Redis already in production.
+3. **Locust over custom harness**: Locust provides built-in p95/p99 reporting and a
+   browser UI; no value in reimplementing that.
 
-### Admin Dashboard Architecture
-1. **Role-gated pages**: Admin layout checks role before rendering; API enforces independently
-2. **Recharts direct imports**: next/dynamic incompatible with recharts generics; client components import directly
-3. **Admin action logs table**: Audit trail for all destructive admin operations
-4. **Analytics service separation**: analytics_service.py isolated from main profile service for independent scaling
+### Test Design (this session)
+1. **AsyncMock + patch for services**: block_service and health_service both have Redis
+   calls that should not touch a real broker in unit tests. All Redis paths are patched;
+   error-resilience paths are explicitly tested (cache errors return None / are silently
+   swallowed, never crash the request).
+2. **Synthetic message injection for scroll stress**: The chat window is wired to a
+   Zustand store; injecting 1 000 messages via a CustomEvent + window reference avoids
+   standing up a full WebSocket + backend stack just to stress-test the renderer.
+3. **CDP paint-rect overlay**: The paint-performance block uses Chrome DevTools Protocol
+   directly to verify that virtual scrolling limits repaint area. This is not assertable
+   via standard Playwright APIs.
+
+### Performance Architecture (PR #5, still active)
+1. GZip at middleware level
+2. Sentry 10% sampling
+3. Redis TTL strategy: blocks 5 min, friendships 10 min
+4. @tanstack/react-virtual for chat
+5. Batch comments endpoint (IN clause)
 
 ### Previous Session Decisions (still active)
 - 2FA: TOTP-based with pyotp, backup codes bcrypt-hashed
@@ -136,14 +156,20 @@ admin dashboard, analytics, system health monitoring, and deep performance optim
 ## Notes for Next Session
 
 ### Important Context
-- Admin dashboard is live on main; all endpoints and pages are functional
-- Recharts is a new frontend dependency -- keep in mind for bundle size
-- `block_service.py` and `health_service.py` are new backend service modules
-- chat-window.tsx was significantly refactored for virtual scrolling -- review carefully before touching
-- admin_action_logs migration must run before admin endpoints work
+- Admin rate limits are now live. If load-testing against a local dev server, the limits
+  will fire. Use `--headless -u 50 -r 10 -t 60s` to stay within the read-tier ceiling
+  per user while still exercising concurrency.
+- `test_block_service.py` and `test_health_service.py` are pure-mock unit tests. They do
+  not require a running Postgres or Redis instance.
+- `load_test_admin.py` requires `locust` installed (`pip install locust`) and a running
+  backend (`uvicorn app.main:app`).
+- `chat-virtual-scroll-stress.spec.ts` requires the Next.js dev server on port 3000.
+- chat-window.tsx was significantly refactored for virtual scrolling -- review carefully
+  before touching.
+- admin_action_logs migration must have run before admin endpoints will function.
 
 ### Configuration Reminders
 - `RESEND_API_KEY` needed in backend .env for email verification
 - Celery worker must be running for async email tasks
-- Redis must be available for new block/friendship caches and rate limiting
+- Redis must be available for block/friendship caches and rate limiting
 - Sentry DSN required; sampling now at 0.1

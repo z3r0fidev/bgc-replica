@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, desc, asc
 from app.core.database import get_db
@@ -45,7 +46,11 @@ async def log_admin_action(
     return log
 
 
-@router.get("/stats", response_model=AdminStatsOverview)
+@router.get(
+    "/stats",
+    response_model=AdminStatsOverview,
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_admin_stats(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -122,7 +127,11 @@ async def get_admin_stats(
     )
 
 
-@router.get("/users", response_model=AdminUserListResponse)
+@router.get(
+    "/users",
+    response_model=AdminUserListResponse,
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def list_users(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -203,7 +212,11 @@ async def list_users(
     )
 
 
-@router.get("/users/{user_id}", response_model=AdminUserDetail)
+@router.get(
+    "/users/{user_id}",
+    response_model=AdminUserDetail,
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_user(
     user_id: uuid.UUID,
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -231,7 +244,11 @@ async def get_user(
     return user_data
 
 
-@router.patch("/users/{user_id}", response_model=AdminUserDetail)
+@router.patch(
+    "/users/{user_id}",
+    response_model=AdminUserDetail,
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def update_user(
     user_id: uuid.UUID,
     update_data: UpdateUserRequest,
@@ -282,7 +299,10 @@ async def update_user(
     return AdminUserDetail.model_validate(user)
 
 
-@router.post("/users/{user_id}/suspend")
+@router.post(
+    "/users/{user_id}/suspend",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def suspend_user(
     user_id: uuid.UUID,
     request: SuspendUserRequest,
@@ -328,7 +348,10 @@ async def suspend_user(
     }
 
 
-@router.post("/users/{user_id}/ban")
+@router.post(
+    "/users/{user_id}/ban",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def ban_user(
     user_id: uuid.UUID,
     request: BanUserRequest,
@@ -365,7 +388,10 @@ async def ban_user(
     return {"message": "User banned"}
 
 
-@router.post("/users/{user_id}/restore")
+@router.post(
+    "/users/{user_id}/restore",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def restore_user(
     user_id: uuid.UUID,
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -400,7 +426,10 @@ async def restore_user(
     return {"message": "User restored"}
 
 
-@router.post("/users/{user_id}/make-admin")
+@router.post(
+    "/users/{user_id}/make-admin",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def make_admin(
     user_id: uuid.UUID,
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -426,7 +455,10 @@ async def make_admin(
     return {"message": "Admin privileges granted"}
 
 
-@router.post("/users/{user_id}/revoke-admin")
+@router.post(
+    "/users/{user_id}/revoke-admin",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def revoke_admin(
     user_id: uuid.UUID,
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -452,7 +484,11 @@ async def revoke_admin(
     return {"message": "Admin privileges revoked"}
 
 
-@router.get("/action-logs", response_model=AdminActionLogResponse)
+@router.get(
+    "/action-logs",
+    response_model=AdminActionLogResponse,
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_action_logs(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -536,7 +572,10 @@ async def get_action_logs(
 from app.services.analytics_service import analytics_service
 
 
-@router.get("/analytics/overview")
+@router.get(
+    "/analytics/overview",
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_analytics_overview(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -546,7 +585,10 @@ async def get_analytics_overview(
     return await analytics_service.get_analytics_overview(db, days)
 
 
-@router.get("/analytics/users")
+@router.get(
+    "/analytics/users",
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_user_analytics(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -563,7 +605,10 @@ async def get_user_analytics(
     }
 
 
-@router.get("/analytics/engagement")
+@router.get(
+    "/analytics/engagement",
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_engagement_analytics(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -585,7 +630,10 @@ async def get_engagement_analytics(
 from app.services.health_service import health_service
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_system_health(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -594,7 +642,10 @@ async def get_system_health(
     return await health_service.get_comprehensive_health(db)
 
 
-@router.get("/health/database")
+@router.get(
+    "/health/database",
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_database_health(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -603,7 +654,10 @@ async def get_database_health(
     return await health_service.get_database_stats(db)
 
 
-@router.get("/health/redis")
+@router.get(
+    "/health/redis",
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def get_redis_health(
     admin: Annotated[User, Depends(deps.get_admin_user)],
 ):

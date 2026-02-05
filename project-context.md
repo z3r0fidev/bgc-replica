@@ -158,6 +158,11 @@ bgc-replica/
     - Virtual scrolling in chat window (@tanstack/react-virtual)
     - New UI components: Progress, Separator, Table
     - E2E test suite for admin features
+11. **Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests** (2026-02-04, session 2):
+    - Rate limiting on all 14 admin endpoints: Read 30/60s, Update 10/60s, Sensitive 5/60s
+    - Unit tests for block_service (22 cases) and health_service (17 cases)
+    - Locust load test for admin dashboard (3 user classes, p95/p99 reporting)
+    - Playwright stress test for chat virtual scroll (1 000+ messages, FPS, memory, paint)
 
 ### Recent Commits (chronological, newest first)
 - **4d6f0b1** (2026-02-04): feat(admin): Add comprehensive admin dashboard with performance optimizations (#5) -- 28 files, 4961 insertions
@@ -179,12 +184,11 @@ bgc-replica/
 - **Status**: Clean working tree, up to date with origin/main
 
 ### Next Priorities
-1. Load-test and rate-limit admin API endpoints
-2. Benchmark GZip and Redis cache effectiveness in staging
-3. Profile chat virtual-scroll performance at scale
-4. Deploy security features (2FA, email verification) to production
-5. Admin dashboard user guide and deployment runbook updates
-6. E2E tests for 2FA and email verification flows
+1. Benchmark GZip and Redis cache effectiveness in staging
+2. Run load_test_admin.py against staging, record baseline p95/p99
+3. Deploy security features (2FA, email verification) to production
+4. Admin dashboard user guide and deployment runbook updates
+5. E2E tests for 2FA and email verification flows
 
 ## Dependencies
 
@@ -304,22 +308,21 @@ bgc-replica/
 
 1. **Performance**:
    - Profile load time optimization pending (T025)
-   - Chat virtual-scroll performance under 1000+ messages untested at scale
    - GZip and Redis cache hit ratios not yet benchmarked in staging
+   - Load test baseline (p95/p99) for admin endpoints not yet recorded against staging
 2. **Accessibility**: Form focus management needs audit (T028)
 3. **Security / Admin**:
-   - Admin API endpoints lack dedicated rate limiting (user-facing endpoints are protected)
    - Admin action audit trail completeness review pending
 4. **Testing**:
    - E2E test coverage for personals posting incomplete (now in bgc-personals subproject)
    - E2E tests for 2FA login flow needed
    - Email delivery testing in production environment
-   - Admin dashboard load testing under concurrent access needed
 5. **Documentation**:
    - API documentation needs OpenAPI spec export
    - User guide for 2FA setup needed
    - Admin dashboard user guide needed (user management, analytics, health)
    - Deployment runbook needs updating with new health endpoints
+   - Rate limiting documentation for API consumers (admin tiers now included)
 6. **Monitoring**:
    - Production alerting and dashboards not configured
    - Email delivery monitoring needed

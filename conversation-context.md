@@ -1157,6 +1157,153 @@ merged via PR #5.
 
 ---
 
+## Session: 2026-02-04 (Session 2) - Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests
+
+**Duration**: 2026-02-04 (single session)
+**Branch**: `main`
+**Participants**: Developer + Claude Code
+
+### Session Summary
+
+This session closed out the five follow-up items that were explicitly listed as outstanding
+after the PR #5 merge session. No new features were designed; the work was entirely
+hardening, coverage, and validation tooling for the admin dashboard and the two new
+service modules (block_service, health_service) that shipped in PR #5.
+
+### What Was Done
+
+#### 1. Rate Limiting -- backend/app/api/admin.py (modified, +70 / -16 lines)
+
+All 14 admin endpoints now carry a `RateLimiter` dependency drawn from `fastapi_limiter`.
+Three tiers based on operation risk:
+
+- **Read tier (30 req / 60 s)**: GET /stats, GET /users, GET /users/{id}, GET /action-logs,
+  GET /analytics/overview, GET /analytics/users, GET /analytics/engagement,
+  GET /health, GET /health/database, GET /health/redis
+- **Update tier (10 req / 60 s)**: PATCH /users/{id}
+- **Sensitive tier (5 req / 60 s)**: POST suspend, POST ban, POST restore,
+  POST make-admin, POST revoke-admin
+
+No new dependencies. The same Redis-backed limiter used on user-facing endpoints is reused.
+
+#### 2. Unit Tests -- backend/tests/test_block_service.py (new, 404 lines, 22 test cases)
+
+Seven test classes exercising every public method on BlockService plus the private cache
+layer:
+
+- **TestBlockUser**: Happy path (add + cache-invalidate for both users), idempotent
+  re-block (returns existing row, no DB write), self-block ValueError guard.
+- **TestUnblockUser**: Successful delete (rowcount 1), not-blocked no-op (rowcount 0).
+- **TestGetBlockedUsers**: Populated result with user details, empty list.
+- **TestIsBlocked**: True when row exists, False when None.
+- **TestGetBlockStatus**: All four combinations -- blocked-by-me, blocked-by-them,
+  mutual, neither.
+- **TestGetBlockIds**: Cache hit returns immediately without DB call; cache miss fetches
+  bidirectional blocks from DB and writes back to cache.
+- **TestCacheOperations**: Redis hit/miss/error for _get_cached_block_ids;
+  success/error for _cache_block_ids; success/error for _invalidate_block_cache.
+  All error paths verify the service returns a safe default (None or no-op) rather than
+  propagating the exception.
+
+#### 3. Unit Tests -- backend/tests/test_health_service.py (new, 457 lines, 17 test cases)
+
+Five test classes covering every method on HealthService:
+
+- **TestGetDatabaseStats**: Successful connection-pool + cache-hit-ratio retrieval;
+  no-rows fallback (zeros); exception path returns status: down with error message.
+- **TestGetRedisStats**: Full info dict; empty info (all defaults); connection error.
+- **TestGetErrorSummary**: Success with row data; custom hours parameter; no-rows;
+  DB exception.
+- **TestGetComprehensiveHealth**: All-healthy (status: healthy); DB down (unhealthy);
+  Redis down (unhealthy); degraded (services up but error_count > 0); both down;
+  timestamp ISO-format validity.
+- **TestHealthServiceIntegration**: Singleton module-level instance check; default
+  hours parameter verification.
+
+#### 4. Load Test -- backend/tests/load_test_admin.py (new, 312 lines)
+
+Locust harness designed to be run against a real FastAPI instance:
+
+- **AdminUser** (default weight): Read-heavy. Task weights are set to mirror expected
+  dashboard traffic -- stats (5x), user list (4x), search (3x), filters (3x), health (3x),
+  action-logs (2x), each analytics endpoint (2x each). All responses are validated for
+  expected shape; 429s are recorded as failures for rate-limit visibility.
+- **AdminWriteUser** (weight 1): Fires PATCH /users/{id} at 5-10 s intervals with
+  rotating synthetic UUIDs. 404 is expected and counted as success; only 429 is a failure.
+- **DashboardRefreshSimulator**: Emulates the frontend health page's 30 s auto-refresh
+  by hitting /stats and /health in sequence on a 25-35 s wait cycle.
+- Custom `on_test_stop` event hook prints total requests, failure count, failure rate,
+  avg latency, p95, and p99.
+
+#### 5. Stress Test -- frontend/tests/e2e/chat-virtual-scroll-stress.spec.ts (new, 330 lines)
+
+Playwright E2E stress suite in four describe blocks:
+
+- **Large Message Count Performance**: Injects 1 000 synthetic messages via a
+  CustomEvent + window reference (avoids needing a full WebSocket stack). Asserts
+  render time < 2 s and DOM element count < 50 (only the overscan window is rendered).
+- **Rapid Scrolling Stress**: 50-iteration RAF-based scroll loop alternating top/bottom.
+  Frame times are collected inside evaluate(); average FPS must be >= 30. Sub-test
+  verifies scroll-to-top completes in < 500 ms.
+- **Memory Usage**: 10 full top-to-bottom scroll cycles; heap growth must be < 100 MB.
+  Unmount sub-test navigates away, optionally calls gc(), and checks retained memory
+  stays under 50 MB.
+- **Paint Performance**: Opens a CDP session, enables Overlay.setShowPaintRects, and
+  captures Performance.getMetrics around a scroll. Verifies virtual scroll limits
+  repaint to the visible area.
+
+### Key Technical Decisions
+
+1. **Three-tier rate limiting**: Read / Update / Sensitive mirrors the existing pattern on
+   user-facing endpoints. 5 req/60 s on sensitive operations is tight enough to block
+   automation but loose enough for legitimate batch admin work.
+2. **Pure-mock unit tests**: block_service and health_service both reach out to Redis.
+   All Redis calls are patched; error-resilience paths are explicitly exercised. No
+   test database or broker required.
+3. **Locust over custom HTTP harness**: Locust ships p95/p99 reporting and an optional
+   browser UI out of the box. The three user classes map directly to the three traffic
+   patterns the dashboard actually produces.
+4. **Synthetic message injection for scroll stress**: The chat window reads from a
+   Zustand store. Injecting messages via CustomEvent avoids spinning up WebSocket +
+   backend just to stress-test the renderer.
+5. **CDP for paint verification**: Playwright does not expose paint-rect or layout
+   metrics natively. The CDP session is the only way to assert that virtual scrolling
+   is actually limiting repaint surface.
+
+### Files Changed
+
+| File | Status | Lines |
+|------|--------|-------|
+| `backend/app/api/admin.py` | Modified | +70 / -16 |
+| `backend/tests/test_block_service.py` | New | 404 |
+| `backend/tests/test_health_service.py` | New | 457 |
+| `backend/tests/load_test_admin.py` | New | 312 |
+| `frontend/tests/e2e/chat-virtual-scroll-stress.spec.ts` | New | 330 |
+
+**Total**: 5 files, 1 503 new lines of test and configuration code.
+
+### Outstanding Items (carried forward)
+
+- [ ] Benchmark GZip compression savings on representative payloads
+- [ ] Verify Redis cache hit ratios in staging
+- [ ] Run load_test_admin.py against staging, record baseline p95/p99
+- [ ] Admin dashboard user guide
+- [ ] Deployment runbook update (health endpoints)
+- [ ] E2E tests for 2FA login flow
+- [ ] Production email delivery verification (Resend + Celery)
+
+### Session Statistics
+
+- **Files Modified**: 1
+- **Files Created**: 4
+- **Lines Added (net)**: ~1 503
+- **Unit Test Cases Added**: 39 (22 block_service + 17 health_service)
+- **Load Test User Classes**: 3
+- **Stress Test Describe Blocks**: 4
+- **Admin Endpoints Rate-Limited**: 14
+
+---
+
 ## Session: [Previous Sessions]
 
 *To be populated with historical session data when available*
