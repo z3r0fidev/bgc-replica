@@ -2,6 +2,99 @@
 
 ---
 
+## Session: 2026-02-05 (Session 3) - ESLint Warning Cleanup
+
+### Session Information
+- **Date**: 2026-02-05
+- **Duration**: Single session
+- **Branch**: `main`
+- **Focus**: Eliminate all remaining ESLint warnings in the frontend codebase
+
+### High-Level Summary
+
+All 50 ESLint warnings remaining in the frontend were resolved in a single pass across
+60 files. No new features, backend changes, or architectural decisions were required.
+The work was entirely mechanical lint remediation. The lint output is now clean:
+0 errors, 0 warnings. This completes the lint story that began with the 49-error fix
+pass prior to the admin-hardening session.
+
+### Files Changed
+
+| Metric | Value |
+|--------|-------|
+| Files modified | 60 |
+| Files created | 0 |
+| Insertions | 169 |
+| Deletions | 148 |
+| Net change | +21 lines |
+| Backend files touched | 0 |
+
+All 60 files are in `frontend/`. The changes span pages, components, hooks, libs, and
+E2E test specs.
+
+### Warning Categories and Fix Counts
+
+| Rule / Category | Warnings Fixed | Approach |
+|-----------------|----------------|----------|
+| Unused variables (`catch` bindings) | ~14 | Changed `catch (error)` to bare `catch` |
+| Unused imports | ~6 | Removed dead import statements |
+| Unused destructured props / state | ~3 | Removed or converted to setter-only |
+| `@next/next/no-img-element` | 14 | Targeted eslint-disable (external URLs) |
+| `jsx-a11y/alt-text` | 1 | Targeted eslint-disable (Lucide icon false positive) |
+| `react-hooks/exhaustive-deps` | 4 | Targeted eslint-disable with rationale (stable refs) |
+| `react-hooks/incompatible-library` | 1 | Targeted eslint-disable (TanStack Virtual false positive) |
+| Stale eslint-disable directives | ~2 | Removed directives for rules no longer firing |
+
+### Key Decisions and Rationale
+
+1. **Targeted per-line suppressions over global config changes**: Every `eslint-disable`
+   comment is placed at the exact line, not in `.eslintrc`. Keeps the suppression
+   surface auditable and minimal.
+2. **Bare `catch {}` over `catch (_)`**: Matches the project's existing convention.
+   Supported since ES2019; no transpilation concern with the current Next.js target.
+3. **No `next/image` migration in this pass**: External-URL `<img>` elements need
+   `images.remotePatterns` configuration before they can be converted. That is a
+   separate scope item. The suppressions are the correct short-term fix.
+4. **No hook dependency restructuring**: The `exhaustive-deps` suppressions were chosen
+   because the affected effects/callbacks have intentionally stable references. Adding
+   the flagged deps would cause unnecessary re-renders.
+
+### Outstanding Tasks / Follow-Up Items
+
+All items below are carried forward unchanged from the previous session:
+
+- [ ] Benchmark GZip compression savings on representative payloads
+- [ ] Verify Redis cache hit ratios in staging
+- [ ] Run load_test_admin.py against staging, record baseline p95/p99
+- [ ] Admin dashboard user guide
+- [ ] Deployment runbook update (health endpoints)
+- [ ] E2E tests for 2FA login flow
+- [ ] Production email delivery verification (Resend + Celery)
+
+A new item is added for future consideration:
+
+- [ ] Migrate external-URL `<img>` elements to `next/image` (requires
+  `images.remotePatterns` configuration; would remove the 14 `no-img-element`
+  suppressions)
+
+### Blockers / Challenges
+
+None. All warning categories were straightforward to resolve. The only judgment calls
+were around the `exhaustive-deps` suppressions, which were resolved by adding inline
+rationale comments so future developers understand why the deps are intentionally
+omitted.
+
+### Session Statistics
+
+- **Files Modified**: 60
+- **Files Created**: 0
+- **Net Lines Added**: +21 (169 insertions, 148 deletions)
+- **ESLint Warnings Before**: 50
+- **ESLint Warnings After**: 0
+- **ESLint Errors Before / After**: 0 / 0
+
+---
+
 ## Session: 2026-02-04 (Session 2) - Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests
 
 ### Session Information

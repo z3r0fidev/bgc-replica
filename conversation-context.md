@@ -1304,6 +1304,139 @@ Playwright E2E stress suite in four describe blocks:
 
 ---
 
+## Session: 2026-02-05 (Session 3) - ESLint Warning Cleanup
+
+**Duration**: 2026-02-05 (single session)
+**Branch**: `main`
+**Participants**: Developer + Claude Code
+
+### Session Summary
+
+This session eliminated all 50 remaining ESLint warnings in the frontend codebase.
+No new features, architectural changes, or backend modifications were made. The
+entire scope was mechanical lint remediation across 60 files (169 insertions,
+148 deletions). The lint output moved from "0 errors, 50 warnings" to "0 errors,
+0 warnings".
+
+### Warning Categories Addressed
+
+#### 1. Unused Variables and Imports (~20 fixes)
+The most common category. Two sub-patterns:
+
+- **Bare `catch` blocks**: `catch (error)` / `catch (err)` / `catch (e)` changed to
+  plain `catch` where the caught value was never referenced. Affected files across
+  gallery (albums/[id], albums, gallery root, shared/album/[token]), profile edit,
+  sentry-example-page, ShareDialog, ProfileEditForm, and MediaLightbox.
+- **Unused imports removed**: `ProfileUpdateFormData` from profile/edit, `Badge` and
+  `Info` from topical/[slug], `useCallback` from chat-window, `cn` from thread-row.
+- **Unused destructured props**: `albumId` removed from SortableAlbumGrid props spread.
+- **Unused state variable**: `pendingChanges` in notifications/page changed to
+  `[, setPendingChanges]` (setter-only pattern).
+- **Unused state binding**: `page.tsx` root changed to `const [isLoggedIn] = useState(...)`.
+
+#### 2. @next/next/no-img-element (14 fixes)
+Native `<img>` elements remain necessary when the image source is an external URL not
+under the application's control (user-generated content, avatar placeholders, etc.).
+A targeted `eslint-disable-next-line @next/next/no-img-element` comment was added
+directly above each occurrence. Files: media/original, settings/security (base64 data
+URL), stories, users/[id], users (2 instances), feed-item, AlbumCard, GalleryGrid,
+MediaLightbox (2 instances), SortableAlbumGrid (2 instances), media-gallery.
+
+#### 3. jsx-a11y/alt-text (1 fix)
+A Lucide `<Image />` icon component in profile/[id]/gallery was triggering the alt-text
+rule because its rendered output is an SVG `<img>`-like element. This is a known false
+positive for icon libraries. Suppressed with a targeted disable comment.
+
+#### 4. react-hooks/exhaustive-deps (4 fixes)
+Three cases where the dependency array was intentionally incomplete:
+- `users/page.tsx`: Initial-load effect that should run once, not on every filter change.
+- `GalleryGrid.tsx`: A complex virtualization expression whose referential identity is
+  stable across renders.
+- `MediaUploader.tsx`: Callback references that are stable for the lifetime of the
+  component.
+All three were suppressed with targeted comments and a brief inline rationale.
+
+#### 5. react-hooks/incompatible-library (1 fix)
+`thread-list.tsx` uses `@tanstack/react-virtual`, which is flagged by this rule as
+incompatible with the React version detected by the linter. This is a known linter
+false positive for TanStack Virtual. Suppressed with a targeted disable comment.
+
+#### 6. Stale eslint-disable directives removed
+`MediaLightbox.tsx` had eslint-disable comments for rules that were no longer firing.
+These were removed to keep the suppression surface minimal.
+
+### Files Changed (60 files)
+
+All changes are in `frontend/`. Breakdown by directory:
+
+| Directory | Files |
+|-----------|-------|
+| `src/app/(auth)/` | 2 |
+| `src/app/(forums)/` | 1 |
+| `src/app/(protected)/admin/` | 3 |
+| `src/app/(protected)/chat/` | 1 |
+| `src/app/(protected)/connections/` | 1 |
+| `src/app/(protected)/feed/` | 1 |
+| `src/app/(protected)/forums/` | 3 |
+| `src/app/(protected)/gallery/` | 3 |
+| `src/app/(protected)/groups/` | 2 |
+| `src/app/(protected)/layout.tsx` | 1 |
+| `src/app/(protected)/media/` | 1 |
+| `src/app/(protected)/profile/` | 2 |
+| `src/app/(protected)/rooms/` | 2 |
+| `src/app/(protected)/settings/` | 2 |
+| `src/app/(protected)/stories/` | 1 |
+| `src/app/(protected)/topical/` | 1 |
+| `src/app/(protected)/users/` | 2 |
+| `src/app/` (root pages) | 4 |
+| `src/components/chat/` | 1 |
+| `src/components/feed/` | 1 |
+| `src/components/forums/` | 3 |
+| `src/components/gallery/` | 5 |
+| `src/components/layout/` | 1 |
+| `src/components/profile/` | 3 |
+| `src/components/pwa/` | 1 |
+| `src/hooks/` | 3 |
+| `src/lib/` | 3 |
+| `tests/e2e/` | 5 |
+
+### Key Decisions
+
+1. **Targeted suppressions over global config**: Each `eslint-disable-next-line` is
+   placed at the exact line that needs it, not added to `.eslintrc` or `.eslintignore`.
+   This keeps the suppression surface auditable and minimal.
+2. **Bare `catch` over `catch (_)`**: The project's existing style for ignored catch
+   bindings uses the bare `catch {}` syntax (supported since ES2019). This is
+   consistent with the rest of the codebase.
+3. **No `next/image` migration in this pass**: Converting external-URL `<img>` elements
+   to `next/image` requires configuring `next.config.ts` with an `images.remotePatterns`
+   list. That is a separate scope item. The current suppressions are the correct
+   short-term fix.
+4. **No hook dependency changes**: The `exhaustive-deps` suppressions were chosen over
+   restructuring the hooks. The affected effects and callbacks have stable references
+   by design; adding the flagged deps would introduce unnecessary re-renders.
+
+### Outstanding Items (carried forward, unchanged)
+
+- [ ] Benchmark GZip compression savings on representative payloads
+- [ ] Verify Redis cache hit ratios in staging
+- [ ] Run load_test_admin.py against staging, record baseline p95/p99
+- [ ] Admin dashboard user guide
+- [ ] Deployment runbook update (health endpoints)
+- [ ] E2E tests for 2FA login flow
+- [ ] Production email delivery verification (Resend + Celery)
+
+### Session Statistics
+
+- **Files Modified**: 60
+- **Files Created**: 0
+- **Net Lines Changed**: +169 / -148 (net +21)
+- **Warnings Eliminated**: 50
+- **Errors Introduced**: 0
+- **Backend Files Touched**: 0
+
+---
+
 ## Session: [Previous Sessions]
 
 *To be populated with historical session data when available*

@@ -163,6 +163,12 @@ bgc-replica/
     - Unit tests for block_service (22 cases) and health_service (17 cases)
     - Locust load test for admin dashboard (3 user classes, p95/p99 reporting)
     - Playwright stress test for chat virtual scroll (1 000+ messages, FPS, memory, paint)
+12. **ESLint Warning Cleanup** (2026-02-05, session 3):
+    - Resolved all 50 remaining ESLint warnings across 60 frontend files
+    - Categories addressed: unused variables (~20), @next/next/no-img-element (14),
+      jsx-a11y/alt-text (1), react-hooks/exhaustive-deps (4), react-hooks/incompatible-library (1),
+      plus additional unused imports and stale eslint-disable directives
+    - Lint output is now 0 errors, 0 warnings
 
 ### Recent Commits (chronological, newest first)
 - **4d6f0b1** (2026-02-04): feat(admin): Add comprehensive admin dashboard with performance optimizations (#5) -- 28 files, 4961 insertions
@@ -180,8 +186,8 @@ bgc-replica/
 
 ### Active Branch
 - **Branch**: `main`
-- **HEAD**: `4d6f0b1`
-- **Status**: Clean working tree, up to date with origin/main
+- **HEAD**: ESLint cleanup commit (session 3, 2026-02-05); 1 commit ahead of origin/main
+- **Status**: Clean working tree after lint commit; push pending
 
 ### Next Priorities
 1. Benchmark GZip and Redis cache effectiveness in staging
@@ -317,13 +323,18 @@ bgc-replica/
    - E2E test coverage for personals posting incomplete (now in bgc-personals subproject)
    - E2E tests for 2FA login flow needed
    - Email delivery testing in production environment
-5. **Documentation**:
+5. **Lint / Code Quality**:
+   - Lint is now clean (0 errors, 0 warnings) as of 2026-02-05.
+   - Several files carry targeted `eslint-disable-next-line` comments for legitimate
+     suppressions. These should be revisited if the underlying patterns change (e.g.,
+     migrating external images to next/image with a configured domain list).
+6. **Documentation**:
    - API documentation needs OpenAPI spec export
    - User guide for 2FA setup needed
    - Admin dashboard user guide needed (user management, analytics, health)
    - Deployment runbook needs updating with new health endpoints
    - Rate limiting documentation for API consumers (admin tiers now included)
-6. **Monitoring**:
+7. **Monitoring**:
    - Production alerting and dashboards not configured
    - Email delivery monitoring needed
    - 2FA adoption rate tracking needed

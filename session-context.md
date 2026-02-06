@@ -1,13 +1,19 @@
 # Session Context
 
-**Last Updated**: 2026-02-04 (Session 2 Closing)
+**Last Updated**: 2026-02-05 (Session 3 Closing)
 **Current Branch**: `main`
-**Session Status**: Closed - Admin hardening (rate limits, unit tests, load/stress tests) committed
+**Session Status**: Closed - All 50 ESLint warnings resolved across 60 frontend files
 
 ## Current State
 
-### Latest Commit -- Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests
-5 files changed in this session's commit (1 modified, 4 new). All items close out the
+### Latest Commit -- ESLint Warning Cleanup (60 files, 0 errors, 0 warnings)
+60 frontend files modified to eliminate every remaining ESLint warning. The codebase
+now produces a clean lint output: 0 errors, 0 warnings. This follows the previous
+session's admin-hardening commit (240728c) and completes the lint story that began
+with the 49-error fix pass prior to that.
+
+### Previous Commit -- Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests
+5 files changed in that session's commit (1 modified, 4 new). All items close out the
 "Outstanding Tasks / Follow-Up Items" list that was carried forward from the PR #5 closure session.
 
 #### Rate Limiting on admin.py (modified)
@@ -72,9 +78,9 @@ chat virtual scrolling (@tanstack/react-virtual), Progress/Separator/Table UI pr
 admin E2E tests.
 
 ### Repository Health
-- **Branch**: `main`, up to date with `origin/main`
+- **Branch**: `main`, 1 commit ahead of `origin/main` (ESLint cleanup, not yet pushed)
 - **Working tree**: Clean after this session's commit
-- **No divergence** between local and remote
+- **Lint status**: 0 errors, 0 warnings (was 0 errors, 50 warnings before this session)
 
 ## Current Objectives
 
@@ -85,6 +91,7 @@ admin E2E tests.
 - [x] Unit tests for health_service.py (17 cases, degraded/unhealthy states covered)
 - [x] Locust load test for admin dashboard (3 user classes, custom reporting)
 - [x] Playwright stress test for chat virtual scroll (1 000+ messages, FPS, memory, paint)
+- [x] All 50 ESLint warnings eliminated (60 files, 0 errors, 0 warnings)
 
 ### Next Session Priorities
 1. **Remaining Validation (from original follow-up list)**
@@ -156,6 +163,10 @@ admin E2E tests.
 ## Notes for Next Session
 
 ### Important Context
+- **Lint is clean.** `cd frontend && npm run lint` now exits with 0 errors and 0 warnings.
+  Several files carry targeted `eslint-disable-next-line` comments for legitimate
+  suppressions (external-URL img elements, stable-reference hooks deps, TanStack Virtual
+  known limitation). Do not remove these without re-evaluating the underlying pattern.
 - Admin rate limits are now live. If load-testing against a local dev server, the limits
   will fire. Use `--headless -u 50 -r 10 -t 60s` to stay within the read-tier ceiling
   per user while still exercising concurrency.
