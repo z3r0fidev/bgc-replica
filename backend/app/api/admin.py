@@ -663,3 +663,21 @@ async def get_redis_health(
 ):
     """Get Redis health status."""
     return await health_service.get_redis_stats()
+
+
+@router.get(
+    "/health/cache",
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
+async def get_cache_health(
+    admin: Annotated[User, Depends(deps.get_admin_user)],
+):
+    """Get Redis cache hit ratio and key statistics.
+
+    Returns overall hit/miss ratios and per-pattern key counts for:
+    - blocks: User block relationships (target: >80% hit ratio)
+    - friendship: Friendship status cache (target: >70% hit ratio)
+    - sessions: User session data
+    - rate_limits: Rate limiting counters
+    """
+    return await health_service.get_cache_stats()
