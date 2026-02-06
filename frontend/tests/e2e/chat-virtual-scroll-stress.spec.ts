@@ -15,7 +15,6 @@ const LARGE_MESSAGE_COUNT = 1000;
 const RAPID_SCROLL_ITERATIONS = 50;
 const ACCEPTABLE_FPS = 30;
 const MAX_MEMORY_GROWTH_MB = 100;
-const MAX_PAINT_TIME_MS = 50;
 
 test.describe('Chat Virtual Scroll Stress Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -38,7 +37,7 @@ test.describe('Chat Virtual Scroll Stress Tests', () => {
       });
 
       // Inject large message set via JavaScript
-      const startTime = await injectLargeMessageSet(page, LARGE_MESSAGE_COUNT);
+      await injectLargeMessageSet(page, LARGE_MESSAGE_COUNT);
 
       // Measure time to render
       const renderTime = await measureRenderTime(page);
@@ -177,8 +176,9 @@ test.describe('Chat Virtual Scroll Stress Tests', () => {
 
       // Force garbage collection if available
       await page.evaluate(() => {
-        if ((window as any).gc) {
-          (window as any).gc();
+        const win = window as Window & { gc?: () => void };
+        if (win.gc) {
+          win.gc();
         }
       });
 
@@ -254,7 +254,7 @@ async function injectLargeMessageSet(page: Page, count: number): Promise<number>
     window.dispatchEvent(event);
 
     // Store messages for later access
-    (window as any).__testMessages = messages;
+    (window as { __testMessages?: typeof messages }).__testMessages = messages;
   }, count);
 
   return startTime;
@@ -322,8 +322,9 @@ async function scrollToPosition(page: Page, position: number): Promise<void> {
 
 async function getHeapUsage(page: Page): Promise<number> {
   return page.evaluate(() => {
-    if ((performance as any).memory) {
-      return (performance as any).memory.usedJSHeapSize;
+    const perf = performance as Performance & { memory?: { usedJSHeapSize: number } };
+    if (perf.memory) {
+      return perf.memory.usedJSHeapSize;
     }
     return 0;
   });

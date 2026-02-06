@@ -15,7 +15,7 @@ interface FeedItemProps {
 import { useGestures } from "@/hooks/useGestures";
 
 export function FeedItem({ post, style }: FeedItemProps) {
-  const { handleDragEnd, swipeDirection, resetSwipe } = useGestures();
+  const { handleDragEnd, swipeDirection } = useGestures();
 
   return (
     <motion.div
@@ -48,6 +48,7 @@ export function FeedItem({ post, style }: FeedItemProps) {
         <CardContent className="px-4 py-2">
           <p className="text-base leading-relaxed">{post.content}</p>
           {post.image_url && (
+            // eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads
             <img
               src={post.image_url}
               alt="Attachment"

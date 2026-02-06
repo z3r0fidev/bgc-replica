@@ -46,6 +46,7 @@ export function AlbumCard({ album, onEdit, onDelete, onShare }: AlbumCardProps) 
           {/* Cover image */}
           <div className="aspect-video bg-muted relative overflow-hidden">
             {album.cover_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads
               <img
                 src={album.cover_url}
                 alt={album.title}

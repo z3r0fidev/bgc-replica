@@ -1,12 +1,6 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Admin Dashboard", () => {
-  // Helper to check if we have admin access
-  async function hasAdminAccess(page: ReturnType<typeof test.info>["project"]["use"]["page"]) {
-    await page.goto("/admin");
-    // If redirected away from admin, we don't have access
-    return !page.url().includes("/login") && page.url().includes("/admin");
-  }
 
   test.describe("Access Control", () => {
     test("non-admin users are redirected away from admin area", async ({ page }) => {

@@ -6,7 +6,7 @@ import { ChatWindow } from "@/components/chat/chat-window";
 
 export default function RoomDetailPage() {
   const params = useParams();
-  const [room, setRoom] = useState<any>(null);
+  const [room, setRoom] = useState<{ id: string; name: string } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function RoomDetailPage() {
         });
         if (res.ok) {
           const rooms = await res.json();
-          const currentRoom = rooms.find((r: any) => r.id === params.id);
+          const currentRoom = rooms.find((r: { id: string }) => r.id === params.id);
           setRoom(currentRoom);
         }
 

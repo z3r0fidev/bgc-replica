@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Advanced Search', () => {
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ context }) => {
     // Authenticate the user for each test
     await context.addCookies([{
       name: 'access_token',

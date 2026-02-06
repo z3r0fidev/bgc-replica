@@ -12,8 +12,6 @@ import {
   Trash2,
   ZoomIn,
   ZoomOut,
-  Play,
-  Pause,
 } from "lucide-react";
 import type { GalleryMedia } from "@/types/gallery";
 
@@ -45,6 +43,7 @@ export function MediaLightbox({
   // Reset state when opening
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentIndex(initialIndex);
       setZoom(1);
       setIsPlaying(false);
@@ -114,7 +113,7 @@ export function MediaLightbox({
           title: currentItem.filename || "Shared media",
           url: currentItem.url,
         });
-      } catch (err) {
+      } catch {
         // User cancelled or error
       }
     } else {
@@ -246,6 +245,7 @@ export function MediaLightbox({
             }}
           >
             {currentItem.type === "IMAGE" ? (
+              // eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads
               <img
                 src={currentItem.url}
                 alt={currentItem.filename || "Gallery image"}
@@ -299,6 +299,7 @@ export function MediaLightbox({
                   `}
                   onClick={() => setCurrentIndex(index)}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
                   <img
                     src={item.thumbnail_url || item.url}
                     alt=""

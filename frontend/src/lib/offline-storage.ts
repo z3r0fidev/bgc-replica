@@ -29,7 +29,7 @@ export class OfflineStorage {
     });
   }
 
-  async saveFeed(posts: any[]) {
+  async saveFeed(posts: { id: string }[]) {
     await this.init();
     if (!this.db) return;
 
@@ -42,15 +42,15 @@ export class OfflineStorage {
       posts.slice(0, 50).forEach((post) => {
         store.put(post);
       });
-    } catch (e: any) {
-      if (e.name === "QuotaExceededError") {
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === "QuotaExceededError") {
         console.error("Offline storage quota exceeded");
         // T021 logic: show warning or prune more aggressively
       }
     }
   }
 
-  async getFeed(): Promise<any[]> {
+  async getFeed(): Promise<{ id: string }[]> {
     await this.init();
     const db = this.db;
     if (!db) return [];

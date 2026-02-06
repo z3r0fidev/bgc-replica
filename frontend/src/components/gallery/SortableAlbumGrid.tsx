@@ -99,6 +99,7 @@ function SortableItem({
       )}
 
       {/* Thumbnail */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
       <img
         src={item.thumbnail_url || item.url}
         alt={item.filename || "Gallery item"}
@@ -142,6 +143,7 @@ function SortableItem({
 function MediaItemOverlay({ item }: { item: GalleryMedia }) {
   return (
     <div className="aspect-square rounded-lg overflow-hidden shadow-2xl ring-2 ring-primary bg-muted w-[150px]">
+      {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
       <img
         src={item.thumbnail_url || item.url}
         alt={item.filename || "Gallery item"}
@@ -160,7 +162,6 @@ function MediaItemOverlay({ item }: { item: GalleryMedia }) {
 
 export function SortableAlbumGrid({
   items,
-  albumId,
   onReorder,
   onItemClick,
   showPrivacyBadge = false,

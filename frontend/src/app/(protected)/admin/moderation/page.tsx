@@ -73,6 +73,7 @@ export default function ModerationPage() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, typeFilter]);
 
   const fetchData = async () => {

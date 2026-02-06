@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 export default function ChatPage() {
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<{ id: string }[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
 

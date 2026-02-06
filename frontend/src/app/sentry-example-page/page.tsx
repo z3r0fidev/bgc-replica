@@ -33,7 +33,7 @@ export default function Page() {
         } else {
           setIsConnected(true);
         }
-      } catch (e) {
+      } catch {
         setIsConnected(false);
       }
     }

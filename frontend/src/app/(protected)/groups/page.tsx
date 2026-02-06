@@ -8,7 +8,7 @@ import { Users, Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function GroupsPage() {
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<{ id: string; name: string; description: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
 

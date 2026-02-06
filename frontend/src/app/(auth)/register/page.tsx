@@ -55,8 +55,8 @@ export default function RegisterPage() {
 
       toast.success("Account created successfully!")
       router.push("/login")
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Registration failed")
     } finally {
       setIsLoading(false)
     }

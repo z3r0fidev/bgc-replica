@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, User, Clock } from "lucide-react";
 
 export default function CategoryThreadsPage() {
   const params = useParams();
-  const [threads, setThreads] = useState<any[]>([]);
+  const [threads, setThreads] = useState<{ id: string; title: string; last_activity: string; author_id: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
