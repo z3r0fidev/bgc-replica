@@ -82,31 +82,39 @@ ENDPOINTS = [
 
 
 def measure_request(
-    client: httpx.Client,
     url: str,
     headers: dict,
     samples: int = 5,
+    measure_wire_size: bool = False,
 ) -> tuple[list[float], list[int]]:
-    """Make multiple requests and collect timing and size data."""
+    """Make multiple requests and collect timing and size data.
+
+    Args:
+        url: URL to request
+        headers: Request headers
+        samples: Number of samples
+        measure_wire_size: If True, measure raw wire size (for gzip tests)
+    """
+    import urllib.request
+
     latencies = []
     sizes = []
 
     for _ in range(samples):
         start = time.perf_counter()
         try:
-            response = client.get(url, headers=headers, timeout=30.0)
-            elapsed = (time.perf_counter() - start) * 1000  # ms
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=30.0) as response:
+                elapsed = (time.perf_counter() - start) * 1000  # ms
 
-            if response.status_code == 200:
-                latencies.append(elapsed)
-                sizes.append(len(response.content))
-            elif response.status_code == 401:
-                # Auth required but not provided
-                return [], []
-            else:
-                # Non-200 response, skip
-                continue
-        except httpx.RequestError:
+                if response.status == 200:
+                    latencies.append(elapsed)
+                    # Read the raw response to measure actual wire size
+                    content = response.read()
+                    sizes.append(len(content))
+                elif response.status == 401:
+                    return [], []
+        except Exception:
             continue
 
     return latencies, sizes
@@ -141,44 +149,43 @@ def benchmark_endpoint(
     if token:
         base_headers["Authorization"] = f"Bearer {token}"
 
-    with httpx.Client() as client:
-        # Measure without compression
-        raw_headers = {**base_headers, "Accept-Encoding": "identity"}
-        raw_latencies, raw_sizes = measure_request(client, url, raw_headers, samples)
+    # Measure without compression
+    raw_headers = {**base_headers, "Accept-Encoding": "identity"}
+    raw_latencies, raw_sizes = measure_request(url, raw_headers, samples)
 
-        if not raw_latencies:
-            return BenchmarkResult(
-                endpoint=path,
-                raw_size=0,
-                compressed_size=0,
-                compression_ratio=0.0,
-                raw_latency_ms=0.0,
-                compressed_latency_ms=0.0,
-                latency_overhead_ms=0.0,
-                samples=0,
-                success=False,
-                error="Failed to get successful response (check auth or endpoint availability)",
-            )
-
-        # Measure with compression
-        compressed_headers = {**base_headers, "Accept-Encoding": "gzip"}
-        compressed_latencies, compressed_sizes = measure_request(
-            client, url, compressed_headers, samples
+    if not raw_latencies:
+        return BenchmarkResult(
+            endpoint=path,
+            raw_size=0,
+            compressed_size=0,
+            compression_ratio=0.0,
+            raw_latency_ms=0.0,
+            compressed_latency_ms=0.0,
+            latency_overhead_ms=0.0,
+            samples=0,
+            success=False,
+            error="Failed to get successful response (check auth or endpoint availability)",
         )
 
-        if not compressed_latencies:
-            return BenchmarkResult(
-                endpoint=path,
-                raw_size=int(statistics.mean(raw_sizes)),
-                compressed_size=0,
-                compression_ratio=0.0,
-                raw_latency_ms=statistics.mean(raw_latencies),
-                compressed_latency_ms=0.0,
-                latency_overhead_ms=0.0,
-                samples=len(raw_latencies),
-                success=False,
-                error="Compressed request failed",
-            )
+    # Measure with compression (raw wire size)
+    compressed_headers = {**base_headers, "Accept-Encoding": "gzip"}
+    compressed_latencies, compressed_sizes = measure_request(
+        url, compressed_headers, samples
+    )
+
+    if not compressed_latencies:
+        return BenchmarkResult(
+            endpoint=path,
+            raw_size=int(statistics.mean(raw_sizes)),
+            compressed_size=0,
+            compression_ratio=0.0,
+            raw_latency_ms=statistics.mean(raw_latencies),
+            compressed_latency_ms=0.0,
+            latency_overhead_ms=0.0,
+            samples=len(raw_latencies),
+            success=False,
+            error="Compressed request failed",
+        )
 
     raw_size = int(statistics.mean(raw_sizes))
     compressed_size = int(statistics.mean(compressed_sizes))
@@ -224,7 +231,7 @@ def generate_markdown_report(results: list[BenchmarkResult], host: str) -> str:
         "",
         "## Summary",
         "",
-        "| Endpoint | Raw Size | Compressed | Savings | Latency Δ | Status |",
+        "| Endpoint | Raw Size | Compressed | Savings | Latency Delta | Status |",
         "|----------|----------|------------|---------|-----------|--------|",
     ]
 
@@ -232,11 +239,11 @@ def generate_markdown_report(results: list[BenchmarkResult], host: str) -> str:
     failed_results = [r for r in results if not r.success]
 
     for result in successful_results:
-        status = "✅"
+        status = "OK"
         if result.compression_ratio < 60:
-            status = "⚠️ Low compression"
+            status = "WARN: Low compression"
         if result.latency_overhead_ms > 10:
-            status = "⚠️ High overhead"
+            status = "WARN: High overhead"
 
         lines.append(
             f"| `{result.endpoint}` | {format_bytes(result.raw_size)} | "
@@ -246,7 +253,7 @@ def generate_markdown_report(results: list[BenchmarkResult], host: str) -> str:
 
     for result in failed_results:
         lines.append(
-            f"| `{result.endpoint}` | - | - | - | - | ❌ {result.error or 'Failed'} |"
+            f"| `{result.endpoint}` | - | - | - | - | SKIP: {result.error or 'Failed'} |"
         )
 
     # Add analysis section
@@ -273,8 +280,8 @@ def generate_markdown_report(results: list[BenchmarkResult], host: str) -> str:
         compression_pass = avg_compression >= 60
         latency_pass = avg_overhead < 10
 
-        lines.append(f"- Compression ≥60%: {'✅ PASS' if compression_pass else '❌ FAIL'} ({avg_compression:.1f}%)")
-        lines.append(f"- Latency overhead <10ms: {'✅ PASS' if latency_pass else '❌ FAIL'} ({avg_overhead:.2f}ms)")
+        lines.append(f"- Compression >=60%: {'PASS' if compression_pass else 'FAIL'} ({avg_compression:.1f}%)")
+        lines.append(f"- Latency overhead <10ms: {'PASS' if latency_pass else 'FAIL'} ({avg_overhead:.2f}ms)")
 
     # Add detailed results
     lines.extend([
@@ -358,8 +365,10 @@ def print_console_report(results: list[BenchmarkResult]) -> None:
 
         # Target compliance
         print("\nTarget Compliance:")
-        print(f"  [{'✓' if avg_compression >= 60 else '✗'}] Compression ≥60% (actual: {avg_compression:.1f}%)")
-        print(f"  [{'✓' if avg_overhead < 10 else '✗'}] Latency overhead <10ms (actual: {avg_overhead:.2f}ms)")
+        comp_status = "PASS" if avg_compression >= 60 else "FAIL"
+        lat_status = "PASS" if avg_overhead < 10 else "FAIL"
+        print(f"  [{comp_status}] Compression >=60% (actual: {avg_compression:.1f}%)")
+        print(f"  [{lat_status}] Latency overhead <10ms (actual: {avg_overhead:.2f}ms)")
 
 
 def main():
