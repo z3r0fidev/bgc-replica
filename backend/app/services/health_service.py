@@ -1,20 +1,12 @@
 """Health service for system monitoring."""
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.core.redis_config import get_redis
 
 logger = logging.getLogger(__name__)
-
-# Cache key patterns for monitoring
-CACHE_PATTERNS = {
-    "blocks": "blocks:*",
-    "friendship": "friendship:*",
-    "sessions": "session:*",
-    "rate_limits": "fastapi-limiter:*",
-}
 
 
 class HealthService:
@@ -95,102 +87,6 @@ class HealthService:
                 "ops_per_sec": 0,
                 "connected_clients": 0,
                 "uptime_seconds": 0,
-                "error": str(e),
-            }
-
-    async def get_cache_stats(self) -> Dict[str, Any]:
-        """Get Redis cache hit/miss statistics and per-pattern key counts."""
-        try:
-            redis = await get_redis()
-            info = await redis.info()
-
-            # Get overall keyspace hit/miss ratio
-            keyspace_hits = info.get("keyspace_hits", 0)
-            keyspace_misses = info.get("keyspace_misses", 0)
-            total_ops = keyspace_hits + keyspace_misses
-
-            if total_ops > 0:
-                overall_hit_ratio = round((keyspace_hits / total_ops) * 100, 2)
-            else:
-                overall_hit_ratio = 0.0
-
-            # Count keys by pattern
-            pattern_stats = {}
-            for name, pattern in CACHE_PATTERNS.items():
-                try:
-                    # Use SCAN to count keys matching pattern (more efficient than KEYS)
-                    count = 0
-                    cursor = 0
-                    while True:
-                        cursor, keys = await redis.scan(cursor, match=pattern, count=100)
-                        count += len(keys)
-                        if cursor == 0:
-                            break
-                    pattern_stats[name] = {
-                        "key_count": count,
-                        "pattern": pattern,
-                    }
-                except Exception as e:
-                    logger.warning(f"Failed to count keys for pattern {pattern}: {e}")
-                    pattern_stats[name] = {
-                        "key_count": 0,
-                        "pattern": pattern,
-                        "error": str(e),
-                    }
-
-            # Get memory stats
-            used_memory = info.get("used_memory", 0)
-            used_memory_peak = info.get("used_memory_peak", 0)
-            maxmemory = info.get("maxmemory", 0)
-
-            if maxmemory > 0:
-                memory_usage_percent = round((used_memory / maxmemory) * 100, 2)
-            else:
-                memory_usage_percent = 0.0
-
-            # Get eviction stats
-            evicted_keys = info.get("evicted_keys", 0)
-            expired_keys = info.get("expired_keys", 0)
-
-            return {
-                "status": "up",
-                "overall_hit_ratio": overall_hit_ratio,
-                "keyspace_hits": keyspace_hits,
-                "keyspace_misses": keyspace_misses,
-                "pattern_stats": pattern_stats,
-                "memory": {
-                    "used": info.get("used_memory_human", "0B"),
-                    "peak": info.get("used_memory_peak_human", "0B"),
-                    "usage_percent": memory_usage_percent,
-                },
-                "evictions": {
-                    "evicted_keys": evicted_keys,
-                    "expired_keys": expired_keys,
-                },
-                "targets": {
-                    "blocks_hit_ratio": ">80%",
-                    "friendship_hit_ratio": ">70%",
-                    "overall_hit_ratio": ">75%",
-                },
-                "checked_at": datetime.utcnow().isoformat(),
-            }
-        except Exception as e:
-            logger.error(f"Cache stats check failed: {e}")
-            return {
-                "status": "down",
-                "overall_hit_ratio": 0.0,
-                "keyspace_hits": 0,
-                "keyspace_misses": 0,
-                "pattern_stats": {},
-                "memory": {
-                    "used": "0B",
-                    "peak": "0B",
-                    "usage_percent": 0.0,
-                },
-                "evictions": {
-                    "evicted_keys": 0,
-                    "expired_keys": 0,
-                },
                 "error": str(e),
             }
 

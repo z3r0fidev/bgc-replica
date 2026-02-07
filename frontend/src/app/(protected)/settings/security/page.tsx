@@ -269,7 +269,6 @@ export default function SecuritySettingsPage() {
             <div className="space-y-4">
               {/* QR Code */}
               <div className="flex justify-center p-4 bg-white rounded-lg">
-                {/* eslint-disable-next-line @next/next/no-img-element -- Base64 data URL */}
                 <img
                   src={`data:image/png;base64,${setupData.qr_code}`}
                   alt="2FA QR Code"

@@ -57,11 +57,10 @@ export default function PublicProfilePage() {
     <div className="container max-w-4xl py-10 space-y-8">
       <div className="flex flex-col md:flex-row gap-8 items-start">
         <div className="w-full md:w-1/3 aspect-square bg-muted rounded-xl overflow-hidden shadow-lg border border-black/10">
-          {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
-          <img
-            src={profile.user?.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
-            alt={profile.user?.name || "User"}
-            className="w-full h-full object-cover"
+          <img 
+            src={profile.user?.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`} 
+            alt={profile.user?.name || "User"} 
+            className="w-full h-full object-cover" 
             onError={(e) => {
               (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`;
             }}

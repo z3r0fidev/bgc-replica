@@ -36,22 +36,13 @@ async def get_current_user(
         raise credentials_exception
 
     try:
-        # Try SECRET_KEY first (for backend-generated tokens from /api/auth/login)
-        # Then try NEXTAUTH_SECRET (for NextAuth tokens from frontend)
-        secrets_to_try = [settings.SECRET_KEY]
-        if settings.NEXTAUTH_SECRET and settings.NEXTAUTH_SECRET != settings.SECRET_KEY:
-            secrets_to_try.append(settings.NEXTAUTH_SECRET)
-
-        payload = None
-        for secret in secrets_to_try:
-            try:
-                payload = jwt.decode(token, secret, algorithms=[settings.ALGORITHM])
-                break
-            except JWTError:
-                continue
-
-        if payload is None:
-            raise credentials_exception
+        # Use NEXTAUTH_SECRET if it looks like a NextAuth token, otherwise SECRET_KEY
+        secret = (
+            settings.NEXTAUTH_SECRET
+            if settings.NEXTAUTH_SECRET
+            else settings.SECRET_KEY
+        )
+        payload = jwt.decode(token, secret, algorithms=[settings.ALGORITHM])
 
         # NextAuth often puts the user ID in 'sub' or 'user.id'
         user_id_str: str = payload.get("sub") or payload.get("user", {}).get("id")

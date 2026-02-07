@@ -13,13 +13,14 @@ function VerifyEmailContent() {
   const router = useRouter();
   const token = searchParams.get("token");
 
-  const [status, setStatus] = useState<"loading" | "success" | "error" | "no-token">(() =>
+  const [status, setStatus] = useState<"loading" | "success" | "error" | "no-token">(
     token ? "loading" : "no-token"
   );
   const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
     if (!token) {
+      setStatus("no-token");
       return;
     }
 

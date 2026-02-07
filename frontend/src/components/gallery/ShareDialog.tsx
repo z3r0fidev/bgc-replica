@@ -63,7 +63,7 @@ export function ShareDialog({
 
       const data: ShareLink = await response.json();
       setShareLink(data);
-    } catch {
+    } catch (error) {
       toast.error("Failed to generate share link");
     } finally {
       setIsGenerating(false);
@@ -79,7 +79,7 @@ export function ShareDialog({
       setCopied(true);
       toast.success("Link copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } catch (error) {
       toast.error("Failed to copy link");
     }
   };
@@ -100,7 +100,7 @@ export function ShareDialog({
         <DialogHeader>
           <DialogTitle>Share Album</DialogTitle>
           <DialogDescription>
-            Generate a shareable link for &quot;{albumTitle}&quot;
+            Generate a shareable link for "{albumTitle}"
           </DialogDescription>
         </DialogHeader>
 

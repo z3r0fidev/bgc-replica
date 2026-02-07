@@ -24,6 +24,7 @@ import {
 import { GalleryGrid, MediaLightbox, SortableAlbumGrid, ShareDialog } from "@/components/gallery";
 import { AlbumEditor } from "@/components/gallery/AlbumEditor";
 import {
+  ArrowLeft,
   Loader2,
   Lock,
   Users,
@@ -32,6 +33,7 @@ import {
   Trash2,
   Plus,
   Check,
+  X,
   ArrowUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -89,7 +91,7 @@ export default function AlbumDetailPage() {
 
       const data: AlbumWithMedia = await response.json();
       setAlbum(data);
-    } catch {
+    } catch (error) {
       toast.error("Failed to load album");
     } finally {
       setIsLoading(false);
@@ -113,7 +115,7 @@ export default function AlbumDetailPage() {
       // Filter out media already in album
       const albumMediaIds = new Set(album?.media.map((m) => m.id) || []);
       setAvailableMedia(data.items.filter((m) => !albumMediaIds.has(m.id)));
-    } catch {
+    } catch (error) {
       toast.error("Failed to load media");
     }
   };
@@ -144,7 +146,7 @@ export default function AlbumDetailPage() {
       toast.success(`Added ${selectedToAdd.size} items to album`);
       setAddMediaOpen(false);
       fetchAlbum(); // Refresh album
-    } catch {
+    } catch (error) {
       toast.error("Failed to add media");
     } finally {
       setIsAddingMedia(false);
@@ -176,7 +178,7 @@ export default function AlbumDetailPage() {
           : null
       );
       toast.success("Removed from album");
-    } catch {
+    } catch (error) {
       toast.error("Failed to remove media");
     } finally {
       setRemoveMediaTarget(null);
@@ -195,7 +197,7 @@ export default function AlbumDetailPage() {
 
       toast.success("Album deleted");
       router.push("/gallery/albums");
-    } catch {
+    } catch (error) {
       toast.error("Failed to delete album");
     }
   };
@@ -234,7 +236,7 @@ export default function AlbumDetailPage() {
       if (!response.ok) throw new Error("Failed to save order");
 
       toast.success("Order saved");
-    } catch {
+    } catch (error) {
       // Revert on failure
       fetchAlbum();
       toast.error("Failed to save order");
@@ -478,7 +480,7 @@ export default function AlbumDetailPage() {
       <AlertDialog open={deleteAlbumOpen} onOpenChange={setDeleteAlbumOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete &quot;{album.title}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>Delete "{album.title}"?</AlertDialogTitle>
             <AlertDialogDescription>
               This will delete the album. The photos in this album will not be
               deleted from your gallery.

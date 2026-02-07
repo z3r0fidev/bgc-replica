@@ -319,18 +319,16 @@ export default function SearchPage() {
                   <Card className="overflow-hidden hover:ring-2 hover:ring-primary transition-all group neo-brutal">
                     <div className="aspect-[3/4] bg-muted relative">
                       {profile.user?.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads
-                        <img
-                          src={profile.user.image}
-                          alt={profile.user.name || "User"}
+                        <img 
+                          src={profile.user.image} 
+                          alt={profile.user.name || "User"} 
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`;
                           }}
                         />
                       ) : (
-                        // eslint-disable-next-line @next/next/no-img-element -- External URL (DiceBear API)
-                        <img
+                        <img 
                           src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
                           alt="Avatar"
                           className="w-full h-full object-cover"

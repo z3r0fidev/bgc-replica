@@ -57,7 +57,6 @@ export default function ForumPage() {
 
   useEffect(() => {
     fetchData(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSlug]);
 
   return (

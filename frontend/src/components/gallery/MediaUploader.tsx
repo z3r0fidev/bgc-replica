@@ -148,7 +148,6 @@ export function MediaUploader({
         uploadFile(file, uploadId);
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- uploadFile and validateFile are stable
     [uploads.length, maxFiles, privacy]
   );
 

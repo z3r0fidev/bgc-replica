@@ -13,14 +13,12 @@ export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(() =>
-    typeof window !== "undefined" &&
-    window.matchMedia("(display-mode: standalone)").matches
-  );
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Already installed, skip setup
-    if (isInstalled) {
+    // Check if already installed (standalone mode)
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true);
       return;
     }
 

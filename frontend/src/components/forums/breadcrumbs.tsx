@@ -28,10 +28,9 @@ export function ForumBreadcrumbs() {
         }
         setPath(result);
       });
-    } else if (path.length > 0) {
+    } else {
       setPath([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slugs]);
 
   return (

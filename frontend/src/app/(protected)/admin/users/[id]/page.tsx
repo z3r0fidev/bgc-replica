@@ -82,7 +82,6 @@ export default function AdminUserDetailPage() {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const openActionDialog = (action: ActionType) => {

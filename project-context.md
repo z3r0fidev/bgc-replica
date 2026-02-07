@@ -158,32 +158,14 @@ bgc-replica/
     - Virtual scrolling in chat window (@tanstack/react-virtual)
     - New UI components: Progress, Separator, Table
     - E2E test suite for admin features
-11. **Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests** (2026-02-04, session 2):
-    - Rate limiting on all 14 admin endpoints: Read 30/60s, Update 10/60s, Sensitive 5/60s
-    - Unit tests for block_service (22 cases) and health_service (17 cases)
-    - Locust load test for admin dashboard (3 user classes, p95/p99 reporting)
-    - Playwright stress test for chat virtual scroll (1 000+ messages, FPS, memory, paint)
-12. **ESLint Warning Cleanup** (2026-02-05, session 3):
-    - Resolved all 50 remaining ESLint warnings across 60 frontend files
-    - Categories addressed: unused variables (~20), @next/next/no-img-element (14),
-      jsx-a11y/alt-text (1), react-hooks/exhaustive-deps (4), react-hooks/incompatible-library (1),
-      plus additional unused imports and stale eslint-disable directives
-    - Lint output is now 0 errors, 0 warnings
-13. **Cache Monitoring, Benchmarks, Testing & Documentation** (2026-02-06, session 4):
-    - Added Redis cache hit ratio monitoring endpoint (GET /api/admin/health/cache)
-    - Created GZip benchmark script for compression ratio and latency measurement
-    - Added 2FA E2E tests (6 test cases covering setup, login, backup codes, rate limiting)
-    - Created email delivery verification script for testing Resend + Celery
-    - Comprehensive documentation: rate limiting guide, admin dashboard guide, deployment runbook
-    - Updated Obsidian knowledge base with all session deliverables
 
 ### Recent Commits (chronological, newest first)
-- **ac5d366** (2026-02-06): feat: Add cache monitoring, benchmarks, 2FA tests, and documentation -- session 4
-- **71b83c1** (2026-02-05): docs: update session documentation for ESLint warning cleanup
-- **5e583d8** (2026-02-05): chore(frontend): resolve all 50 remaining ESLint warnings -- session 3
-- **240728c** (2026-02-04): test(admin): Add rate limits, unit tests, and load/stress harnesses -- session 2
-- **4d6f0b1** (2026-02-04): feat(admin): Add comprehensive admin dashboard with performance optimizations (#5)
+- **4d6f0b1** (2026-02-04): feat(admin): Add comprehensive admin dashboard with performance optimizations (#5) -- 28 files, 4961 insertions
 - **61aaf06**: Release: Merge production-readiness into main (#4)
+- **0ddaa96**: docs: Update project status to include Phase 9 (DevOps & CI/CD) completion
+- **8abf4d1**: ci(e2e): Add GitHub Actions workflow for Playwright end-to-end testing
+- **bd91416**: ci(frontend): Add GitHub Actions workflow for Next.js frontend linting, testing, and build
+- **db1343b**: ci(backend): Add GitHub Actions workflow for Python backend linting and testing
 
 ### Extracted Features (Standalone Subprojects)
 - **Personals** (Specs 010, 012): Moved to `bgc-personals/` subdirectory
@@ -192,18 +174,17 @@ bgc-replica/
   - Ports: 3001 (frontend), 8001 (backend)
 
 ### Active Branch
-- **Branch**: `fix/eslint-warnings-cleanup`
-- **HEAD**: ac5d366 (session 4, 2026-02-06) - cache monitoring, benchmarks, 2FA tests, documentation
-- **Status**: Clean working tree; all work committed and pushed to origin
-- **PR #8**: https://github.com/z3r0fidev/bgc-replica/pull/8 (ready for review)
+- **Branch**: `main`
+- **HEAD**: `4d6f0b1`
+- **Status**: Clean working tree, up to date with origin/main
 
 ### Next Priorities
-1. **Immediate**: Review and merge PR #8 (ESLint cleanup branch)
-2. **Validation**: Run GZip benchmark script against staging environment
-3. **Validation**: Run load_test_admin.py against staging, record baseline p95/p99
-4. **Validation**: Execute email delivery verification script with real Resend API
-5. **Production**: Domain authentication setup (SPF, DKIM, DMARC) for email delivery
-6. **Monitoring**: Configure Resend webhook for delivery tracking and bounce handling
+1. Load-test and rate-limit admin API endpoints
+2. Benchmark GZip and Redis cache effectiveness in staging
+3. Profile chat virtual-scroll performance at scale
+4. Deploy security features (2FA, email verification) to production
+5. Admin dashboard user guide and deployment runbook updates
+6. E2E tests for 2FA and email verification flows
 
 ## Dependencies
 
@@ -323,30 +304,25 @@ bgc-replica/
 
 1. **Performance**:
    - Profile load time optimization pending (T025)
-   - GZip benchmark script created but not yet run against staging (benchmark_gzip.py ready)
-   - Load test baseline (p95/p99) for admin endpoints not yet recorded against staging (load_test_admin.py ready)
-   - Redis cache hit ratio monitoring endpoint created but not yet validated in production
+   - Chat virtual-scroll performance under 1000+ messages untested at scale
+   - GZip and Redis cache hit ratios not yet benchmarked in staging
 2. **Accessibility**: Form focus management needs audit (T028)
 3. **Security / Admin**:
+   - Admin API endpoints lack dedicated rate limiting (user-facing endpoints are protected)
    - Admin action audit trail completeness review pending
 4. **Testing**:
    - E2E test coverage for personals posting incomplete (now in bgc-personals subproject)
-   - 2FA E2E tests created (auth-2fa.spec.ts) but not yet run in CI/CD pipeline
-   - Email delivery testing in production environment (verify_email_delivery.py created)
-5. **Lint / Code Quality**:
-   - Lint is now clean (0 errors, 0 warnings) as of 2026-02-05.
-   - Several files carry targeted `eslint-disable-next-line` comments for legitimate
-     suppressions. These should be revisited if the underlying patterns change (e.g.,
-     migrating external images to next/image with a configured domain list).
-6. **Documentation**:
+   - E2E tests for 2FA login flow needed
+   - Email delivery testing in production environment
+   - Admin dashboard load testing under concurrent access needed
+5. **Documentation**:
    - API documentation needs OpenAPI spec export
    - User guide for 2FA setup needed
-   - Rate limiting documentation COMPLETE (docs/api/rate-limiting.md)
-   - Admin dashboard user guide COMPLETE (docs/admin-dashboard-guide.md)
-   - Deployment runbook COMPLETE (docs/deployment/runbook.md with all health endpoints)
-7. **Monitoring**:
+   - Admin dashboard user guide needed (user management, analytics, health)
+   - Deployment runbook needs updating with new health endpoints
+6. **Monitoring**:
    - Production alerting and dashboards not configured
-   - Email delivery monitoring webhook (Resend) not yet configured
+   - Email delivery monitoring needed
    - 2FA adoption rate tracking needed
 
 ## Subprojects

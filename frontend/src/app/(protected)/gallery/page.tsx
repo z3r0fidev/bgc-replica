@@ -64,7 +64,7 @@ export default function GalleryPage() {
 
       setNextCursor(data.next_cursor || null);
       setTotalCount(data.total_count);
-    } catch {
+    } catch (error) {
       toast.error("Failed to load gallery");
     } finally {
       setIsLoading(false);
@@ -100,7 +100,7 @@ export default function GalleryPage() {
       setDeleteTarget(null);
       setLightboxOpen(false);
       toast.success("Media deleted");
-    } catch {
+    } catch (error) {
       toast.error("Failed to delete media");
     }
   };
@@ -125,7 +125,7 @@ export default function GalleryPage() {
       setSelectionMode(false);
       setIsBulkDelete(false);
       toast.success(`${selectedIds.size} items deleted`);
-    } catch {
+    } catch (error) {
       toast.error("Failed to delete some items");
     }
   };

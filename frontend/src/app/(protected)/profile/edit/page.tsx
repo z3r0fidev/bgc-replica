@@ -38,7 +38,10 @@ import { ProfessionalTab } from "@/components/profile/edit/tabs/ProfessionalTab"
 import { SocialLinksTab } from "@/components/profile/edit/tabs/SocialLinksTab";
 import { ProfileCompletionMeter } from "@/components/profile/ProfileCompletionMeter";
 import { profileService } from "@/services/profileService";
-import { profileUpdateSchema } from "@/lib/validations/profile";
+import {
+  profileUpdateSchema,
+  ProfileUpdateFormData,
+} from "@/lib/validations/profile";
 import { Profile, PrivacyLevel, PrivacySettings } from "@/types/profile";
 
 // Basic profile schema for the first tab
@@ -144,7 +147,7 @@ export default function ProfileEditPage() {
             website_url: data.social_links?.website_url || "",
           },
         });
-      } catch {
+      } catch (error) {
         toast.error("Failed to load profile");
       } finally {
         setIsFetching(false);

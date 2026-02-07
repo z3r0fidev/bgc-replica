@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ForumThread } from "@/services/forums";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 interface ThreadRowProps {
   thread: ForumThread;
