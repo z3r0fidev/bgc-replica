@@ -45,7 +45,7 @@ class TestBlockUser:
         with patch.object(
             block_service, "_invalidate_block_cache", new_callable=AsyncMock
         ) as mock_invalidate:
-            result = await block_service.block_user(
+            await block_service.block_user(
                 mock_db, user_ids["blocker"], user_ids["blocked"]
             )
 

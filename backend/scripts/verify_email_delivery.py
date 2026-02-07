@@ -32,7 +32,6 @@ import os
 import sys
 import time
 from datetime import datetime
-from typing import Optional
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -153,7 +152,6 @@ def test_celery_task(to_email: str) -> dict:
     """Test Celery task execution."""
     try:
         from app.services.tasks import send_verification_email_task
-        from celery.result import AsyncResult
 
         # Check if Celery is running by checking the broker connection
         try:

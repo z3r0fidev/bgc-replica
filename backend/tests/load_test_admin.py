@@ -15,7 +15,6 @@ Options:
 """
 from locust import HttpUser, task, between, events
 import uuid
-import json
 from datetime import datetime
 
 

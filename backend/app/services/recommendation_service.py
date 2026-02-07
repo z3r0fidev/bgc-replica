@@ -152,7 +152,8 @@ class UserProfiler:
         stmt = select(Profile).where(Profile.id == user_id)
         result = await self.db.execute(stmt)
         profile = result.scalar_one_or_none()
-        if not profile: return {}
+        if not profile:
+            return {}
 
         internal_signals = await self.tracker.get_user_signals(self.db, user_id)
         
@@ -270,4 +271,3 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(_cli_main())
-    asyncio.run(main())
