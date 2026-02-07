@@ -34,7 +34,7 @@ test.describe('Google Auth', () => {
     try {
         const request = await requestPromise;
         expect(request).toBeTruthy();
-    } catch (e) {
+    } catch {
         // If the request wasn't caught, check if we navigated
         console.log('Request not caught, checking URL...');
     }

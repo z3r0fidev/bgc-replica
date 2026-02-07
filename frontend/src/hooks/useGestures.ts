@@ -7,7 +7,7 @@ export const useGestures = () => {
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
   const controls = useDragControls();
 
-  const handleDragEnd = (event: any, info: any) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number } }) => {
     const threshold = 100;
     if (info.offset.x > threshold) {
       setSwipeDirection("right");

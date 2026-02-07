@@ -85,3 +85,24 @@ async def get_verified_user(
             detail="Email verification required to access this feature",
         )
     return current_user
+
+
+async def get_admin_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """
+    Dependency that requires the current user to be a superuser/admin.
+    Use this for admin-only endpoints.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    # Check if user is banned or suspended
+    if current_user.banned_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is banned",
+        )
+    return current_user

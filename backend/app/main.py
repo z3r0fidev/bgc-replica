@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
 import socketio
 from app.core.socket_config import sio, initialize_redis_manager
@@ -22,6 +23,7 @@ from app.api.totp import router as totp_router
 from app.api.notifications import router as notifications_router
 from app.api.sessions import router as sessions_router
 from app.api.verification import router as verification_router
+from app.api.admin import router as admin_router
 from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
 from app.core.config import settings
@@ -55,10 +57,10 @@ if os.getenv("TESTING") != "true":
         send_default_pii=True,
         # Enable sending logs to Sentry
         enable_logs=True,
-        # Set traces_sample_rate to 1.0 to capture 100% of transactions for tracing
-        traces_sample_rate=1.0,
-        # Set profile_session_sample_rate to 1.0 to profile 100% of profile sessions
-        profile_session_sample_rate=1.0,
+        # Set traces_sample_rate to 0.1 to capture 10% of transactions for tracing
+        traces_sample_rate=0.1,
+        # Set profile_session_sample_rate to 0.1 to profile 10% of profile sessions
+        profile_session_sample_rate=0.1,
         # Set profile_lifecycle to "trace" to automatically run the profiler when there is an active transaction
         profile_lifecycle="trace",
     )
@@ -109,6 +111,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CacheControlMiddleware)
 
@@ -164,6 +167,7 @@ app.include_router(sessions_router, prefix="/api/sessions", tags=["sessions"])
 app.include_router(
     verification_router, prefix="/api/verification", tags=["verification"]
 )
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="")

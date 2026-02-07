@@ -78,6 +78,7 @@ export function GalleryGrid({
     if (lastItem.index >= rowCount - 1) {
       onLoadMore?.();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rowVirtualizer.getVirtualItems() is complex expression
   }, [rowVirtualizer.getVirtualItems(), hasMore, isLoading, rowCount, onLoadMore]);
 
   const handleItemClick = useCallback(
@@ -200,6 +201,7 @@ export function GalleryGrid({
                     onClick={(e) => handleItemClick(item, globalIndex, e)}
                   >
                     {/* Thumbnail */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
                     <img
                       src={item.thumbnail_url || item.url}
                       alt={item.filename || "Gallery item"}

@@ -3,13 +3,12 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserPlus, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 export default function GroupDetailPage() {
   const params = useParams();
-  const [group, setGroup] = useState<any>(null);
+  const [group, setGroup] = useState<{ id: string; name: string; description: string; created_at: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +22,7 @@ export default function GroupDetailPage() {
         });
         if (res.ok) {
           const groups = await res.json();
-          const current = groups.find((g: any) => g.id === params.id);
+          const current = groups.find((g: { id: string }) => g.id === params.id);
           setGroup(current);
         }
       } catch (e) {
@@ -46,7 +45,7 @@ export default function GroupDetailPage() {
       if (res.ok) {
         toast.success("Welcome to the group!");
       }
-    } catch (e) {
+    } catch {
       toast.error("Failed to join group");
     }
   };

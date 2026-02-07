@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Rss, Hash, Loader2, Info } from "lucide-react";
+import { MessageSquare, Rss, Hash, Loader2 } from "lucide-react";
 import { FeedItem } from "@/components/feed/feed-item";
 import type { FeedPost, ForumThread } from "@/types/feed";
 

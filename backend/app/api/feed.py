@@ -137,6 +137,40 @@ async def get_post_comments(
     return result.scalars().all()
 
 
+@router.post("/comments/batch")
+async def get_batch_comments(
+    post_ids: List[uuid.UUID],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Get comments for multiple posts in a single request.
+    Returns a dictionary mapping post_id to list of comments.
+    This helps avoid N+1 queries when loading feed with comments.
+    """
+    if not post_ids or len(post_ids) > 50:
+        return {}
+
+    stmt = (
+        select(PostComment)
+        .where(PostComment.post_id.in_(post_ids))
+        .options(selectinload(PostComment.author))
+        .order_by(PostComment.created_at)
+    )
+    result = await db.execute(stmt)
+    comments = result.scalars().all()
+
+    # Group comments by post_id
+    comments_by_post: dict[str, List] = {str(pid): [] for pid in post_ids}
+    for comment in comments:
+        post_key = str(comment.post_id)
+        if post_key in comments_by_post:
+            comments_by_post[post_key].append(
+                PostCommentSchema.model_validate(comment)
+            )
+
+    return comments_by_post
+
+
 @router.post("/{post_id}/comments", response_model=PostCommentSchema)
 async def create_post_comment(
     post_id: uuid.UUID,

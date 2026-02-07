@@ -64,7 +64,7 @@ export default function UserGalleryPage() {
 
         setNextCursor(data.next_cursor || null);
         setTotalCount(data.total_count);
-      } catch (error) {
+      } catch {
         toast.error("Failed to load gallery");
       } finally {
         setIsLoading(false);
@@ -124,6 +124,7 @@ export default function UserGalleryPage() {
           <TabsList>
             <TabsTrigger value="ALL">All</TabsTrigger>
             <TabsTrigger value="IMAGE" className="gap-2">
+              {/* eslint-disable-next-line jsx-a11y/alt-text -- This is a Lucide icon, not an img element */}
               <Image className="h-4 w-4" />
               Photos
             </TabsTrigger>

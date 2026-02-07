@@ -36,8 +36,8 @@ export function RatingStars({ userId, initialRating = 0, onRate }: RatingStarsPr
       setRating(data.average_rating)
       if (onRate) onRate(data.average_rating)
       toast.success("Rating submitted!")
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Rating failed")
     } finally {
       setIsSubmitting(false)
     }

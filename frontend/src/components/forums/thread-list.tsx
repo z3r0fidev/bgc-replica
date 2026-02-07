@@ -15,6 +15,7 @@ interface ThreadListProps {
 export function ThreadList({ threads, hasNext, onLoadMore, isLoading }: ThreadListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual known limitation
   const virtualizer = useVirtualizer({
     count: hasNext ? threads.length + 1 : threads.length,
     getScrollElement: () => parentRef.current,

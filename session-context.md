@@ -1,278 +1,236 @@
 # Session Context
 
-**Last Updated**: 2026-01-30 (Session Closing)
-**Current Branch**: `013-profile-expansion`
-**Session Status**: Closing - Production Readiness & Type Safety
+**Last Updated**: 2026-02-06 (Session 4 - CLOSED)
+**Current Branch**: `fix/eslint-warnings-cleanup` (up to date with remote)
+**Session Status**: Closed - All tasks completed, committed, and pushed
 
 ## Current State
 
-### Session Complete - Production Readiness, Rate Limiting & Type Safety
-This session focused on production deployment preparation and code quality improvements:
-- **Production Deployment Config**: Railway.json, Procfile, Vercel.json with security headers
-- **Rate Limiting**: Expanded to search, chat, forums, and media endpoints
-- **TypeScript Type Safety**: Eliminated `any` types in feed components with proper interfaces
-- **Additional Features**: Group chats, verification badges, PWA offline mode, CI/CD workflows
+### Latest Session (CLOSED) -- Outstanding Task Completion (8 tasks)
+Completed all outstanding tasks from the implementation plan:
 
-### Recent Changes (Latest Session - 2026-01-30)
+#### Task 1: PR Created
+PR #8 at https://github.com/z3r0fidev/bgc-replica/pull/8 for ESLint warnings cleanup.
 
-#### Production Deployment Configuration
-**Files Created**:
-- `backend/railway.json`: Railway deployment config with health checks, restart policies
-- `backend/Procfile`: Process definitions for web (uvicorn) and worker (celery)
-- `frontend/vercel.json`: Vercel config with security headers, caching rules, API rewrites
+#### Task 2-4: Documentation (3 files created/updated)
+- `docs/api/rate-limiting.md` - Comprehensive rate limiting documentation
+- `docs/admin-dashboard-guide.md` - Admin dashboard user guide
+- `docs/deployment/runbook.md` - Updated with all health endpoints
 
-**Deployment Features**:
-- Health check endpoint at `/health` with 30s timeout
-- Restart policy: ON_FAILURE with 3 max retries
-- Celery worker configuration with 2 concurrency
-- Security headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
-- Optimized caching: 1 year for static assets, no-store for API routes
+#### Task 5: GZip Benchmark Script
+`backend/scripts/benchmark_gzip.py` (270 lines) - Measures GZip compression:
+- Tests `/health`, admin endpoints, and user-facing endpoints
+- Reports compression ratio, latency overhead
+- Targets: 60-80% compression, <10ms overhead
+- Outputs markdown report to `docs/performance/gzip-benchmark.md`
 
-#### Rate Limiting Expansion
-**Backend Changes**:
-- `/api/search/`: 30 requests/minute (prevents scraping)
-- `/api/chat/media`: 10 uploads/minute (prevents spam)
-- `/api/chat/conversations`: 20 requests/minute (prevents abuse)
-- `/api/forums/threads`: 5 threads/5 minutes (prevents spam)
-- `/api/forums/posts`: 10 posts/minute (prevents flooding)
-- `/api/media/upload`: 20 uploads/minute (prevents abuse)
+#### Task 6: Redis Cache Hit Ratio Monitoring
+- Added `get_cache_stats()` to `backend/app/services/health_service.py`
+- New endpoint: `GET /api/admin/health/cache`
+- Monitors: keyspace hit/miss ratio, per-pattern key counts (blocks, friendship, sessions, rate_limits)
+- Reports memory usage, evictions, and target thresholds
 
-**Files Modified**: search.py, chat.py, forums.py, media.py (added `RateLimiter` dependencies)
+#### Task 7: 2FA E2E Tests
+`frontend/tests/e2e/auth-2fa.spec.ts` (280 lines) - 6 test cases:
+- Shows 2FA prompt after valid credentials for 2FA-enabled account
+- Completes login with valid 2FA code
+- Shows error for invalid 2FA code
+- Accepts backup code (8-char hex) for 2FA
+- No 2FA prompt for users without 2FA enabled
+- Handles rate limiting on 2FA attempts
 
-#### TypeScript Type Safety Improvements
-**Created**: `frontend/src/types/feed.ts`
-- `FeedPost` interface: id, author_id, content, image_url, timestamps, counts
-- `ForumThread` interface: id, title, content, author_id, category_id, activity metrics
+#### Task 8: Email Delivery Verification Script
+`backend/scripts/verify_email_delivery.py` (250 lines):
+- Tests direct Resend API calls
+- Tests Celery task execution
+- Configuration validation
+- Manual verification checklist
 
-**Fixed `any` Types** (5 files):
-- `feed-item.tsx`: FeedPost type for post prop
-- `use-feed.ts`: FeedPost[] for posts state and addPosts callback
-- `topical/[slug]/page.tsx`: TopicData interface with typed forumThreads and feedPosts
-- `users/page.tsx`: Proper typing (change details needed)
-- `chat-window.tsx`: Proper typing (change details needed)
+### Previous Session -- ESLint Warning Cleanup (60 files, 0 errors, 0 warnings)
+60 frontend files modified to eliminate every remaining ESLint warning. The codebase
+now produces a clean lint output: 0 errors, 0 warnings. This follows the previous
+session's admin-hardening commit (240728c) and completes the lint story that began
+with the 49-error fix pass prior to that.
 
-#### Additional Untracked Features
-**Group Chats**:
-- `backend/app/api/group_chats.py`: Group chat API endpoints
-- `backend/app/schemas/group_chat.py`: Pydantic schemas
-- `frontend/src/services/groupChatService.ts`: API client
-- `frontend/src/store/groupChatStore.ts`: Zustand state management
-- Migration: `9f2b83cd41a7_add_group_chats.py`
+### Previous Commit -- Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests
+5 files changed in that session's commit (1 modified, 4 new). All items close out the
+"Outstanding Tasks / Follow-Up Items" list that was carried forward from the PR #5 closure session.
 
-**Verification Badges**:
-- `backend/app/api/verification.py`: Badge verification API
-- `backend/app/schemas/verification_badge.py`: Badge schemas
-- `frontend/src/components/profile/VerifiedBadge.tsx`: Badge display component
-- Migration: `a1b2c3d4e5f6_add_verification_badges.py`
+#### Rate Limiting on admin.py (modified)
+Every one of the 14 admin API endpoints in `backend/app/api/admin.py` now carries a
+`RateLimiter` dependency. Three tiers were applied based on operation sensitivity:
 
-**Performance & Monitoring**:
-- `backend/app/services/audit_service.py`: Audit logging service
-- `backend/alembic/versions/b2c3d4e5f6a7_add_performance_indexes.py`: DB indexes
-- `backend/alembic/versions/8c4f19ae72b3_add_auth_logs_table.py`: Auth logging
-- `frontend/src/lib/performance.ts`: Performance monitoring utilities
-- `frontend/src/components/ui/skeleton-loaders.tsx`: Loading state components
+| Tier | Limit | Endpoints |
+|------|-------|-----------|
+| Read | 30 req / 60 s | GET /stats, GET /users, GET /users/{id}, GET /action-logs, GET /analytics/overview, GET /analytics/users, GET /analytics/engagement, GET /health, GET /health/database, GET /health/redis |
+| Update | 10 req / 60 s | PATCH /users/{id} |
+| Sensitive | 5 req / 60 s | POST /users/{id}/suspend, POST /users/{id}/ban, POST /users/{id}/restore, POST /users/{id}/make-admin, POST /users/{id}/revoke-admin |
 
-**PWA & Offline Support**:
-- `frontend/src/app/offline/page.tsx`: Offline fallback page
-- `frontend/src/hooks/use-online-status.ts`: Network status detection
-- `frontend/src/components/pwa/install-prompt.tsx`: Enhanced PWA install UI
-- `frontend/public/manifest.json`: Updated PWA manifest
+All rate limits use the existing `fastapi_limiter` + Redis backend that is already in place
+for user-facing endpoints. No new dependencies were introduced.
 
-**CI/CD**:
-- `.github/workflows/deploy-frontend.yml`: Automated frontend deployment
-- `.github/workflows/pr-validation.yml`: PR validation checks
-- `.github/workflows/deploy-backend.yml`: Updated backend deployment
+#### Unit Tests -- BlockService (new, 404 lines)
+`backend/tests/test_block_service.py` -- 22 test cases across 7 classes:
+- TestBlockUser: success, already-blocked idempotency, self-block guard
+- TestUnblockUser: success, not-blocked no-op
+- TestGetBlockedUsers: populated list, empty list
+- TestIsBlocked: true/false paths
+- TestGetBlockStatus: four combinations (blocked-by-me, blocked-by-them, mutual, none)
+- TestGetBlockIds: cache-hit short-circuit, cache-miss DB fallback with write-through
+- TestCacheOperations: Redis hit, miss, error resilience for get/set/invalidate
 
-**Total Impact**: 24 new files, 17 modified files
+#### Unit Tests -- HealthService (new, 457 lines)
+`backend/tests/test_health_service.py` -- 17 test cases across 5 classes:
+- TestGetDatabaseStats: success, no-rows fallback, exception handling (status: down)
+- TestGetRedisStats: success, minimal-info defaults, connection error
+- TestGetErrorSummary: success, custom time window, no-rows, DB error
+- TestGetComprehensiveHealth: all-healthy, DB-down (unhealthy), Redis-down (unhealthy),
+  degraded (errors but services up), both-down, timestamp validity
+- TestHealthServiceIntegration: singleton existence, default hours parameter
 
-### Previous Session Changes (2026-01-29)
+#### Load Test -- Admin Dashboard (new, 312 lines)
+`backend/tests/load_test_admin.py` -- Locust-based load harness with three user classes:
+- AdminUser (weight default): read-heavy workload hitting all 14 endpoints; task weights
+  mirror expected dashboard usage (stats 5x, user-list 4x, search 3x, filters 3x, health 3x, etc.)
+- AdminWriteUser (weight 1): write operations (PATCH /users/{id}) at lower frequency
+  (5-10 s wait); 404 on random UUIDs is expected and marked as success.
+- DashboardRefreshSimulator: 30-second refresh cycle hitting /stats + /health back-to-back,
+  matching the auto-refresh behaviour of the frontend health page.
+- Custom event hook prints p50/p95/p99 latency and failure rate on test stop.
 
-#### 1. Two-Factor Authentication (Commit: 42a0da9)
-**Backend**:
-- Added TOTPService for secret generation, QR codes, and verification
-- Created 2FA API endpoints: setup, enable, disable, status, regenerate codes
-- Added totp_secret, totp_enabled, backup_codes fields to User model
-- Updated login flow with /api/auth/login/2fa endpoint
-- Migration: 4bf83210bf86_add_2fa_fields_to_users.py
+#### Stress Test -- Chat Virtual Scroll (new, 330 lines)
+`frontend/tests/e2e/chat-virtual-scroll-stress.spec.ts` -- Playwright stress suite with
+four describe blocks:
+- Large Message Count Performance: injects 1 000 synthetic messages, asserts render time
+  under 2 s and rendered DOM count under 50 (overscan window only).
+- Rapid Scrolling Stress: 50-iteration scroll loop with per-frame timing; asserts average
+  FPS >= 30. Includes a scroll-to-top sub-test (target < 500 ms).
+- Memory Usage: 10 full top-to-bottom scroll cycles; asserts heap growth < 100 MB.
+  Unmount sub-test verifies cleanup with GC if available.
+- Paint Performance: CDP-based paint-rect and layout metric capture during scroll; ensures
+  virtual scroll limits repaint surface to the visible viewport.
 
-**Frontend**:
-- Enhanced Security Settings page with full 2FA management UI
-- Added setup dialog with QR code display and backup codes
-- Added disable and regenerate backup codes dialogs
-- Updated login page with 2FA verification step
-- Created twoFactorService API client
+### Previously Shipped -- Admin Dashboard & Performance Optimization (PR #5, Commit 4d6f0b1)
+See previous session entry in conversation-context.md for the full 28-file breakdown.
+Key points: GZipMiddleware, Sentry 10% sampling, Redis block/friendship caches,
+full admin user-management API, analytics (Recharts), health monitoring, batch comments,
+chat virtual scrolling (@tanstack/react-virtual), Progress/Separator/Table UI primitives,
+admin E2E tests.
 
-**Features**:
-- QR code generation for authenticator apps (Google Authenticator, Authy, etc.)
-- 10 backup codes (8-char hex), securely hashed
-- 1 window tolerance for TOTP codes
-- Support both TOTP and backup codes for login/disable
-
-**Files**: 12 files changed, 1,353 lines added
-
-#### 2. Email Verification (Commit: 85c9892)
-**Backend**:
-- Created EmailService using Resend for sending verification emails
-- Added VerificationService for token generation/validation (SHA-256 hashed)
-- Added verification endpoints: verify-email, resend-verification, status
-- Added get_verified_user dependency for protected features
-- Integrated Celery task for async email sending
-- Rate limiting on resend endpoint (1/minute)
-
-**Frontend**:
-- Created EmailVerificationBanner component for unverified users
-- Added verify-email page for token verification
-- Added verificationService API client
-- Updated protected layout to show banner for unverified users
-
-**Security**:
-- Tokens stored hashed, plain token only sent in email
-- 24-hour token expiry
-- Resend endpoint doesn't reveal if email exists
-
-**Files**: 14 files changed, 797 lines added
-
-#### 3. Admin Moderation Queue (Commit: 33b40b5)
-**Backend**:
-- Enhanced /api/moderation/queue with filters and detailed report info
-- Added /api/moderation/stats for dashboard statistics
-- Added /api/moderation/resolve/{id} with actions: dismiss, warn, delete, ban
-- Added /api/moderation/bulk-resolve for batch operations
-- Rich report details including reporter info and content previews
-
-**Frontend**:
-- Created admin moderation page at /admin/moderation
-- Stats cards showing pending, resolved today, total, and by-type counts
-- Filter controls for status and content type
-- Action dialog with context-appropriate resolution options
-- Report cards with reporter, reported content, and timestamps
-
-**Files**: 5 files changed, 999 lines added
-
-#### 4. Notification Preferences (Commit: bd32b05)
-**Backend**:
-- Added notification_preferences JSONB field to User model
-- Created /api/notifications/preferences endpoints (GET, PUT)
-- Added /api/notifications/preferences/reset to restore defaults
-- Added /api/notifications/preferences/email-all for bulk toggle
-- Migration: 422c83a1_add_notification_preferences_to_users.py
-
-**Frontend**:
-- Created notification settings page at /settings/notifications
-- Email notification toggles for 8 categories:
-  - Communication: messages, friend requests
-  - Activity: profile views, ratings, forum replies, mentions
-  - Marketing: promotions, newsletter
-- Email digest frequency selector (instant, daily, weekly, never)
-- Quick actions: enable all, disable all, reset to defaults
-- Organized by category with clear descriptions
-
-**Files**: 8 files changed, 731 lines added
-
-### Pending Items
-1. **Ready to Commit**:
-   - 24 new files (deployment configs, group chats, verification badges, PWA, CI/CD, migrations)
-   - 17 modified files (rate limiting, type safety improvements)
-
-2. **For Review** (not committed):
-   - `.claude/`: Session context files (settings.local.json)
-   - `frontend/frontend-enhancements/profile/`: Research documents (2 markdown files)
+### Repository Health
+- **Branch**: `fix/eslint-warnings-cleanup`, up to date with origin
+- **Working tree**: Clean (all work committed in ac5d366)
+- **Lint status**: 0 errors, 0 warnings (was 0 errors, 50 warnings before session 3)
+- **Latest commit**: ac5d366 "feat: Add cache monitoring, benchmarks, 2FA tests, and documentation"
+- **Obsidian notes**: Updated with all session 4 deliverables
 
 ## Current Objectives
 
-### Completed This Session (2026-01-30)
-- [x] Create production deployment configurations (Railway, Vercel, Procfile)
-- [x] Add rate limiting to search, chat, forums, media endpoints
-- [x] Eliminate TypeScript `any` types in feed components
-- [x] Create type definitions for FeedPost and ForumThread
-- [x] Group chats feature (API, schemas, frontend service, state management)
-- [x] Verification badges system (API, schemas, UI components)
-- [x] Performance monitoring and audit logging
-- [x] PWA offline support and enhanced install prompt
-- [x] CI/CD workflows for frontend and PR validation
-- [x] Database migrations for group chats, badges, auth logs, indexes
+### Completed (cumulative)
+- [x] PR #5 merged to main (admin dashboard + perf optimizations)
+- [x] Rate limiting added to all 14 admin API endpoints (3-tier strategy)
+- [x] Unit tests for block_service.py (22 cases, cache paths covered)
+- [x] Unit tests for health_service.py (17 cases, degraded/unhealthy states covered)
+- [x] Locust load test for admin dashboard (3 user classes, custom reporting)
+- [x] Playwright stress test for chat virtual scroll (1 000+ messages, FPS, memory, paint)
+- [x] All 50 ESLint warnings eliminated (60 files, 0 errors, 0 warnings)
+- [x] PR #8 created for ESLint cleanup branch
+- [x] Rate limiting documentation (docs/api/rate-limiting.md)
+- [x] Admin dashboard user guide (docs/admin-dashboard-guide.md)
+- [x] Deployment runbook with health endpoints (docs/deployment/runbook.md)
+- [x] GZip benchmark script (backend/scripts/benchmark_gzip.py)
+- [x] Redis cache hit ratio monitoring (GET /api/admin/health/cache)
+- [x] 2FA E2E tests (frontend/tests/e2e/auth-2fa.spec.ts)
+- [x] Email delivery verification script (backend/scripts/verify_email_delivery.py)
 
 ### Next Session Priorities
-1. **Commit & Deploy**
-   - Commit all changes with descriptive messages
-   - Push to remote branch
-   - Test deployment configurations on staging
-   - Monitor rate limiting effectiveness
+1. **Validation Execution**
+   - Run GZip benchmark against staging: `python scripts/benchmark_gzip.py --host https://staging.bgclive.com --token <jwt>`
+   - Run load test against staging: `locust -f tests/load_test_admin.py --host=https://staging.bgclive.com --headless -u 50 -r 10 -t 300s`
+   - Verify email delivery: `python scripts/verify_email_delivery.py --test all --to admin@bgclive.com`
 
-2. **Testing & QA**
-   - E2E tests for complete 2FA flow
-   - Test email delivery in production
-   - Load test moderation queue with high volume
-   - Verify notification preferences persist correctly
+2. **Merge PRs**
+   - Review and merge PR #8 (ESLint cleanup)
 
-3. **Documentation**
-   - User guide for enabling 2FA
-   - Admin guide for moderation queue
-   - Email template customization guide
-   - Notification settings user documentation
+3. **Production Readiness**
+   - Domain authentication setup (SPF, DKIM, DMARC) for email delivery
+   - Resend webhook configuration for delivery tracking
+   - Sentry alert rules for error thresholds
 
 ## Environment Status
 
 ### Development Services
-- Backend: FastAPI running on http://localhost:8000
-- Frontend: Next.js running on http://localhost:3000
-- Database: PostgreSQL (connection verified)
-- Redis: Available for session/cache and Celery
-- Socket.io: Configured for real-time features
-- Celery: Worker for async tasks (email sending)
-- Resend: Email service configured for verification emails
+- Backend: FastAPI on http://localhost:8000
+- Frontend: Next.js on http://localhost:3000
+- Database: PostgreSQL (async via asyncpg)
+- Redis: Sessions, rate limiting, Celery broker, block/friendship caches
+- Socket.io: Real-time chat, comments, presence
+- Celery: Async email delivery worker
 
-### Branch Status
-- Main branch: `007-production-readiness-secops`
-- Current branch: `013-profile-expansion`
-- Recent commits: 5 commits with security & moderation features
-- All commits pushed and up to date
+### Branch & Git State
+- Active branch: `fix/eslint-warnings-cleanup`
+- All changes committed (ac5d366) and pushed to origin
+- Working tree clean, 0 uncommitted changes
+- Remote: https://github.com/z3r0fidev/bgc-replica
+- PR #8: https://github.com/z3r0fidev/bgc-replica/pull/8
 
 ## Key Decisions
 
-### Security Architecture (This Session)
-1. **2FA Implementation**: TOTP-based with pyotp, 30-second window, backup codes
-2. **Email Verification**: SHA-256 hashed tokens, 24-hour expiry, Resend integration
-3. **Backup Codes**: 10 codes, 8-char hex, bcrypt hashed, consumed on use
-4. **Token Storage**: Verification tokens hashed before storage, plain token only in email
+### Admin Rate Limiting (this session)
+1. **Three-tier model**: Read / Update / Sensitive mirrors the existing pattern used on
+   user-facing endpoints. Sensitive actions (suspend, ban, restore, privilege changes) are
+   capped at 5 req/60 s -- tight enough to block scripted abuse, loose enough that a human
+   admin doing legitimate bulk work will not hit the ceiling.
+2. **No new infrastructure**: Reuses fastapi_limiter + Redis already in production.
+3. **Locust over custom harness**: Locust provides built-in p95/p99 reporting and a
+   browser UI; no value in reimplementing that.
 
-### Moderation Architecture
-1. **Queue Management**: Filter by status (pending/resolved/dismissed) and type
-2. **Resolution Actions**: Dismiss, warn, delete content, ban user
-3. **Bulk Operations**: Support for batch moderation actions
-4. **Statistics**: Real-time dashboard metrics for moderation workload
+### Test Design (this session)
+1. **AsyncMock + patch for services**: block_service and health_service both have Redis
+   calls that should not touch a real broker in unit tests. All Redis paths are patched;
+   error-resilience paths are explicitly tested (cache errors return None / are silently
+   swallowed, never crash the request).
+2. **Synthetic message injection for scroll stress**: The chat window is wired to a
+   Zustand store; injecting 1 000 messages via a CustomEvent + window reference avoids
+   standing up a full WebSocket + backend stack just to stress-test the renderer.
+3. **CDP paint-rect overlay**: The paint-performance block uses Chrome DevTools Protocol
+   directly to verify that virtual scrolling limits repaint area. This is not assertable
+   via standard Playwright APIs.
 
-### Notification Architecture
-1. **Preference Storage**: JSONB field for flexible notification settings
-2. **Digest Options**: Instant, daily, weekly, never for each category
-3. **Quick Actions**: Bulk enable/disable all, reset to defaults
-4. **Categories**: Communication, Activity, Marketing
+### Performance Architecture (PR #5, still active)
+1. GZip at middleware level
+2. Sentry 10% sampling
+3. Redis TTL strategy: blocks 5 min, friendships 10 min
+4. @tanstack/react-virtual for chat
+5. Batch comments endpoint (IN clause)
 
-### Technical Decisions
-1. **Async Email**: Celery tasks for non-blocking email sending
-2. **Rate Limiting**: 1/minute on resend verification endpoint
-3. **QR Code Generation**: pyotp with qrcode[pil] for 2FA setup
-4. **Service Layer**: Dedicated services for TOTP, email, verification
+### Previous Session Decisions (still active)
+- 2FA: TOTP-based with pyotp, backup codes bcrypt-hashed
+- Email verification: SHA-256 tokens, Resend, Celery async delivery
+- Privacy: Field-level JSONB, three tiers, enforced server-side by ProfileService
+- Rate limiting: Redis-backed, tiered per endpoint
 
 ## Notes for Next Session
 
 ### Important Context
-- **All security features committed**: 2FA, email verification, moderation, notifications
-- **4 new feature commits**: 42a0da9, 85c9892, 33b40b5, bd32b05
-- **3,880 lines added**: Across 39 files total
-- **No uncommitted changes**: All work committed and pushed
-- **Production ready**: Features tested and builds passing
+- **Lint is clean.** `cd frontend && npm run lint` now exits with 0 errors and 0 warnings.
+  Several files carry targeted `eslint-disable-next-line` comments for legitimate
+  suppressions (external-URL img elements, stable-reference hooks deps, TanStack Virtual
+  known limitation). Do not remove these without re-evaluating the underlying pattern.
+- Admin rate limits are now live. If load-testing against a local dev server, the limits
+  will fire. Use `--headless -u 50 -r 10 -t 60s` to stay within the read-tier ceiling
+  per user while still exercising concurrency.
+- `test_block_service.py` and `test_health_service.py` are pure-mock unit tests. They do
+  not require a running Postgres or Redis instance.
+- `load_test_admin.py` requires `locust` installed (`pip install locust`) and a running
+  backend (`uvicorn app.main:app`).
+- `chat-virtual-scroll-stress.spec.ts` requires the Next.js dev server on port 3000.
+- chat-window.tsx was significantly refactored for virtual scrolling -- review carefully
+  before touching.
+- admin_action_logs migration must have run before admin endpoints will function.
 
-### Configuration Required for Production
-1. **Resend API Key**: Set RESEND_API_KEY in backend .env
-2. **Celery Worker**: Start celery worker for email queue
-3. **Redis**: Ensure Redis available for Celery broker
-4. **Email Templates**: Review and customize verification email content
-5. **2FA Recovery**: Document backup code recovery process for support team
-
-### Follow-up Items
-1. E2E tests for 2FA login flow
-2. Email delivery monitoring and logging
-3. Moderation queue performance with high volume
-4. User documentation for 2FA setup
-5. Admin training for moderation queue
+### Configuration Reminders
+- `RESEND_API_KEY` needed in backend .env for email verification
+- Celery worker must be running for async email tasks
+- Redis must be available for block/friendship caches and rate limiting
+- Sentry DSN required; sampling now at 0.1

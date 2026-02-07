@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, Users, Hash } from "lucide-react";
 
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<{ id: string; name: string; description?: string; category?: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Play, Tv, Loader2, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function OriginalProgrammingPage() {
-  const [media, setMedia] = useState<any[]>([]);
+  const [media, setMedia] = useState<{ id: string; url: string; title?: string; description?: string; type?: string; created_at: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -58,9 +56,10 @@ export default function OriginalProgrammingPage() {
           {media.map((item) => (
             <Card key={item.id} className="overflow-hidden group hover:ring-4 hover:ring-primary/20 transition-all neo-brutal bg-card">
               <div className="aspect-video bg-muted relative overflow-hidden">
-                <img 
-                  src={item.url} 
-                  alt={item.title || "Original Programming"} 
+                {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
+                <img
+                  src={item.url}
+                  alt={item.title || "Original Programming"}
                   className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

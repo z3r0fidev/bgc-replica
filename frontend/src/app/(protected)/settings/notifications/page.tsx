@@ -107,7 +107,7 @@ export default function NotificationSettingsPage() {
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [pendingChanges, setPendingChanges] = useState<Partial<NotificationPreferences>>({});
+  const [, setPendingChanges] = useState<Partial<NotificationPreferences>>({});
 
   useEffect(() => {
     fetchPreferences();

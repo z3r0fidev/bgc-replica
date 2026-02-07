@@ -121,7 +121,7 @@ bgc-replica/
 
 ## Current Development Status
 
-### Completed Specifications
+### Completed Specifications & Feature Phases
 1. **Spec 001-009**: Core platform features (auth, profiles, forums, chat)
 2. **Spec 013**: Profile Expansion (identity, lifestyle, professional, privacy controls)
 3. **Security Features** (2026-01-29):
@@ -147,23 +147,43 @@ bgc-replica/
    - Offline mode support
    - Enhanced install prompts
    - Network status detection
+10. **Admin Dashboard & Performance Optimization** (2026-02-04, PR #5, commit 4d6f0b1):
+    - GZipMiddleware for response compression
+    - Sentry sampling rate tuned to 10%
+    - Redis caching for block IDs (5-min TTL) and friendship status (10-min TTL)
+    - Admin dashboard: user management, suspend/ban/restore, search, pagination
+    - Analytics dashboard with DAU/WAU/MAU charts (Recharts)
+    - System health monitoring (DB + Redis stats, auto-refresh)
+    - Batch comments endpoint (eliminates N+1 queries on feed)
+    - Virtual scrolling in chat window (@tanstack/react-virtual)
+    - New UI components: Progress, Separator, Table
+    - E2E test suite for admin features
+11. **Admin Hardening: Rate Limits, Unit Tests, Load & Stress Tests** (2026-02-04, session 2):
+    - Rate limiting on all 14 admin endpoints: Read 30/60s, Update 10/60s, Sensitive 5/60s
+    - Unit tests for block_service (22 cases) and health_service (17 cases)
+    - Locust load test for admin dashboard (3 user classes, p95/p99 reporting)
+    - Playwright stress test for chat virtual scroll (1 000+ messages, FPS, memory, paint)
+12. **ESLint Warning Cleanup** (2026-02-05, session 3):
+    - Resolved all 50 remaining ESLint warnings across 60 frontend files
+    - Categories addressed: unused variables (~20), @next/next/no-img-element (14),
+      jsx-a11y/alt-text (1), react-hooks/exhaustive-deps (4), react-hooks/incompatible-library (1),
+      plus additional unused imports and stale eslint-disable directives
+    - Lint output is now 0 errors, 0 warnings
+13. **Cache Monitoring, Benchmarks, Testing & Documentation** (2026-02-06, session 4):
+    - Added Redis cache hit ratio monitoring endpoint (GET /api/admin/health/cache)
+    - Created GZip benchmark script for compression ratio and latency measurement
+    - Added 2FA E2E tests (6 test cases covering setup, login, backup codes, rate limiting)
+    - Created email delivery verification script for testing Resend + Celery
+    - Comprehensive documentation: rate limiting guide, admin dashboard guide, deployment runbook
+    - Updated Obsidian knowledge base with all session deliverables
 
-### Recent Commits
-**2026-01-30** (Pending):
-- Production deployment configurations
-- Rate limiting expansion
-- TypeScript type safety improvements
-- Group chats feature
-- Verification badges system
-- PWA offline support
-- CI/CD workflow enhancements
-
-**2026-01-29**:
-1. **bd32b05**: Notification preferences settings (731 lines, 8 files)
-2. **33b40b5**: Admin moderation queue (999 lines, 5 files)
-3. **42a0da9**: Two-factor authentication (1,353 lines, 12 files)
-4. **85c9892**: Email verification with Resend (797 lines, 14 files)
-5. **9979ce8**: Password reset flow
+### Recent Commits (chronological, newest first)
+- **ac5d366** (2026-02-06): feat: Add cache monitoring, benchmarks, 2FA tests, and documentation -- session 4
+- **71b83c1** (2026-02-05): docs: update session documentation for ESLint warning cleanup
+- **5e583d8** (2026-02-05): chore(frontend): resolve all 50 remaining ESLint warnings -- session 3
+- **240728c** (2026-02-04): test(admin): Add rate limits, unit tests, and load/stress harnesses -- session 2
+- **4d6f0b1** (2026-02-04): feat(admin): Add comprehensive admin dashboard with performance optimizations (#5)
+- **61aaf06**: Release: Merge production-readiness into main (#4)
 
 ### Extracted Features (Standalone Subprojects)
 - **Personals** (Specs 010, 012): Moved to `bgc-personals/` subdirectory
@@ -172,16 +192,18 @@ bgc-replica/
   - Ports: 3001 (frontend), 8001 (backend)
 
 ### Active Branch
-- **Branch**: `013-profile-expansion`
-- **Status**: All recent security & moderation features committed and pushed
-- **PR**: https://github.com/z3r0fidev/bgc-replica/pull/2
+- **Branch**: `fix/eslint-warnings-cleanup`
+- **HEAD**: ac5d366 (session 4, 2026-02-06) - cache monitoring, benchmarks, 2FA tests, documentation
+- **Status**: Clean working tree; all work committed and pushed to origin
+- **PR #8**: https://github.com/z3r0fidev/bgc-replica/pull/8 (ready for review)
 
 ### Next Priorities
-1. Deploy security features (2FA, email verification) to production
-2. Configure Resend API key and Celery workers
-3. E2E tests for 2FA and email verification flows
-4. User documentation for security features
-5. Admin training for moderation queue
+1. **Immediate**: Review and merge PR #8 (ESLint cleanup branch)
+2. **Validation**: Run GZip benchmark script against staging environment
+3. **Validation**: Run load_test_admin.py against staging, record baseline p95/p99
+4. **Validation**: Execute email delivery verification script with real Resend API
+5. **Production**: Domain authentication setup (SPF, DKIM, DMARC) for email delivery
+6. **Monitoring**: Configure Resend webhook for delivery tracking and bounce handling
 
 ## Dependencies
 
@@ -192,6 +214,8 @@ bgc-replica/
 - `socket.io-client`: 4.8.1
 - `zod`: 3.24.1
 - `@supabase/supabase-js`: 2.49.2
+- `recharts`: Added in PR #5 for admin analytics charts
+- `@tanstack/react-virtual`: Added in PR #5 for chat virtual scrolling
 
 ### Backend Package Highlights
 - `fastapi`: 0.115.6
@@ -297,19 +321,32 @@ bgc-replica/
 
 ## Known Technical Debt
 
-1. **Performance**: Profile load time optimization pending (T025)
+1. **Performance**:
+   - Profile load time optimization pending (T025)
+   - GZip benchmark script created but not yet run against staging (benchmark_gzip.py ready)
+   - Load test baseline (p95/p99) for admin endpoints not yet recorded against staging (load_test_admin.py ready)
+   - Redis cache hit ratio monitoring endpoint created but not yet validated in production
 2. **Accessibility**: Form focus management needs audit (T028)
-3. **Testing**:
-   - E2E test coverage for personals posting incomplete
-   - E2E tests for 2FA login flow needed
-   - Email delivery testing in production environment
-4. **Documentation**:
+3. **Security / Admin**:
+   - Admin action audit trail completeness review pending
+4. **Testing**:
+   - E2E test coverage for personals posting incomplete (now in bgc-personals subproject)
+   - 2FA E2E tests created (auth-2fa.spec.ts) but not yet run in CI/CD pipeline
+   - Email delivery testing in production environment (verify_email_delivery.py created)
+5. **Lint / Code Quality**:
+   - Lint is now clean (0 errors, 0 warnings) as of 2026-02-05.
+   - Several files carry targeted `eslint-disable-next-line` comments for legitimate
+     suppressions. These should be revisited if the underlying patterns change (e.g.,
+     migrating external images to next/image with a configured domain list).
+6. **Documentation**:
    - API documentation needs OpenAPI spec export
    - User guide for 2FA setup needed
-   - Admin guide for moderation queue needed
-5. **Monitoring**:
+   - Rate limiting documentation COMPLETE (docs/api/rate-limiting.md)
+   - Admin dashboard user guide COMPLETE (docs/admin-dashboard-guide.md)
+   - Deployment runbook COMPLETE (docs/deployment/runbook.md with all health endpoints)
+7. **Monitoring**:
    - Production alerting and dashboards not configured
-   - Email delivery monitoring needed
+   - Email delivery monitoring webhook (Resend) not yet configured
    - 2FA adoption rate tracking needed
 
 ## Subprojects
