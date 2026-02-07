@@ -2,15 +2,20 @@ import asyncio
 import os
 import sys
 import random
+import json
 from faker import Faker
 from dotenv import load_dotenv
+import openai
 
-# Add the parent directory to sys.path to allow imports from app
+# Add the backend directory to sys.path to allow imports from app
 backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(backend_root)
+sys.path.insert(0, backend_root)
 
-# Load .env explicitly
+# Load .env from the backend directory
 load_dotenv(os.path.join(backend_root, ".env"))
+
+# Initialize OpenAI client
+client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 from app.core.database import SessionLocal
 from app.models.user import User, Profile
@@ -284,6 +289,57 @@ ARCHETYPES = [
 ]
 
 
+# AI Generation Functions
+async def generate_ai_persona(attributes):
+    """Generates a unique persona using OpenAI GPT."""
+    prompt = f"""
+    Create a unique and realistic social media persona for a gay social platform.
+    Attributes:
+    - Name: {attributes['name']}
+    - Location: {attributes['city']}, {attributes['state']}
+    - Ethnicity: {attributes['ethnicity']}
+    - Build: {attributes['build']}
+    - Position: {attributes['position']}
+    - Archetype: {attributes['archetype']}
+    - Gender Identity: {attributes['gender_identity']}
+    - Occupation: {attributes['occupation']}
+
+    Return a JSON object with:
+    1. "tagline": A catchy one-liner (max 50 chars).
+    2. "intro": A 2-sentence introduction.
+    3. "background": A brief background story.
+    4. "about_me": A paragraph describing personality and lifestyle.
+    5. "hobbies": A list of 5 specific hobbies.
+    6. "lifestyle_image_prompts": A list of 5 descriptive prompts for DALL-E to generate lifestyle photos.
+    7. "avatar_prompt": A descriptive prompt for a professional profile picture.
+    """
+    
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        print(f"Error generating persona: {e}")
+        return None
+
+async def generate_ai_image(prompt):
+    """Generates an image using OpenAI DALL-E 3."""
+    try:
+        response = await client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        return response.data[0].url
+    except Exception as e:
+        print(f"Error generating image: {e}")
+        return None
+
 def generate_username(name):
     first = name.split()[0].lower()
     last = name.split()[1].lower() if len(name.split()) > 1 else ""
@@ -321,162 +377,635 @@ def generate_bio(name, archetype):
 from app.services.location import index_user_location
 
 
-async def seed_expanded_profiles():
-    print(f"Seeding {NUM_PROFILES} robust test profiles for PHL/NJ areas...")
+async def seed_expanded_profiles(num_to_seed=5):
+
+
+    print(f"Seeding {num_to_seed} robust AI-enhanced test profiles for PHL/NJ areas...")
+
+
+
+
 
     async with SessionLocal() as db:
+
+
         hashed_pw = get_password_hash("password123")
 
-        for i in range(NUM_PROFILES):
+
+
+
+
+        for i in range(num_to_seed):
+
+
             idx = START_INDEX + i
 
+
+
+
+
             # 1. Identity & Username
+
+
             name = fake.name_male()
+
+
             username = generate_username(name)
+
+
             email = f"{username.replace('_', '').replace('.', '')}{idx}@example.com"
 
-            # 2. Archetype Selection
-            archetype = random.choice(ARCHETYPES)
 
-            # 3. Location & Coordinates
+
+
+
+            # 2. Archetype & Location Selection
+
+
+            archetype_data = random.choice(ARCHETYPES)
+
+
             city = random.choice(LOCATIONS)
+
+
             coords = CITY_COORDS[city]
+
+
             state = coords["state"]
-            lat = coords["lat"] + (random.random() - 0.5) * 0.01  # Add slight jitter
+
+
+            lat = coords["lat"] + (random.random() - 0.5) * 0.01
+
+
             lng = coords["lng"] + (random.random() - 0.5) * 0.01
 
-            # 4. Profile Pic (Unique via Seed)
-            image_url = f"https://api.dicebear.com/7.x/avataaars/svg?seed={username}&gender=male"
 
-            # 5. User Creation
-            user = User(
-                email=email,
-                name=name,
-                hashed_password=hashed_pw,
-                image=image_url,
-                is_active=True,
-                metadata_json={"username": username, "archetype": archetype["type"]},
-            )
-            db.add(user)
-            await db.flush()  # Get ID for Profile association
 
-            # 6. Full Robust Profile Creation
-            bio_text = generate_bio(name, archetype)
 
-            # Generate social expansion fields
-            display_name = name.split()[0] + " " + name.split()[1][0] + "."
-            birthdate = fake.date_of_birth(minimum_age=21, maximum_age=55)
-            looking_for = random.sample(LOOKING_FOR_OPTIONS, k=random.randint(1, 4))
+
+            # 3. Social Expansion Fields (Initial)
+
+
+            gender_id = random.choice(GENDER_IDENTITIES)
+
+
+            
+
 
             # Occupation based on archetype
+
+
             occupations_by_type = {
-                "The Career Professional": [
-                    "Executive",
-                    "Manager",
-                    "Consultant",
-                    "Director",
-                    "Analyst",
-                ],
-                "The Urban Creative": [
-                    "Designer",
-                    "Artist",
-                    "Musician",
-                    "Photographer",
-                    "Writer",
-                ],
-                "The Dedicated Athlete": [
-                    "Personal Trainer",
-                    "Coach",
-                    "Physical Therapist",
-                    "Sports Manager",
-                ],
-                "The Community Pillar": [
-                    "Teacher",
-                    "Social Worker",
-                    "Community Organizer",
-                    "Nonprofit Director",
-                ],
-                "The Tech & Geek Culture": [
-                    "Software Engineer",
-                    "Data Scientist",
-                    "DevOps Engineer",
-                    "Product Manager",
-                ],
+
+
+                "The Career Professional": ["Executive", "Manager", "Consultant", "Director", "Analyst"],
+
+
+                "The Urban Creative": ["Designer", "Artist", "Musician", "Photographer", "Writer"],
+
+
+                "The Dedicated Athlete": ["Personal Trainer", "Coach", "Physical Therapist", "Sports Manager"],
+
+
+                "The Community Pillar": ["Teacher", "Social Worker", "Community Organizer", "Nonprofit Director"],
+
+
+                "The Tech & Geek Culture": ["Software Engineer", "Data Scientist", "DevOps Engineer", "Product Manager"],
+
+
             }
-            occupation = random.choice(
-                occupations_by_type.get(archetype["type"], ["Professional"])
+
+
+            occupation = random.choice(occupations_by_type.get(archetype_data["type"], ["Professional"]))
+
+
+
+
+
+            # 4. AI Persona Generation
+
+
+            print(f"  Generating AI persona for {name}...")
+
+
+            attributes = {
+
+
+                "name": name,
+
+
+                "city": city,
+
+
+                "state": state,
+
+
+                "ethnicity": random.choice(ETHNICITIES),
+
+
+                "build": random.choice(BUILDS),
+
+
+                "position": random.choice(POSITIONS),
+
+
+                "archetype": archetype_data["type"],
+
+
+                "gender_identity": gender_id,
+
+
+                "occupation": occupation
+
+
+            }
+
+
+            
+
+
+            persona = await generate_ai_persona(attributes)
+
+
+            if not persona:
+
+
+                print(f"  Skipping AI for {name} due to generation error.")
+
+
+                # Fallback to legacy bio if AI fails
+
+
+                bio_text = generate_bio(name, archetype_data)
+
+
+                avatar_url = f"https://api.dicebear.com/7.x/avataaars/svg?seed={username}&gender=male"
+
+
+                lifestyle_images = []
+
+
+            else:
+
+
+                bio_text = (
+
+
+                    f"**{persona['tagline']}**\n\n"
+
+
+                    f"**Intro**: {persona['intro']}\n\n"
+
+
+                    f"**Background**: {persona['background']}\n\n"
+
+
+                    f"**About Me**: {persona['about_me']}\n\n"
+
+
+                    f"**Interests**: {', '.join(persona['hobbies'])}"
+
+
+                )
+
+
+                
+
+
+                # 5. AI Image Generation
+
+
+                print(f"    Generating AI avatar...")
+
+
+                avatar_url = await generate_ai_image(persona['avatar_prompt']) or f"https://api.dicebear.com/7.x/avataaars/svg?seed={username}&gender=male"
+
+
+                
+
+
+                print(f"    Generating lifestyle images (5)...")
+
+
+                lifestyle_images = []
+
+
+                for j, prompt in enumerate(persona['lifestyle_image_prompts']):
+
+
+                    img_url = await generate_ai_image(prompt)
+
+
+                    if img_url:
+
+
+                        lifestyle_images.append(img_url)
+
+
+                    if len(lifestyle_images) >= 5: break
+
+
+
+
+
+            # 6. User Creation
+
+
+            user = User(
+
+
+                email=email,
+
+
+                name=name,
+
+
+                hashed_password=hashed_pw,
+
+
+                image=avatar_url,
+
+
+                is_active=True,
+
+
+                metadata_json={
+
+
+                    "username": username, 
+
+
+                    "archetype": archetype_data["type"],
+
+
+                    "lifestyle_images": lifestyle_images,
+
+
+                    "ai_generated": True if persona else False
+
+
+                },
+
+
             )
 
-            # Social links (50% chance for each)
-            social_links = {}
-            if random.random() > 0.5:
-                social_links["instagram_url"] = (
-                    f"https://instagram.com/{username.replace('_', '')}"
-                )
-            if random.random() > 0.5:
-                social_links["x_url"] = f"https://x.com/{username.replace('_', '')}"
-            if random.random() > 0.7:
-                social_links["website_url"] = f"https://{username.replace('_', '')}.com"
 
-            # Privacy settings (random levels for some fields)
-            privacy_settings = {}
-            if random.random() > 0.7:
-                privacy_settings["occupation"] = random.choice(
-                    ["PUBLIC", "FRIENDS_ONLY", "PRIVATE"]
-                )
-            if random.random() > 0.7:
-                privacy_settings["relationship_status"] = random.choice(
-                    ["PUBLIC", "FRIENDS_ONLY"]
-                )
+            db.add(user)
 
-            profile = Profile(
-                id=user.id,
-                bio=bio_text,
-                height=f"{random.randint(5,6)}'{random.randint(0,11)}\"",
-                weight=random.randint(140, 270),
-                ethnicity=random.choice(ETHNICITIES),
-                position=random.choice(POSITIONS),
-                build=random.choice(BUILDS),
-                hiv_status=random.choice(HIV_STATUSES),
-                privacy_mode=random.choice(PRIVACY_MODES),
-                location_city=city,
-                location_state=state,
-                location_lat=lat,
-                location_lng=lng,
-                is_trans_interested=random.choice([True, False]),
-                created_at=fake.date_time_between(start_date="-1y", end_date="now"),
-                # Social Expansion Fields
-                display_name=display_name,
-                pronouns=random.choice(PRONOUNS),
-                birthdate=birthdate,
-                gender_identity=random.choice(GENDER_IDENTITIES),
-                relationship_status=random.choice(RELATIONSHIP_STATUSES),
-                looking_for=looking_for,
-                occupation=occupation,
-                industry=random.choice(INDUSTRIES),
-                education_level=(
-                    random.choice(EDUCATION_LEVELS) if random.random() > 0.3 else None
-                ),
-                university=(
-                    random.choice(UNIVERSITIES) if random.random() > 0.4 else None
-                ),
-                social_links=social_links if social_links else None,
-                privacy_settings=privacy_settings if privacy_settings else None,
-            )
-            db.add(profile)
 
-            # 7. Index in Redis for geospatial search
+            await db.flush()
+
+
+
+
+
+                                    # 7. Full Robust Profile Creation
+
+
+
+
+
+                                    display_name = name.split()[0] + " " + name.split()[1][0] + "."
+
+
+
+
+
+                                    birthdate = fake.date_of_birth(minimum_age=21, maximum_age=55)
+
+
+
+
+
+                                    looking_for = random.sample(LOOKING_FOR_OPTIONS, k=random.randint(1, 4))
+
+
+
+
+
+                        
+
+
+
+
+
+                                    # Social links (50% chance for each)
+
+
+
+
+
+                                    social_links = {}
+
+
+
+
+
+                                    if random.random() > 0.5:
+
+
+
+
+
+                                        social_links["instagram_url"] = f"https://instagram.com/{username.replace('_', '')}"
+
+
+
+
+
+                                    if random.random() > 0.5:
+
+
+
+
+
+                                        social_links["x_url"] = f"https://x.com/{username.replace('_', '')}"
+
+
+
+
+
+                                    if random.random() > 0.7:
+
+
+
+
+
+                                        social_links["website_url"] = f"https://{username.replace('_', '')}.com"
+
+
+
+
+
+                        
+
+
+
+
+
+                                    # Privacy settings (random levels for some fields)
+
+
+
+
+
+                                    privacy_settings = {}
+
+
+
+
+
+                                    if random.random() > 0.7:
+
+
+
+
+
+                                        privacy_settings["occupation"] = random.choice(["PUBLIC", "FRIENDS_ONLY", "PRIVATE"])
+
+
+
+
+
+                                    if random.random() > 0.7:
+
+
+
+
+
+                                        privacy_settings["relationship_status"] = random.choice(["PUBLIC", "FRIENDS_ONLY"])
+
+
+
+
+
+                        
+
+
+
+
+
+                                    profile = Profile(
+
+
+
+
+
+                                        id=user.id,
+
+
+
+
+
+                                        bio=bio_text,
+
+
+
+
+
+                                        height=f"{random.randint(5,6)}'{random.randint(0,11)}\"",
+
+
+
+
+
+                                        weight=random.randint(140, 270),
+
+
+
+
+
+                                        ethnicity=attributes["ethnicity"],
+
+
+
+
+
+                                        position=attributes["position"],
+
+
+
+
+
+                                        build=attributes["build"],
+
+
+
+
+
+                                        hiv_status=random.choice(HIV_STATUSES),
+
+
+
+
+
+                                        privacy_mode=random.choice(PRIVACY_MODES),
+
+
+
+
+
+                                        location_city=city,
+
+
+
+
+
+                                        location_state=state,
+
+
+
+
+
+                                        location_lat=lat,
+
+
+
+
+
+                                        location_lng=lng,
+
+
+
+
+
+                                        is_trans_interested=random.choice([True, False]),
+
+
+
+
+
+                                        created_at=fake.date_time_between(start_date="-1y", end_date="now"),
+
+
+
+
+
+                                        display_name=display_name,
+
+
+
+
+
+                                        pronouns=random.choice(PRONOUNS),
+
+
+
+
+
+                                        birthdate=birthdate,
+
+
+
+
+
+                                        gender_identity=gender_id,
+
+
+
+
+
+                                        relationship_status=random.choice(RELATIONSHIP_STATUSES),
+
+
+
+
+
+                                        looking_for=looking_for,
+
+
+
+
+
+                                        occupation=occupation,
+
+
+
+
+
+                                        industry=random.choice(INDUSTRIES),
+
+
+
+
+
+                                        education_level=random.choice(EDUCATION_LEVELS) if random.random() > 0.3 else None,
+
+
+
+
+
+                                        university=random.choice(UNIVERSITIES) if random.random() > 0.4 else None,
+
+
+
+
+
+                                        social_links=social_links if social_links else None,
+
+
+
+
+
+                                        privacy_settings=privacy_settings if privacy_settings else None,
+
+
+
+
+
+                                    )
+
+
+
+
+
+                                    db.add(profile)
+
+
+
+
+
+                        
+
+
+
+
+
+            
+
+
+
+
+
+            # 8. Index in Redis
+
+
             await index_user_location(user.id, lat, lng)
 
-            if (i + 1) % 10 == 0:
-                print(f"  Processed {i + 1}/100 profiles...")
+
+
+
+
+            print(f"  Completed profile {i + 1}/{num_to_seed}: {username}")
+
+
+
+
 
         await db.commit()
-    print("Robust profile seeding complete.")
+
+
+    print("Robust AI profile seeding complete.")
+
+
+
 
 
 if __name__ == "__main__":
     # Ensure we use the correct event loop policy for Windows if needed
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(seed_expanded_profiles())
+    
+    # Set number of profiles to seed (defaulting to 5 for AI test)
+    num_profiles = int(sys.argv[1]) if len(sys.argv) > 1 else 5
+    asyncio.run(seed_expanded_profiles(num_profiles))
