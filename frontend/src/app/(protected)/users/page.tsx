@@ -18,7 +18,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 export default function SearchPage() {
-  const [results, setResults] = useState<{ id: string; user?: { name?: string; image?: string }; location_city?: string; location_state?: string; age?: number; height?: string; position?: string }[]>([])
+  const [results, setResults] = useState<{ id: string; user?: { name?: string; image?: string }; location_city?: string; location_state?: string; age?: number; height?: string; position?: string; ethnicity?: string; privacy_mode?: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLocating, setIsLocating] = useState(false)
   const [filters, setFilters] = useState({
