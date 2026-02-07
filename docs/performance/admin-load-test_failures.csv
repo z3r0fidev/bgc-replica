@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences
+GET,[Dashboard] Health Refresh,HTTPError('401 Client Error: Unauthorized for url: [Dashboard] Health Refresh'),3
+GET,[Dashboard] Stats Refresh,HTTPError('401 Client Error: Unauthorized for url: [Dashboard] Stats Refresh'),3
+PATCH,/api/admin/users/[id] PATCH,HTTPError('401 Client Error: Unauthorized for url: /api/admin/users/[id] PATCH'),9

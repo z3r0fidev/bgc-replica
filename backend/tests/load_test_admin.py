@@ -26,10 +26,31 @@ class AdminUser(HttpUser):
 
     def on_start(self):
         """Set up admin authentication on start."""
-        # In a real scenario, this would authenticate and get a real token
+        import os
+
+        # Get token from environment or login
+        token = os.environ.get("ADMIN_TOKEN")
+
+        if not token:
+            # Try to login
+            email = os.environ.get("ADMIN_EMAIL", "admin@bgclive.com")
+            password = os.environ.get("ADMIN_PASSWORD", "AdminPass123!")
+
+            response = self.client.post(
+                "/api/auth/login",
+                data={"username": email, "password": password},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+
+            if response.status_code == 200:
+                token = response.json().get("access_token")
+            else:
+                print(f"Login failed: {response.status_code} - {response.text}")
+                token = "invalid-token"
+
         self.admin_id = str(uuid.uuid4())
         self.headers = {
-            "Authorization": "Bearer admin-test-token",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
         # Track request counts for reporting
