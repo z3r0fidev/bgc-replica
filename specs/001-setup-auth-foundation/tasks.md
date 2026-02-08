@@ -115,7 +115,7 @@ description: "Task list for Setup Auth & Foundation feature"
 **Independent Test**: Register Passkey -> Logout -> Login with Passkey.
 
 ### Tests for User Story 3
-- [ ] T029 [P] [US3] Create E2E test for Passkey registration/login (mocked WebAuthn) in `tests/e2e/auth-passkey.spec.ts`
+- [x] T029 [P] [US3] Create E2E test for Passkey registration/login (mocked WebAuthn) in `tests/e2e/auth-passkey.spec.ts`
 
 ### Implementation for User Story 3
 - [x] T032 [P] [US3] Enable WebAuthn in Better Auth config (Implemented in standard FastAPI)
