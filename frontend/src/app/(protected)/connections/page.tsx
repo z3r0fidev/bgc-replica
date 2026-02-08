@@ -2,12 +2,20 @@
 
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { User, Heart, Users } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Heart, Users } from "lucide-react"
+
+interface Relationship {
+  id: string;
+  type: string;
+  status: string;
+  to_user_id: string;
+  created_at: string;
+}
 
 export default function ConnectionsPage() {
-  const [relationships, setRelationships] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [relationships, setRelationships] = useState<Relationship[]>([])
+  const [, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadRelationships() {

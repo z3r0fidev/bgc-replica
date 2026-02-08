@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Plus, Loader2, User, Clock, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
 
 export default function StoriesPage() {
-  const [stories, setStories] = useState<any[]>([]);
+  const [stories, setStories] = useState<{ id: string; title: string; content: string; cover_url?: string; user_id: string; created_at: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -62,9 +60,10 @@ export default function StoriesPage() {
               <div className="flex flex-col md:flex-row gap-8">
                 {story.cover_url && (
                   <div className="w-full md:w-1/3 aspect-[4/3] rounded-2xl overflow-hidden neo-brutal shrink-0">
-                    <img 
-                      src={story.cover_url} 
-                      alt={story.title} 
+                    {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
+                    <img
+                      src={story.cover_url}
+                      alt={story.title}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
                   </div>

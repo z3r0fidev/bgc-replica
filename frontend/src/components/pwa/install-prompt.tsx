@@ -56,7 +56,7 @@ export function InstallPrompt() {
       );
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [isInstalled]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;

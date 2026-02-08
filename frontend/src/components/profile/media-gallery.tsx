@@ -7,7 +7,7 @@ import { Upload, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 export function MediaGallery() {
-  const [media, setMedia] = useState<any[]>([])
+  const [media, setMedia] = useState<{ id: string; url: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,8 +32,8 @@ export function MediaGallery() {
       const newMedia = await response.json()
       setMedia([...media, newMedia])
       toast.success("Media uploaded!")
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed")
     } finally {
       setIsUploading(false)
     }
@@ -62,6 +62,7 @@ export function MediaGallery() {
         {media.map((item) => (
           <Card key={item.id} className="relative overflow-hidden group">
             <CardContent className="p-0 aspect-square">
+              {/* eslint-disable-next-line @next/next/no-img-element -- External URL from user uploads */}
               <img src={item.url} alt="Gallery item" className="object-cover w-full h-full transition-transform group-hover:scale-105" />
               <button className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                 <X className="h-4 w-4" />

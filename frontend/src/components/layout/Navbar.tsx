@@ -22,12 +22,21 @@ import {
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !!localStorage.getItem("access_token");
+    }
+    return false;
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    setIsLoggedIn(!!token);
-  }, [pathname]);
+    const loggedIn = !!token;
+    if (loggedIn !== isLoggedIn) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsLoggedIn(loggedIn);
+    }
+  }, [pathname, isLoggedIn]);
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");

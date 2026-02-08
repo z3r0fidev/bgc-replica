@@ -3,13 +3,12 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MapPin, User as UserIcon, Heart, UserPlus } from "lucide-react"
+import { MapPin, Heart, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 
 export default function PublicProfilePage() {
   const params = useParams()
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<{ id: string; user?: { name?: string; image?: string }; location_city?: string; location_state?: string; height?: string; ethnicity?: string; bio?: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {

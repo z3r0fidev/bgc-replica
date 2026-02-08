@@ -1,5 +1,7 @@
 "use client";
 
+import type { FeedPost } from "@/types/feed";
+
 const DB_NAME = "bgclive-offline";
 const STORE_NAME = "feed-cache";
 const DB_VERSION = 1;
@@ -29,7 +31,7 @@ export class OfflineStorage {
     });
   }
 
-  async saveFeed(posts: any[]) {
+  async saveFeed(posts: FeedPost[]) {
     await this.init();
     if (!this.db) return;
 
@@ -42,15 +44,15 @@ export class OfflineStorage {
       posts.slice(0, 50).forEach((post) => {
         store.put(post);
       });
-    } catch (e: any) {
-      if (e.name === "QuotaExceededError") {
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === "QuotaExceededError") {
         console.error("Offline storage quota exceeded");
         // T021 logic: show warning or prune more aggressively
       }
     }
   }
 
-  async getFeed(): Promise<any[]> {
+  async getFeed(): Promise<FeedPost[]> {
     await this.init();
     const db = this.db;
     if (!db) return [];

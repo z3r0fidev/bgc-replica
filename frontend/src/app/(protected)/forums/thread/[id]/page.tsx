@@ -10,8 +10,7 @@ import { toast } from "sonner";
 
 export default function ThreadDetailPage() {
   const params = useParams();
-  const [thread, setThread] = useState<any>(null);
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<{ id: string; author_id: string; created_at: string; content: string }[]>([]);
   const [replyText, setReplyText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,8 +60,8 @@ export default function ThreadDetailPage() {
       setPosts([...posts, newPost]);
       setReplyText("");
       toast.success("Reply posted!");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Reply failed");
     } finally {
       setIsSubmitting(false);
     }

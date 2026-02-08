@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare } from "lucide-react";
 
 export default function ForumsPage() {
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<{ id: string; slug: string; name: string; description: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
