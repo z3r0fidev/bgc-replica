@@ -198,7 +198,7 @@ Requires `Authorization: Bearer <admin_token>` header.
 ### 3. Health Pre-Check
 ```bash
 # Verify current production is healthy
-curl https://api.bgclive.com/health
+curl https://api.bgclive.online/health
 
 # Expected: {"status": "ok", ...}
 ```
@@ -228,13 +228,13 @@ npm run lint
 ./deploy.sh green
 
 # Verify green health
-curl https://green.bgclive.com/health
+curl https://green.bgclive.online/health
 
 # If healthy, switch traffic
 ./switch-traffic.sh green
 
 # Monitor for 5 minutes
-watch -n 5 'curl -s https://api.bgclive.com/health | jq .'
+watch -n 5 'curl -s https://api.bgclive.online/health | jq .'
 
 # If issues, rollback
 ./switch-traffic.sh blue
@@ -264,15 +264,15 @@ docker-compose up -d --no-deps --scale api=1 api
 
 ```bash
 # 1. Basic health check
-curl https://api.bgclive.com/health
+curl https://api.bgclive.online/health
 # Expected: status "ok"
 
 # 2. API responsiveness
-curl -w "@curl-format.txt" https://api.bgclive.com/api/health
+curl -w "@curl-format.txt" https://api.bgclive.online/api/health
 # Expected: < 500ms
 
 # 3. Frontend loads
-curl -I https://bgclive.com
+curl -I https://bgclive.online
 # Expected: 200 OK
 ```
 
@@ -280,13 +280,13 @@ curl -I https://bgclive.com
 
 ```bash
 # Get admin token
-TOKEN=$(curl -s -X POST https://api.bgclive.com/api/auth/login \
+TOKEN=$(curl -s -X POST https://api.bgclive.online/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@bgclive.com","password":"..."}' | jq -r .access_token)
+  -d '{"email":"admin@bgclive.online","password":"..."}' | jq -r .access_token)
 
 # Comprehensive health
 curl -H "Authorization: Bearer $TOKEN" \
-  https://api.bgclive.com/api/admin/health
+  https://api.bgclive.online/api/admin/health
 
 # Expected: status "healthy"
 ```
@@ -319,7 +319,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 docker-compose up -d --force-recreate api
 
 # 2. Verify rollback
-curl https://api.bgclive.com/health
+curl https://api.bgclive.online/health
 
 # 3. Investigate issue in green/staging
 ```
@@ -372,8 +372,8 @@ Key metrics to monitor:
 | Role | Contact |
 |------|---------|
 | On-Call Engineer | Slack: #oncall |
-| Database Admin | dba@bgclive.com |
-| Infrastructure | infra@bgclive.com |
+| Database Admin | dba@bgclive.online |
+| Infrastructure | infra@bgclive.online |
 
 ---
 
@@ -402,12 +402,12 @@ NEXTAUTH_SECRET=<base64 secret>
 
 # Email
 RESEND_API_KEY=re_xxx
-RESEND_FROM_EMAIL=noreply@bgclive.com
+RESEND_FROM_EMAIL=noreply@bgclive.online
 
 # Monitoring
 SENTRY_DSN=https://xxx@sentry.io/xxx
 
 # Optional
-APP_URL=https://bgclive.com
+APP_URL=https://bgclive.online
 LOG_LEVEL=INFO
 ```

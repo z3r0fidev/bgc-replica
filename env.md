@@ -29,7 +29,9 @@ NextAuth.js (Auth.js v5) requires a 32-character random string.
 3.  Navigate to **APIs & Services > Credentials**.
 4.  Click **Create Credentials > OAuth client ID**.
 5.  Select **Web application**.
-6.  Add Authorized redirect URIs: `http://localhost:3000/api/auth/callback/google`
+6.  Add Authorized redirect URIs:
+    - Development: `http://localhost:3000/api/auth/callback/google`
+    - Production: `https://bgclive.online/api/auth/callback/google`
 7.  Copy the **Client ID** and **Client Secret**.
 
 #### C. Frontend `DATABASE_URL`
