@@ -147,7 +147,7 @@ Navigate to **Storage** → **Policies** → Select `bgclive-media` bucket
    {
      "allowedOrigins": [
        "http://localhost:3000",
-       "https://yourdomain.com"
+       "https://bgclive.online"
      ],
      "allowedMethods": ["GET", "POST", "PUT", "DELETE"],
      "allowedHeaders": ["Authorization", "Content-Type", "x-upsert"],

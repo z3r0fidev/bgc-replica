@@ -32,7 +32,7 @@ class AdminUser(HttpUser):
 
         if not token:
             # Try to login
-            email = os.environ.get("ADMIN_EMAIL", "admin@bgclive.com")
+            email = os.environ.get("ADMIN_EMAIL", "admin@bgclive.online")
             password = os.environ.get("ADMIN_PASSWORD", "AdminPass123!")
 
             response = self.client.post(

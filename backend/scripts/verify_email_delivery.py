@@ -22,7 +22,7 @@ Usage:
 
 Environment:
     RESEND_API_KEY: Your Resend API key
-    RESEND_FROM_EMAIL: Sender email address (default: noreply@bgclive.com)
+    RESEND_FROM_EMAIL: Sender email address (default: noreply@bgclive.online)
     APP_URL: Application URL for email links (default: http://localhost:3000)
 """
 
