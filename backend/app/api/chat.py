@@ -14,6 +14,7 @@ from app.schemas.chat import (
 )
 from app.services.storage import storage_service
 from app.services.chat import chat_service
+from app.services.media_processor import media_processor
 from app.services.block_service import block_service
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
@@ -63,8 +64,21 @@ async def upload_chat_media(
     file: UploadFile = File(...),
 ):
     content = await file.read()
+
+    # Validate file type, size, and magic bytes
+    is_valid, error = media_processor.validate_upload(content, file.content_type)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error)
+
+    # Strip EXIF metadata from images for privacy
+    if media_processor.is_image(file.content_type):
+        content = media_processor.strip_exif(content, file.content_type)
+
+    # Use safe filename derived from content type, not user-provided filename
+    safe_filename = f"{uuid.uuid4()}.{media_processor.get_safe_extension(file.content_type)}"
+
     upload_result = await storage_service.upload_file(
-        content, file.filename, file.content_type
+        content, safe_filename, file.content_type
     )
     return upload_result
 
@@ -114,9 +128,23 @@ async def get_or_create_conversation(
 async def get_conversation_history(
     conv_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(deps.get_current_user)],
     limit: int = 50,
     cursor: Optional[str] = None,
 ):
+    # Verify user is a participant in this conversation (IDOR protection)
+    conv_result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conv_id,
+            or_(
+                Conversation.user_one_id == current_user.id,
+                Conversation.user_two_id == current_user.id,
+            ),
+        )
+    )
+    if not conv_result.scalars().first():
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
     stmt = (
         select(Message)
         .where(Message.conversation_id == conv_id)

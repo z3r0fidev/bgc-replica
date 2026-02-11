@@ -86,10 +86,16 @@ async def startup():
         r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
         await r.ping()  # Test connection before initializing
         await FastAPILimiter.init(r)
+        app.state.rate_limiter_enabled = True
         print("Rate limiter: Redis connected successfully")
     except Exception as e:
-        print(f"Rate limiter: Redis unavailable ({e}). Rate limiting disabled.")
-        # App will run but without rate limiting
+        # In production, require Redis for rate limiting (fail-closed)
+        if not settings.DEBUG:
+            raise RuntimeError(
+                f"Redis is required for rate limiting in production: {e}"
+            )
+        app.state.rate_limiter_enabled = False
+        print(f"WARNING: Rate limiter disabled - Redis unavailable ({e})")
 
 
 # Instrument Prometheus
@@ -106,10 +112,10 @@ async def app_exception_handler(request: Request, exc: BaseAppException):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(SecurityHeadersMiddleware)

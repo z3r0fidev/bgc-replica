@@ -39,6 +39,28 @@ class MediaProcessor:
     SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     SUPPORTED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
 
+    # Magic bytes for file type verification
+    MAGIC_BYTES = {
+        "image/jpeg": [b"\xff\xd8\xff"],
+        "image/png": [b"\x89PNG\r\n\x1a\n"],
+        "image/webp": [b"RIFF"],  # RIFF....WEBP
+        "image/gif": [b"GIF87a", b"GIF89a"],
+        "video/mp4": [b"\x00\x00\x00", b"ftyp"],  # Can start with size or ftyp
+        "video/webm": [b"\x1a\x45\xdf\xa3"],
+        "video/quicktime": [b"\x00\x00\x00", b"ftyp"],
+    }
+
+    # Safe extension mapping from content type
+    EXTENSION_MAP = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+        "video/mp4": "mp4",
+        "video/webm": "webm",
+        "video/quicktime": "mov",
+    }
+
     def __init__(self):
         self.pil_available = PIL_AVAILABLE
         self.ffmpeg_available = FFMPEG_AVAILABLE
@@ -57,6 +79,62 @@ class MediaProcessor:
     def is_video(self, content_type: str) -> bool:
         """Check if content type is a video."""
         return content_type in self.SUPPORTED_VIDEO_TYPES
+
+    def validate_magic_bytes(self, content: bytes, claimed_type: str) -> bool:
+        """
+        Verify file content matches claimed MIME type using magic bytes.
+        Returns True if the file's magic bytes match the expected type.
+        """
+        if claimed_type not in self.MAGIC_BYTES:
+            return False
+
+        magic_patterns = self.MAGIC_BYTES[claimed_type]
+
+        # Check for WebP which has RIFF....WEBP pattern
+        if claimed_type == "image/webp":
+            if len(content) < 12:
+                return False
+            return content[:4] == b"RIFF" and content[8:12] == b"WEBP"
+
+        # Check for MP4/QuickTime which can have various headers
+        if claimed_type in ("video/mp4", "video/quicktime"):
+            if len(content) < 12:
+                return False
+            # Check for ftyp box (common MP4/MOV pattern)
+            return content[4:8] == b"ftyp" or content[:3] == b"\x00\x00\x00"
+
+        # Standard magic byte check for other types
+        for pattern in magic_patterns:
+            if content[: len(pattern)] == pattern:
+                return True
+
+        return False
+
+    def get_safe_extension(self, content_type: str) -> str:
+        """Get safe file extension from validated content type."""
+        return self.EXTENSION_MAP.get(content_type, "bin")
+
+    def validate_upload(
+        self, content: bytes, claimed_type: str
+    ) -> Tuple[bool, str]:
+        """
+        Comprehensive upload validation: type, size, and magic bytes.
+        Returns (is_valid, error_message).
+        """
+        # Check if type is supported
+        if not self.is_supported_type(claimed_type):
+            return False, f"File type '{claimed_type}' is not allowed"
+
+        # Check file size
+        is_valid_size, size_error = self.validate_file_size(content, claimed_type)
+        if not is_valid_size:
+            return False, size_error
+
+        # Verify magic bytes match claimed type
+        if not self.validate_magic_bytes(content, claimed_type):
+            return False, "File content does not match claimed type"
+
+        return True, ""
 
     def get_media_type(self, content_type: str) -> str:
         """Return 'IMAGE' or 'VIDEO' based on content type."""

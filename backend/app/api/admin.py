@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, desc, asc
 from app.core.database import get_db
@@ -21,6 +22,11 @@ from app.schemas.admin import (
 )
 
 router = APIRouter()
+
+
+def escape_like(value: str) -> str:
+    """Escape SQL LIKE wildcard characters to prevent injection."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 # Helper function to log admin actions
@@ -45,7 +51,11 @@ async def log_admin_action(
     return log
 
 
-@router.get("/stats", response_model=AdminStatsOverview)
+@router.get(
+    "/stats",
+    response_model=AdminStatsOverview,
+    dependencies=[Depends(RateLimiter(times=60, seconds=60))],
+)
 async def get_admin_stats(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -122,7 +132,11 @@ async def get_admin_stats(
     )
 
 
-@router.get("/users", response_model=AdminUserListResponse)
+@router.get(
+    "/users",
+    response_model=AdminUserListResponse,
+    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+)
 async def list_users(
     admin: Annotated[User, Depends(deps.get_admin_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -147,9 +161,13 @@ async def list_users(
     filters = []
 
     if query:
-        search_term = f"%{query}%"
+        escaped_query = escape_like(query)
+        search_term = f"%{escaped_query}%"
         filters.append(
-            or_(User.name.ilike(search_term), User.email.ilike(search_term))
+            or_(
+                User.name.ilike(search_term, escape="\\"),
+                User.email.ilike(search_term, escape="\\"),
+            )
         )
 
     if is_active is not None:
@@ -282,7 +300,10 @@ async def update_user(
     return AdminUserDetail.model_validate(user)
 
 
-@router.post("/users/{user_id}/suspend")
+@router.post(
+    "/users/{user_id}/suspend",
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def suspend_user(
     user_id: uuid.UUID,
     request: SuspendUserRequest,
@@ -328,7 +349,10 @@ async def suspend_user(
     }
 
 
-@router.post("/users/{user_id}/ban")
+@router.post(
+    "/users/{user_id}/ban",
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def ban_user(
     user_id: uuid.UUID,
     request: BanUserRequest,
@@ -365,7 +389,10 @@ async def ban_user(
     return {"message": "User banned"}
 
 
-@router.post("/users/{user_id}/restore")
+@router.post(
+    "/users/{user_id}/restore",
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def restore_user(
     user_id: uuid.UUID,
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -400,7 +427,10 @@ async def restore_user(
     return {"message": "User restored"}
 
 
-@router.post("/users/{user_id}/make-admin")
+@router.post(
+    "/users/{user_id}/make-admin",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def make_admin(
     user_id: uuid.UUID,
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -426,7 +456,10 @@ async def make_admin(
     return {"message": "Admin privileges granted"}
 
 
-@router.post("/users/{user_id}/revoke-admin")
+@router.post(
+    "/users/{user_id}/revoke-admin",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def revoke_admin(
     user_id: uuid.UUID,
     admin: Annotated[User, Depends(deps.get_admin_user)],
