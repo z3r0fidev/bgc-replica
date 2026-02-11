@@ -23,8 +23,8 @@ function ResetPasswordContent() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const validatePassword = (pwd: string): string | null => {
-    if (pwd.length < 8) {
-      return "Password must be at least 8 characters";
+    if (pwd.length < 12) {
+      return "Password must be at least 12 characters";
     }
     if (!/[A-Z]/.test(pwd)) {
       return "Password must contain at least one uppercase letter";
@@ -34,6 +34,9 @@ function ResetPasswordContent() {
     }
     if (!/[0-9]/.test(pwd)) {
       return "Password must contain at least one digit";
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
+      return "Password must contain at least one special character";
     }
     return null;
   };
@@ -182,7 +185,7 @@ function ResetPasswordContent() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters with uppercase, lowercase, and a number.
+                Must be at least 12 characters with uppercase, lowercase, digit, and special character.
               </p>
             </div>
 

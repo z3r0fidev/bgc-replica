@@ -42,7 +42,8 @@ async def get_current_user(
             if settings.NEXTAUTH_SECRET
             else settings.SECRET_KEY
         )
-        payload = jwt.decode(token, secret, algorithms=[settings.ALGORITHM])
+        # Hardcode algorithm to prevent environment-based algorithm manipulation attacks
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
 
         # NextAuth often puts the user ID in 'sub' or 'user.id'
         user_id_str: str = payload.get("sub") or payload.get("user", {}).get("id")

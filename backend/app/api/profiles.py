@@ -1,5 +1,6 @@
 from typing import Annotated, Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.core.database import get_db
@@ -11,6 +12,7 @@ from app.schemas.social import ProfileRatingCreate
 from app.services.storage import storage_service
 from app.services.cache import profile_cache
 from app.services.profile_service import profile_service
+from app.services.media_processor import media_processor
 import uuid
 from sqlalchemy.orm import selectinload
 
@@ -181,22 +183,39 @@ async def get_user_profile(
     return masked_data
 
 
-@router.post("/me/media", response_model=MediaSchema)
+@router.post(
+    "/me/media",
+    response_model=MediaSchema,
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
 async def upload_gallery_media(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
 ):
     content = await file.read()
+
+    # Validate file type, size, and magic bytes
+    is_valid, error = media_processor.validate_upload(content, file.content_type)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error)
+
+    # Strip EXIF metadata from images for privacy
+    if media_processor.is_image(file.content_type):
+        content = media_processor.strip_exif(content, file.content_type)
+
+    # Use safe filename derived from content type
+    safe_filename = f"{uuid.uuid4()}.{media_processor.get_safe_extension(file.content_type)}"
+
     upload_result = await storage_service.upload_file(
-        content, file.filename, file.content_type
+        content, safe_filename, file.content_type
     )
 
     new_media = Media(
         user_id=current_user.id,
         url=upload_result["url"],
         storage_path=upload_result["storage_path"],
-        type="IMAGE" if file.content_type.startswith("image") else "VIDEO",
+        type=media_processor.get_media_type(file.content_type),
     )
     db.add(new_media)
     await db.commit()

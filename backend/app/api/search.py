@@ -16,6 +16,11 @@ import uuid
 router = APIRouter()
 
 
+def escape_like(value: str) -> str:
+    """Escape SQL LIKE wildcard characters to prevent injection."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 @router.get(
     "/",
     response_model=PaginatedResponse[ProfileSchema],
@@ -54,7 +59,8 @@ async def search_users(
     if ethnicity:
         filters.append(Profile.ethnicity == ethnicity)
     if location:
-        filters.append(Profile.location_city.ilike(f"%{location}%"))
+        escaped_location = escape_like(location)
+        filters.append(Profile.location_city.ilike(f"%{escaped_location}%", escape="\\"))
     if position:
         filters.append(Profile.position == position)
     if build:
