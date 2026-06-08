@@ -1,20 +1,20 @@
 "use client";
 
+import React from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageSquare, Heart, Share2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { FeedPost } from "@/types/feed";
+import { useGestures } from "@/hooks/useGestures";
 
 interface FeedItemProps {
   post: FeedPost;
   style?: React.CSSProperties;
 }
 
-import { useGestures } from "@/hooks/useGestures";
-
-export function FeedItem({ post, style }: FeedItemProps) {
+export const FeedItem = React.memo(function FeedItem({ post, style }: FeedItemProps) {
   const { handleDragEnd, swipeDirection } = useGestures();
 
   return (
@@ -70,4 +70,4 @@ export function FeedItem({ post, style }: FeedItemProps) {
       </Card>
     </motion.div>
   );
-}
+});

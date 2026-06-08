@@ -1,8 +1,9 @@
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
 
-export function TypingIndicator({ username }: { username?: string }) {
+export const TypingIndicator = React.memo(function TypingIndicator({ username }: { username?: string }) {
   return (
     <div className="flex items-center gap-2 px-4 py-2 text-muted-foreground text-xs italic">
       <div className="flex gap-1">
@@ -22,4 +23,4 @@ export function TypingIndicator({ username }: { username?: string }) {
       <span>{username ? `${username} is typing...` : "Typing..."}</span>
     </div>
   );
-}
+});

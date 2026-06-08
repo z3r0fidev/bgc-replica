@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { cn } from "@/lib/utils";
 
 interface PresenceIndicatorProps {
@@ -7,7 +8,7 @@ interface PresenceIndicatorProps {
   className?: string;
 }
 
-export function PresenceIndicator({ status, className }: PresenceIndicatorProps) {
+export const PresenceIndicator = React.memo(function PresenceIndicator({ status, className }: PresenceIndicatorProps) {
   return (
     <span
       className={cn(
@@ -19,4 +20,4 @@ export function PresenceIndicator({ status, className }: PresenceIndicatorProps)
       )}
     />
   );
-}
+});
