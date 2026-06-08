@@ -64,7 +64,7 @@ export default function UserGalleryPage() {
 
         setNextCursor(data.next_cursor || null);
         setTotalCount(data.total_count);
-      } catch (error) {
+      } catch {
         toast.error("Failed to load gallery");
       } finally {
         setIsLoading(false);

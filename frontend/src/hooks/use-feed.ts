@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import type { FeedPost } from "@/types/feed";
 
 const MAX_FEED_ITEMS = 500;
@@ -22,9 +22,12 @@ export function useFeed() {
     });
   }, []);
 
-  return {
-    posts,
-    setPosts,
-    addPosts,
-  };
+  return useMemo(
+    () => ({
+      posts,
+      setPosts,
+      addPosts,
+    }),
+    [posts, addPosts]
+  );
 }

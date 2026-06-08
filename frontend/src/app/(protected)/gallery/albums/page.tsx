@@ -55,7 +55,7 @@ export default function AlbumsPage() {
       }
 
       setNextCursor(data.next_cursor || null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to load albums");
     } finally {
       setIsLoading(false);
@@ -100,7 +100,7 @@ export default function AlbumsPage() {
 
       setAlbums((prev) => prev.filter((a) => a.id !== deleteTarget.id));
       toast.success("Album deleted");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete album");
     } finally {
       setDeleteTarget(null);
@@ -126,7 +126,7 @@ export default function AlbumsPage() {
 
       await navigator.clipboard.writeText(shareUrl);
       toast.success("Share link copied to clipboard!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to create share link");
     }
   };

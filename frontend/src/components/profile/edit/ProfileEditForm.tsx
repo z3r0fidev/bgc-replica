@@ -91,7 +91,7 @@ export function ProfileEditForm() {
             website_url: data.social_links?.website_url || "",
           },
         });
-      } catch (error) {
+      } catch {
         toast.error("Failed to load profile");
       } finally {
         setIsFetching(false);
