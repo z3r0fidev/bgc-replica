@@ -12,8 +12,6 @@ import {
   Trash2,
   ZoomIn,
   ZoomOut,
-  Play,
-  Pause,
 } from "lucide-react";
 import type { GalleryMedia } from "@/types/gallery";
 
@@ -114,7 +112,7 @@ export function MediaLightbox({
           title: currentItem.filename || "Shared media",
           url: currentItem.url,
         });
-      } catch (err) {
+      } catch {
         // User cancelled or error
       }
     } else {

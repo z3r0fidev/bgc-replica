@@ -37,7 +37,7 @@ export default function SharedAlbumPage() {
 
         const data: AlbumWithMedia = await response.json();
         setAlbum(data);
-      } catch (err) {
+      } catch {
         setError("Failed to load album");
       } finally {
         setIsLoading(false);

@@ -26,7 +26,6 @@ import type { GalleryMedia } from "@/types/gallery";
 
 interface SortableAlbumGridProps {
   items: GalleryMedia[];
-  albumId: string;
   onReorder: (items: GalleryMedia[]) => void;
   onItemClick?: (item: GalleryMedia, index: number) => void;
   showPrivacyBadge?: boolean;
@@ -160,7 +159,6 @@ function MediaItemOverlay({ item }: { item: GalleryMedia }) {
 
 export function SortableAlbumGrid({
   items,
-  albumId,
   onReorder,
   onItemClick,
   showPrivacyBadge = false,
