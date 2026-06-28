@@ -1,5 +1,6 @@
 import re
 import socket
+import ssl as _ssl
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
@@ -56,13 +57,18 @@ if database_url.startswith("postgresql://"):
 
 database_url = resolve_to_ipv4_url(database_url)
 
-# SSL required for external hosts (Supabase); not for Railway internal or localhost
+# SSL required for external hosts (Supabase); not for Railway internal or localhost.
+# Supabase's PgBouncer pooler uses a private CA not in Python's standard bundle,
+# so we encrypt without chain verification (CERT_NONE).
 _is_external_db = not any(
     x in database_url for x in (".railway.internal", "localhost", "127.0.0.1")
 )
 _connect_args: dict = {"timeout": 30, "command_timeout": 60}
 if _is_external_db:
-    _connect_args["ssl"] = True
+    _ssl_ctx = _ssl.create_default_context()
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = _ssl.CERT_NONE
+    _connect_args["ssl"] = _ssl_ctx
 
 engine = create_async_engine(
     database_url,

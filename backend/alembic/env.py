@@ -1,6 +1,7 @@
 import asyncio
 import re
 import socket
+import ssl as _ssl
 from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -113,12 +114,17 @@ async def run_async_migrations() -> None:
     db_url = resolve_to_ipv4_url(db_url)
     configuration["sqlalchemy.url"] = db_url
 
+    # Supabase's PgBouncer pooler uses a private CA not in Python's standard bundle,
+    # so we encrypt without chain verification (CERT_NONE).
     _is_external_db = not any(
         x in db_url for x in (".railway.internal", "localhost", "127.0.0.1")
     )
     _connect_args: dict = {"timeout": 30, "command_timeout": 60}
     if _is_external_db:
-        _connect_args["ssl"] = True
+        _ssl_ctx = _ssl.create_default_context()
+        _ssl_ctx.check_hostname = False
+        _ssl_ctx.verify_mode = _ssl.CERT_NONE
+        _connect_args["ssl"] = _ssl_ctx
 
     connectable = async_engine_from_config(
         configuration,
