@@ -1,6 +1,7 @@
 from typing import Annotated, Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Limiter, Rate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.core.database import get_db
@@ -186,7 +187,7 @@ async def get_user_profile(
 @router.post(
     "/me/media",
     response_model=MediaSchema,
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
 )
 async def upload_gallery_media(
     current_user: Annotated[User, Depends(deps.get_current_user)],

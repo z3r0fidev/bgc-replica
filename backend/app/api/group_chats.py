@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Limiter, Rate
 
 from app.core.database import get_db
 from app.models.user import User
@@ -124,7 +125,7 @@ def member_to_response(
     "",
     response_model=GroupChatResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(RateLimiter(times=5, seconds=300))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 5))))],
 )
 async def create_group(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -476,7 +477,7 @@ async def remove_member(
 @router.post(
     "/{group_id}/messages",
     response_model=GroupMessageResponse,
-    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.MINUTE))))],
 )
 async def send_message(
     group_id: uuid.UUID,

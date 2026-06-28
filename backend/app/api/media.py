@@ -11,6 +11,7 @@ from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
 from app.services.storage import storage_service
 from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Limiter, Rate
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ router = APIRouter()
 @router.post(
     "/upload",
     response_model=MediaSchema,
-    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))],
 )
 async def upload_media(
     file: UploadFile = File(...),

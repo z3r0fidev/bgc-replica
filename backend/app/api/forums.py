@@ -16,6 +16,7 @@ from app.schemas.community import (
 )
 from app.schemas.common import PaginatedResponse
 from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Limiter, Rate
 import uuid
 
 router = APIRouter()
@@ -84,7 +85,7 @@ async def get_category_threads(
 @router.post(
     "/threads",
     response_model=ForumThreadSchema,
-    dependencies=[Depends(RateLimiter(times=5, seconds=300))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 5))))],
 )
 async def create_thread(
     thread_in: ForumThreadCreate,
@@ -116,7 +117,7 @@ async def get_thread_posts(
 @router.post(
     "/posts",
     response_model=ForumPostSchema,
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
 )
 async def create_post(
     post_in: ForumPostCreate,
