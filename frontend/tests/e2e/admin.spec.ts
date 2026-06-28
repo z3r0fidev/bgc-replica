@@ -77,7 +77,7 @@ test.describe("Admin Dashboard", () => {
         await expect(searchInput).toBeVisible();
 
         // Check for filter dropdowns
-        await expect(page.getByRole("combobox")).toHaveCount({ minimum: 1 });
+        expect(await page.getByRole("combobox").count()).toBeGreaterThanOrEqual(1);
       }
     });
 
