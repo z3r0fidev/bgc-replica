@@ -6,6 +6,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Play, Lock, Users, Eye } from "lucide-react";
+import Image from "next/image";
 import type { GalleryMedia } from "@/types/gallery";
 
 interface GalleryGridProps {
@@ -78,6 +79,7 @@ export function GalleryGrid({
     if (lastItem.index >= rowCount - 1) {
       onLoadMore?.();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowVirtualizer.getVirtualItems(), hasMore, isLoading, rowCount, onLoadMore]);
 
   const handleItemClick = useCallback(
@@ -200,11 +202,11 @@ export function GalleryGrid({
                     onClick={(e) => handleItemClick(item, globalIndex, e)}
                   >
                     {/* Thumbnail */}
-                    <img
+                    <Image
                       src={item.thumbnail_url || item.url}
                       alt={item.filename || "Gallery item"}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      loading="lazy"
+                      fill
+                      className="object-cover transition-transform group-hover:scale-105"
                     />
 
                     {/* Video indicator */}

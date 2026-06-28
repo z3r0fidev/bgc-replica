@@ -477,7 +477,7 @@ export default function AlbumDetailPage() {
       <AlertDialog open={deleteAlbumOpen} onOpenChange={setDeleteAlbumOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{album.title}"?</AlertDialogTitle>
+            <AlertDialogTitle>Delete &ldquo;{album.title}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
               This will delete the album. The photos in this album will not be
               deleted from your gallery.

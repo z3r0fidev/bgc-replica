@@ -9,7 +9,6 @@ import { test, expect, Page, BrowserContext } from '@playwright/test';
 
 // Mock WebAuthn credential for testing
 const mockCredentialId = 'dGVzdC1jcmVkZW50aWFsLWlk';
-const mockPublicKey = 'dGVzdC1wdWJsaWMta2V5';
 
 /**
  * Injects WebAuthn API mocks into the page.
@@ -20,8 +19,9 @@ async function injectWebAuthnMocks(page: Page, options: {
   shouldSucceed?: boolean;
   errorType?: 'NotAllowedError' | 'InvalidStateError' | 'NotSupportedError';
 } = { shouldSucceed: true }) {
-  await page.addInitScript(({ shouldSucceed, errorType, credentialId, publicKey }) => {
+  await page.addInitScript(({ shouldSucceed, errorType, credentialId }) => {
     // Mock PublicKeyCredential
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).PublicKeyCredential = class MockPublicKeyCredential {
       static isUserVerifyingPlatformAuthenticatorAvailable() {
         return Promise.resolve(true);
@@ -33,7 +33,6 @@ async function injectWebAuthnMocks(page: Page, options: {
     };
 
     // Mock navigator.credentials.create (registration)
-    const originalCreate = navigator.credentials?.create?.bind(navigator.credentials);
     if (navigator.credentials) {
       navigator.credentials.create = async (options: CredentialCreationOptions) => {
         console.log('[WebAuthn Mock] create() called with options:', options);
@@ -112,7 +111,6 @@ async function injectWebAuthnMocks(page: Page, options: {
     shouldSucceed: options.shouldSucceed,
     errorType: options.errorType,
     credentialId: mockCredentialId,
-    publicKey: mockPublicKey,
   });
 }
 
@@ -405,9 +403,12 @@ test.describe('Passkey Authentication', () => {
       // Inject mock that simulates unsupported WebAuthn
       await page.addInitScript(() => {
         // Remove WebAuthn support
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (window as any).PublicKeyCredential;
         if (navigator.credentials) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (navigator.credentials as any).create = undefined;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (navigator.credentials as any).get = undefined;
         }
       });
@@ -573,8 +574,10 @@ test.describe('Passkey Authentication', () => {
   test.describe('WebAuthn Feature Detection', () => {
     test('should check for platform authenticator availability', async ({ page }) => {
       await page.addInitScript(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).PublicKeyCredential = class {
           static isUserVerifyingPlatformAuthenticatorAvailable() {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__platformAuthCheckCalled = true;
             return Promise.resolve(true);
           }
@@ -596,6 +599,7 @@ test.describe('Passkey Authentication', () => {
     test('should handle missing PublicKeyCredential gracefully', async ({ page }) => {
       await page.addInitScript(() => {
         // Simulate browser without WebAuthn support
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (window as any).PublicKeyCredential;
       });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -71,11 +71,7 @@ export default function ModerationPage() {
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [statusFilter, typeFilter]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -100,7 +96,11 @@ export default function ModerationPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [statusFilter, typeFilter, router]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleResolve = async (action: ResolveAction) => {
     if (!selectedReport) return;

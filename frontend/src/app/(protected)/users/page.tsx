@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -318,22 +319,13 @@ export default function SearchPage() {
                 <Link key={profile.id} href={`/users/${profile.id}`}>
                   <Card className="overflow-hidden hover:ring-2 hover:ring-primary transition-all group neo-brutal">
                     <div className="aspect-[3/4] bg-muted relative">
-                      {profile.user?.image ? (
-                        <img 
-                          src={profile.user.image} 
-                          alt={profile.user.name || "User"} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`;
-                          }}
-                        />
-                      ) : (
-                        <img 
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                      <Image
+                        src={profile.user?.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
+                        alt={profile.user?.name || "Avatar"}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        unoptimized
+                      />
                       {/* Online indicator */}
                       <div className="absolute top-2 right-2">
                         <Badge className="bg-green-500 hover:bg-green-600 border-none">Online</Badge>

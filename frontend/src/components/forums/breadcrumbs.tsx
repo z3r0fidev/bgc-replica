@@ -29,6 +29,7 @@ export function ForumBreadcrumbs() {
         setPath(result);
       });
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPath([]);
     }
   }, [slugs]);

@@ -100,7 +100,7 @@ export function ShareDialog({
         <DialogHeader>
           <DialogTitle>Share Album</DialogTitle>
           <DialogDescription>
-            Generate a shareable link for "{albumTitle}"
+            Generate a shareable link for &ldquo;{albumTitle}&rdquo;
           </DialogDescription>
         </DialogHeader>
 

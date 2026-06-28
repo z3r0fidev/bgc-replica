@@ -13,6 +13,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import NextImage from "next/image";
 import type { GalleryMedia } from "@/types/gallery";
 
 interface MediaLightboxProps {
@@ -35,19 +36,21 @@ export function MediaLightbox({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
   const currentItem = items[currentIndex];
   const hasNext = currentIndex < items.length - 1;
   const hasPrev = currentIndex > 0;
 
-  // Reset state when opening
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(initialIndex);
-      setZoom(1);
-      setIsPlaying(false);
-    }
-  }, [isOpen, initialIndex]);
+  // Reset state when opening - use derived state pattern to avoid useEffect setState
+  if (isOpen && !prevIsOpen) {
+    setPrevIsOpen(true);
+    setCurrentIndex(initialIndex);
+    setZoom(1);
+    setIsPlaying(false);
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+  }
 
   // Keyboard navigation
   useEffect(() => {
@@ -244,10 +247,13 @@ export function MediaLightbox({
             }}
           >
             {currentItem.type === "IMAGE" ? (
-              <img
+              <NextImage
                 src={currentItem.url}
                 alt={currentItem.filename || "Gallery image"}
-                className="max-w-[90vw] max-h-[80vh] object-contain"
+                width={1920}
+                height={1080}
+                className="object-contain"
+                style={{ width: "auto", height: "auto", maxWidth: "90vw", maxHeight: "80vh" }}
                 draggable={false}
               />
             ) : (
@@ -288,7 +294,7 @@ export function MediaLightbox({
                 <button
                   key={item.id}
                   className={`
-                    w-16 h-16 rounded overflow-hidden flex-shrink-0 transition-all
+                    relative w-16 h-16 rounded overflow-hidden flex-shrink-0 transition-all
                     ${
                       index === currentIndex
                         ? "ring-2 ring-primary ring-offset-2 ring-offset-black"
@@ -297,10 +303,11 @@ export function MediaLightbox({
                   `}
                   onClick={() => setCurrentIndex(index)}
                 >
-                  <img
+                  <NextImage
                     src={item.thumbnail_url || item.url}
                     alt=""
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </button>
               ))}

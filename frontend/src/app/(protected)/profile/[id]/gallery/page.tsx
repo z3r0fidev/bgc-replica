@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GalleryGrid, MediaLightbox } from "@/components/gallery";
-import { Loader2, Image, Film, ArrowLeft } from "lucide-react";
+import { Loader2, Image as ImageIcon, Film, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -124,7 +124,7 @@ export default function UserGalleryPage() {
           <TabsList>
             <TabsTrigger value="ALL">All</TabsTrigger>
             <TabsTrigger value="IMAGE" className="gap-2">
-              <Image className="h-4 w-4" />
+              <ImageIcon className="h-4 w-4" />
               Photos
             </TabsTrigger>
             <TabsTrigger value="VIDEO" className="gap-2">

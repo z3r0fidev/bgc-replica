@@ -54,9 +54,7 @@ test.describe("Authentication", () => {
     await expect(page.getByText(/verification failed|invalid|expired/i)).toBeVisible();
   });
 
-  test("login page shows 2FA input after valid credentials", async ({
-    page,
-  }) => {
+  test("login page shows 2FA input after valid credentials", async () => {
     // This test requires a user with 2FA enabled
     // Skipping actual 2FA flow in E2E for now
     test.skip();

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ export default function PublicProfilePage() {
   const params = useParams()
   const [profile, setProfile] = useState<{ id: string; user?: { name?: string; image?: string }; location_city?: string; location_state?: string; height?: string; ethnicity?: string; bio?: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [imgError, setImgError] = useState(false)
 
   useEffect(() => {
     async function loadProfile() {
@@ -56,14 +58,14 @@ export default function PublicProfilePage() {
   return (
     <div className="container max-w-4xl py-10 space-y-8">
       <div className="flex flex-col md:flex-row gap-8 items-start">
-        <div className="w-full md:w-1/3 aspect-square bg-muted rounded-xl overflow-hidden shadow-lg border border-black/10">
-          <img 
-            src={profile.user?.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`} 
-            alt={profile.user?.name || "User"} 
-            className="w-full h-full object-cover" 
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`;
-            }}
+        <div className="w-full md:w-1/3 aspect-square bg-muted rounded-xl overflow-hidden shadow-lg border border-black/10 relative">
+          <Image
+            src={(!imgError && profile.user?.image) ? profile.user.image : `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
+            alt={profile.user?.name || "User"}
+            fill
+            className="object-cover"
+            unoptimized
+            onError={() => setImgError(true)}
           />
         </div>
         <div className="flex-1 space-y-4 w-full">
