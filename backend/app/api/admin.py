@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Limiter, Rate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, desc, asc
 from app.core.database import get_db
@@ -54,7 +55,7 @@ async def log_admin_action(
 @router.get(
     "/stats",
     response_model=AdminStatsOverview,
-    dependencies=[Depends(RateLimiter(times=60, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(60, Duration.MINUTE))))],
 )
 async def get_admin_stats(
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -135,7 +136,7 @@ async def get_admin_stats(
 @router.get(
     "/users",
     response_model=AdminUserListResponse,
-    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.MINUTE))))],
 )
 async def list_users(
     admin: Annotated[User, Depends(deps.get_admin_user)],
@@ -302,7 +303,7 @@ async def update_user(
 
 @router.post(
     "/users/{user_id}/suspend",
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
 )
 async def suspend_user(
     user_id: uuid.UUID,
@@ -351,7 +352,7 @@ async def suspend_user(
 
 @router.post(
     "/users/{user_id}/ban",
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
 )
 async def ban_user(
     user_id: uuid.UUID,
@@ -391,7 +392,7 @@ async def ban_user(
 
 @router.post(
     "/users/{user_id}/restore",
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
 )
 async def restore_user(
     user_id: uuid.UUID,
@@ -429,7 +430,7 @@ async def restore_user(
 
 @router.post(
     "/users/{user_id}/make-admin",
-    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))],
 )
 async def make_admin(
     user_id: uuid.UUID,
@@ -458,7 +459,7 @@ async def make_admin(
 
 @router.post(
     "/users/{user_id}/revoke-admin",
-    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))],
 )
 async def revoke_admin(
     user_id: uuid.UUID,

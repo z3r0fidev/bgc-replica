@@ -18,6 +18,7 @@ supabase
 asyncpg
 prometheus-fastapi-instrumentator
 fastapi-limiter
+pyrate-limiter
 bleach
 celery
 opentelemetry-api

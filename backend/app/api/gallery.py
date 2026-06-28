@@ -34,6 +34,7 @@ from app.schemas.gallery import (
 from app.services.storage import storage_service
 from app.services.media_processor import media_processor
 from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Limiter, Rate
 from datetime import datetime, timedelta
 import secrets
 import base64
@@ -47,7 +48,7 @@ router = APIRouter()
 @router.post(
     "/upload",
     response_model=MediaUploadResponse,
-    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))],
 )
 async def upload_media(
     file: UploadFile = File(...),

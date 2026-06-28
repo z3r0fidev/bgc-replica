@@ -11,6 +11,7 @@ from app.services.location import search_users_nearby, get_lat_lng_from_zip
 from app.services.block_service import block_service
 from app.api import deps
 from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Duration, Limiter, Rate
 import uuid
 
 router = APIRouter()
@@ -24,7 +25,7 @@ def escape_like(value: str) -> str:
 @router.get(
     "/",
     response_model=PaginatedResponse[ProfileSchema],
-    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.MINUTE))))],
 )
 async def search_users(
     min_age: Optional[int] = Query(None),

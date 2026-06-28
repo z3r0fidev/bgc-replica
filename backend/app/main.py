@@ -32,8 +32,6 @@ from app.core.exceptions import BaseAppException
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from fastapi_limiter import FastAPILimiter
-import redis.asyncio as redis
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -81,21 +79,6 @@ async def startup():
     # Initialize Socket.io Redis manager (graceful degradation if unavailable)
     await initialize_redis_manager()
 
-    # Initialize FastAPI rate limiter with Redis
-    try:
-        r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-        await r.ping()  # Test connection before initializing
-        await FastAPILimiter.init(r)
-        app.state.rate_limiter_enabled = True
-        print("Rate limiter: Redis connected successfully")
-    except Exception as e:
-        # In production, require Redis for rate limiting (fail-closed)
-        if not settings.DEBUG:
-            raise RuntimeError(
-                f"Redis is required for rate limiting in production: {e}"
-            )
-        app.state.rate_limiter_enabled = False
-        print(f"WARNING: Rate limiter disabled - Redis unavailable ({e})")
 
 
 # Instrument Prometheus
