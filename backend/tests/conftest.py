@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from typing import AsyncGenerator
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -24,13 +23,6 @@ async def cleanup_redis():
         await redis_client.aclose()
     except Exception:
         pass
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture(scope="session")
