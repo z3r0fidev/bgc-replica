@@ -48,7 +48,7 @@ if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
 
 import sentry_sdk
 
-if os.getenv("TESTING") != "true":
+if os.getenv("TESTING") != "true" and settings.SENTRY_DSN:
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
         # Add data like request headers and IP for users
