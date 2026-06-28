@@ -12,9 +12,6 @@ test.describe('Two-Factor Authentication', () => {
 
     // Intercept login API call - simulate 2FA-enabled user
     await page.route(loginUrl, async (route) => {
-      const request = route.request();
-      const postData = await request.postData();
-
       console.log('Intercepted login request, returning 2FA required');
       await route.fulfill({
         status: 200,

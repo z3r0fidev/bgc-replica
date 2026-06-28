@@ -148,6 +148,7 @@ export function MediaUploader({
         uploadFile(file, uploadId);
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [uploads.length, maxFiles, privacy]
   );
 

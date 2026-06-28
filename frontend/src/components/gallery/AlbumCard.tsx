@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Image from "next/image";
 import type { Album } from "@/types/gallery";
 
 interface AlbumCardProps {
@@ -46,10 +47,11 @@ export function AlbumCard({ album, onEdit, onDelete, onShare }: AlbumCardProps) 
           {/* Cover image */}
           <div className="aspect-video bg-muted relative overflow-hidden">
             {album.cover_url ? (
-              <img
+              <Image
                 src={album.cover_url}
                 alt={album.title}
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                fill
+                className="object-cover transition-transform group-hover:scale-105"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">

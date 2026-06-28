@@ -22,6 +22,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { Play, Lock, Users, GripVertical } from "lucide-react";
+import Image from "next/image";
 import type { GalleryMedia } from "@/types/gallery";
 
 interface SortableAlbumGridProps {
@@ -98,11 +99,11 @@ function SortableItem({
       )}
 
       {/* Thumbnail */}
-      <img
+      <Image
         src={item.thumbnail_url || item.url}
         alt={item.filename || "Gallery item"}
-        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-        loading="lazy"
+        fill
+        className="object-cover transition-transform group-hover:scale-105"
         draggable={false}
       />
 
@@ -140,11 +141,12 @@ function SortableItem({
 
 function MediaItemOverlay({ item }: { item: GalleryMedia }) {
   return (
-    <div className="aspect-square rounded-lg overflow-hidden shadow-2xl ring-2 ring-primary bg-muted w-[150px]">
-      <img
+    <div className="aspect-square rounded-lg overflow-hidden shadow-2xl ring-2 ring-primary bg-muted w-[150px] relative">
+      <Image
         src={item.thumbnail_url || item.url}
         alt={item.filename || "Gallery item"}
-        className="w-full h-full object-cover"
+        fill
+        className="object-cover"
       />
       {item.type === "VIDEO" && (
         <div className="absolute inset-0 flex items-center justify-center">

@@ -51,6 +51,7 @@ export function useIntersectionObserver(
 ): [React.RefObject<HTMLDivElement | null>, boolean] {
   const ref = useRef<HTMLDivElement | null>(null);
   const [isIntersecting, setIsIntersecting] = useState(false);
+  const { threshold, root, rootMargin } = options;
 
   useEffect(() => {
     const element = ref.current;
@@ -58,14 +59,14 @@ export function useIntersectionObserver(
 
     const observer = new IntersectionObserver(([entry]) => {
       setIsIntersecting(entry.isIntersecting);
-    }, options);
+    }, { threshold, root, rootMargin });
 
     observer.observe(element);
 
     return () => {
       observer.disconnect();
     };
-  }, [options.threshold, options.root, options.rootMargin]);
+  }, [threshold, root, rootMargin]);
 
   return [ref, isIntersecting];
 }
