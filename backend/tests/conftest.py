@@ -123,3 +123,29 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 async def client(async_client: AsyncClient) -> AsyncClient:
     """Compatibility fixture for existing tests."""
     return async_client
+
+
+@pytest.fixture
+async def db(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
+    """Alias for db_session."""
+    yield db_session
+
+
+@pytest.fixture(scope="session")
+def token(auth_headers: dict) -> str:
+    """Returns just the JWT token string."""
+    return auth_headers["Authorization"].removeprefix("Bearer ")
+
+
+@pytest.fixture(scope="session")
+def alembic_engine():
+    from sqlalchemy import create_engine
+    sync_url = TEST_DATABASE_URL.replace("+asyncpg", "")
+    engine = create_engine(sync_url)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def alembic_config():
+    return {"file": "alembic.ini", "script_location": "alembic"}
