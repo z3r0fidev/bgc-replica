@@ -55,7 +55,16 @@ jobs:
           NEXTAUTH_SECRET: "ci-test-nextauth-secret-not-for-production"
           TESTING: "true"
           DEBUG: "true"
-        run: pytest
+        run: pytest --ignore=tests/test_api_contract.py
+
+      - name: Run Contract Tests
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+          SECRET_KEY: "ci-test-secret-key-not-for-production"
+          NEXTAUTH_SECRET: "ci-test-nextauth-secret-not-for-production"
+          TESTING: "true"
+          DEBUG: "true"
+        run: pytest tests/test_api_contract.py
 
   deploy:
     runs-on: ubuntu-latest
