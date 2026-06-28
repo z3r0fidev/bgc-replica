@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
   RefreshCw,
@@ -41,7 +41,7 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState("30");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -52,11 +52,11 @@ export default function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [days]);
 
   useEffect(() => {
     fetchData();
-  }, [days]);
+  }, [fetchData]);
 
   if (error) {
     return (

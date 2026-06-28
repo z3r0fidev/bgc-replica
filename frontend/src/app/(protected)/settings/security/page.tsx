@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -269,10 +270,12 @@ export default function SecuritySettingsPage() {
             <div className="space-y-4">
               {/* QR Code */}
               <div className="flex justify-center p-4 bg-white rounded-lg">
-                <img
+                <Image
                   src={`data:image/png;base64,${setupData.qr_code}`}
                   alt="2FA QR Code"
-                  className="w-48 h-48"
+                  width={192}
+                  height={192}
+                  unoptimized
                 />
               </div>
 
