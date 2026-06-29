@@ -1,6 +1,6 @@
 import re
 import uuid
-from datetime import datetime, UTC, timezone
+from datetime import datetime, UTC
 from typing import Optional, Tuple
 
 from sqlalchemy import select, delete, and_
