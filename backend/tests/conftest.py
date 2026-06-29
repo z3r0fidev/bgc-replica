@@ -25,6 +25,24 @@ async def cleanup_redis():
         pass
 
 
+@pytest.fixture(scope="session", autouse=True)
+def disable_rate_limiting():
+    """
+    Patch RateLimiter to a no-op for all tests.
+    fastapi-limiter 0.2.0 accesses request.scope['router'].path which raises
+    AttributeError on _IncludedRouter when using httpx ASGITransport.
+    """
+    from fastapi_limiter.depends import RateLimiter
+
+    async def _noop(self, request, *args, **kwargs):
+        pass
+
+    original = RateLimiter.__call__
+    RateLimiter.__call__ = _noop
+    yield
+    RateLimiter.__call__ = original
+
+
 @pytest.fixture(scope="session")
 async def test_engine():
     engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
