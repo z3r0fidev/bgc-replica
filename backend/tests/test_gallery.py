@@ -6,7 +6,7 @@ Spec 010 - Media Gallery & Albums
 
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 import uuid
 import io
 
@@ -15,13 +15,13 @@ import io
 @pytest.fixture
 def mock_storage():
     with patch("app.api.gallery.storage_service") as mock:
-        mock.upload_file = MagicMock(
+        mock.upload_file = AsyncMock(
             return_value={
                 "url": "https://storage.example.com/test.jpg",
                 "storage_path": "test-user/gallery/test.jpg",
             }
         )
-        mock.delete_file = MagicMock()
+        mock.delete_file = AsyncMock()
         yield mock
 
 
