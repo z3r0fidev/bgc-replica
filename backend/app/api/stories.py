@@ -1,5 +1,5 @@
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from app.core.database import get_db
@@ -16,7 +16,7 @@ router = APIRouter()
 @router.get("/", response_model=PaginatedResponse[StorySchema])
 async def get_stories(
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 20,
+    limit: int = Query(default=20, ge=1, le=100),
     cursor: Optional[str] = None,
 ):
     """

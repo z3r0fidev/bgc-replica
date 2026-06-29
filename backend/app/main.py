@@ -29,7 +29,7 @@ from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
 from app.core.config import settings
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, DataError, ProgrammingError as SQLAProgrammingError
 from app.core.exceptions import BaseAppException
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -110,6 +110,19 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
     return JSONResponse(
         status_code=422, content={"detail": "Database constraint violation"}
     )
+
+
+@app.exception_handler(DataError)
+async def data_error_handler(request: Request, exc: DataError):
+    # Catches numeric out-of-range, invalid UUID format, and other type errors
+    return JSONResponse(status_code=422, content={"detail": "Invalid data value"})
+
+
+@app.exception_handler(SQLAProgrammingError)
+async def programming_error_handler(request: Request, exc: SQLAProgrammingError):
+    # Catches LIMIT/OFFSET must not be negative and other SQL errors from invalid input
+    return JSONResponse(status_code=422, content={"detail": "Invalid query parameter"})
+
 
 
 app.add_middleware(

@@ -1,6 +1,6 @@
 from typing import List, Annotated, Optional
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from app.core.database import get_db
@@ -75,7 +75,7 @@ async def upload_media(
 @router.get("/original", response_model=PaginatedResponse[MediaSchema])
 async def get_original_programming(
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 20,
+    limit: int = Query(default=20, ge=1, le=100),
     cursor: Optional[str] = None,
 ):
     """

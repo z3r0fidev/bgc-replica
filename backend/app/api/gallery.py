@@ -418,7 +418,6 @@ async def create_album(
     )
 
 
-@router.get("/albums", response_model=AlbumPage)
 async def list_my_albums(
     limit: int = Query(20, ge=1, le=100),
     cursor: Optional[str] = None,

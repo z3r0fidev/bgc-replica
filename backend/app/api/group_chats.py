@@ -172,7 +172,7 @@ async def create_group(
 async def list_my_groups(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    limit: int = Query(default=20, le=50),
+    limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ):
     """List groups the current user is a member of."""

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uuid
 from datetime import datetime
 
@@ -28,7 +28,7 @@ class Relationship(RelationshipBase):
 
 class ProfileRatingBase(BaseModel):
     to_user_id: uuid.UUID
-    score: int  # 1-10
+    score: int = Field(ge=1, le=10)
 
 
 class ProfileRatingCreate(ProfileRatingBase):
