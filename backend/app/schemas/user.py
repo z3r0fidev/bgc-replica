@@ -29,7 +29,7 @@ def validate_password_strength(password: str) -> str:
 
 class UserCreate(UserBase):
     email: EmailStr
-    password: str = Field(min_length=12, pattern=r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*(),.?\":{}|<>]).+$")
+    password: str = Field(min_length=12)
 
     @field_validator("password")
     @classmethod
