@@ -1,6 +1,7 @@
 import pytest
 from typing import AsyncGenerator
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from app.main import app
 from app.core.database import Base, get_db
@@ -54,8 +55,14 @@ async def test_engine():
 
     yield engine
 
+    # DROP SCHEMA CASCADE handles FK-dependent tables that SQLAlchemy's
+    # drop_all can't order correctly (e.g. gallery_media → album_media FK).
+    # GRANT statements restore default privileges after schema recreation.
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
+        await conn.execute(text("GRANT ALL ON SCHEMA public TO postgres"))
+        await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
     await engine.dispose()
 
 
@@ -188,10 +195,15 @@ def token(auth_headers: dict) -> str:
 
 @pytest.fixture(scope="session")
 def alembic_engine():
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, text as sync_text
     sync_url = TEST_DATABASE_URL.replace("+asyncpg", "")
     engine = create_engine(sync_url)
     yield engine
+    with engine.begin() as conn:
+        conn.execute(sync_text("DROP SCHEMA public CASCADE"))
+        conn.execute(sync_text("CREATE SCHEMA public"))
+        conn.execute(sync_text("GRANT ALL ON SCHEMA public TO postgres"))
+        conn.execute(sync_text("GRANT ALL ON SCHEMA public TO public"))
     engine.dispose()
 
 

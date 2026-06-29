@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,17 +69,18 @@ from app.core.logging_config import setup_logging
 
 setup_logging()
 
-app = FastAPI(title="BGCLive Replica API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await initialize_redis_manager()
+    yield
+
+
+app = FastAPI(title="BGCLive Replica API", lifespan=lifespan)
 
 # Instrument FastAPI
 if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
     FastAPIInstrumentor.instrument_app(app)
-
-
-@app.on_event("startup")
-async def startup():
-    # Initialize Socket.io Redis manager (graceful degradation if unavailable)
-    await initialize_redis_manager()
 
 
 
