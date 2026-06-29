@@ -17,7 +17,7 @@ class PresenceService:
             timestamp = int(time.time())
             await redis.zadd(self.presence_key, {str(user_id): timestamp})
             # Set a secondary key for status if needed (idle, etc)
-            await redis.setex(f"presence:status:{user_id}", 60, status)
+            await redis.set(f"presence:status:{user_id}", status, ex=60)
         except Exception:
             pass  # Redis unavailable, skip presence update
 

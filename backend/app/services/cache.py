@@ -23,7 +23,7 @@ class CacheService:
     async def set_cached_object(self, key: str, obj: T):
         try:
             redis = await get_redis()
-            await redis.setex(f"{self.prefix}:{key}", self.ttl, obj.model_dump_json())
+            await redis.set(f"{self.prefix}:{key}", obj.model_dump_json(), ex=self.ttl)
         except Exception:
             pass  # Redis unavailable, skip caching
 

@@ -75,6 +75,8 @@ class StorageService:
         """
         Deletes a file from Supabase Storage.
         """
+        if not self.supabase:
+            raise Exception("Supabase client not initialized. Check credentials.")
         self.supabase.storage.from_(self.bucket_name).remove([storage_path])
 
 

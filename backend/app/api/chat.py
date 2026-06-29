@@ -65,21 +65,22 @@ async def upload_chat_media(
     file: UploadFile = File(...),
 ):
     content = await file.read()
+    content_type = file.content_type or ""
 
     # Validate file type, size, and magic bytes
-    is_valid, error = media_processor.validate_upload(content, file.content_type)
+    is_valid, error = media_processor.validate_upload(content, content_type)
     if not is_valid:
         raise HTTPException(status_code=400, detail=error)
 
     # Strip EXIF metadata from images for privacy
-    if media_processor.is_image(file.content_type):
-        content = media_processor.strip_exif(content, file.content_type)
+    if media_processor.is_image(content_type):
+        content = media_processor.strip_exif(content, content_type)
 
     # Use safe filename derived from content type, not user-provided filename
-    safe_filename = f"{uuid.uuid4()}.{media_processor.get_safe_extension(file.content_type)}"
+    safe_filename = f"{uuid.uuid4()}.{media_processor.get_safe_extension(content_type)}"
 
     upload_result = await storage_service.upload_file(
-        content, safe_filename, file.content_type
+        content, safe_filename, content_type
     )
     return upload_result
 

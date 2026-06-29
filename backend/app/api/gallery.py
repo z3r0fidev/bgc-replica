@@ -52,7 +52,7 @@ router = APIRouter()
 )
 async def upload_media(
     file: UploadFile = File(...),
-    privacy: str = Query("PUBLIC", regex="^(PUBLIC|FRIENDS_ONLY|PRIVATE)$"),
+    privacy: str = Query("PUBLIC", pattern="^(PUBLIC|FRIENDS_ONLY|PRIVATE)$"),
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
@@ -76,7 +76,7 @@ async def upload_media(
     is_valid, error_msg = media_processor.validate_file_size(content, content_type)
     if not is_valid:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=error_msg
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=error_msg
         )
 
     try:
@@ -146,7 +146,7 @@ async def upload_media(
 async def list_my_media(
     limit: int = Query(20, ge=1, le=100),
     cursor: Optional[str] = None,
-    type: Optional[str] = Query(None, regex="^(IMAGE|VIDEO)$"),
+    type: Optional[str] = Query(None, pattern="^(IMAGE|VIDEO)$"),
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
@@ -304,7 +304,7 @@ async def get_user_gallery(
     user_id: uuid.UUID,
     limit: int = Query(20, ge=1, le=100),
     cursor: Optional[str] = None,
-    type: Optional[str] = Query(None, regex="^(IMAGE|VIDEO)$"),
+    type: Optional[str] = Query(None, pattern="^(IMAGE|VIDEO)$"),
     current_user: Annotated[User, Depends(deps.get_current_user_optional)] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
