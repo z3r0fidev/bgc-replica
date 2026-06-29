@@ -22,9 +22,9 @@ router = APIRouter()
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))],
 )
 async def upload_media(
-    file: UploadFile = File(...),
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
 ):
     """
     Upload a media file and record it in the database.
