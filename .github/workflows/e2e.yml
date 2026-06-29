@@ -8,15 +8,18 @@ jobs:
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # Use the official Playwright image so Chromium + all system deps are
-    # pre-installed. This bypasses:
-    #   - actions/cache incompatibility with deployment_status events (no Git ref)
-    #   - npx playwright install post-extract hang (silently takes >15 min)
-    #   - repeated 164 MiB binary downloads on every cold run
+    if: github.event.deployment_status.state == 'success' || github.event_name == 'workflow_dispatch'
+
     container:
       image: mcr.microsoft.com/playwright:v1.57.0-noble
-      options: --ipc=host
-    if: github.event.deployment_status.state == 'success' || github.event_name == 'workflow_dispatch'
+      # HOME must point to /root where the pre-installed browsers live.
+      # GitHub Actions sets HOME=/github/home inside containers, which is empty.
+      env:
+        HOME: /root
+      options: >-
+        --ipc=host
+        --init
+
     defaults:
       run:
         working-directory: ./frontend
@@ -28,24 +31,22 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          # cache: "npm" intentionally omitted — deployment_status carries no
+          # GITHUB_REF, so actions/cache (used internally by setup-node caching)
+          # emits "Event Validation Error" and never hits. npm ci is fast (~60s).
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --loglevel=error
 
       - name: Run Playwright Tests
         run: npx playwright test
         env:
           BASE_URL: ${{ github.event.deployment_status.target_url || 'http://localhost:3000' }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          # Required: container home differs from runner home; Playwright
-          # resolves browser paths relative to HOME.
-          HOME: /root
 
       - name: Upload Artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report
           path: frontend/playwright-report/
