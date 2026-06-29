@@ -1,6 +1,6 @@
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, Tuple
 
 from sqlalchemy import select, delete, and_
@@ -99,7 +99,7 @@ class SessionService:
             .where(
                 and_(
                     Session.user_id == user_id,
-                    Session.expires > datetime.utcnow(),
+                    Session.expires > datetime.now(UTC),
                 )
             )
             .order_by(Session.last_active.desc().nullslast())
@@ -237,7 +237,7 @@ class SessionService:
         session = result.scalars().first()
 
         if session:
-            session.last_active = datetime.utcnow()
+            session.last_active = datetime.now(UTC)
             if ip_address and not session.ip_address:
                 session.ip_address = ip_address
             if user_agent and not session.device_info:

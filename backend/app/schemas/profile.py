@@ -91,7 +91,7 @@ class Profile(ProfileBase):
     last_active: datetime
     user: Optional[UserBase] = None
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def age(self) -> Optional[int]:
         if not self.birthdate:

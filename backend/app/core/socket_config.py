@@ -67,7 +67,7 @@ async def initialize_redis_manager():
         import redis.asyncio as redis_client
         r = redis_client.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
         await r.ping()
-        await r.close()
+        await r.aclose()
 
         # Redis is available, create manager and reinitialize sio
         mgr = socketio.AsyncRedisManager(settings.REDIS_URL)

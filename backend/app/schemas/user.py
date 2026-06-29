@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 import uuid
 import re
 
@@ -29,7 +29,7 @@ def validate_password_strength(password: str) -> str:
 
 class UserCreate(UserBase):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=12, pattern=r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*(),.?\":{}|<>]).+$")
 
     @field_validator("password")
     @classmethod

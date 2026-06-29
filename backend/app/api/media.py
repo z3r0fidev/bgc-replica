@@ -22,9 +22,9 @@ router = APIRouter()
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))],
 )
 async def upload_media(
+    current_user: Annotated[User, Depends(deps.get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
-    current_user: Annotated[User, Depends(deps.get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """
     Upload a media file and record it in the database.
@@ -33,23 +33,24 @@ async def upload_media(
     MAX_IMAGE_SIZE = 10 * 1024 * 1024
     MAX_VIDEO_SIZE = 50 * 1024 * 1024
 
-    is_video = file.content_type.startswith("video/")
+    content_type = file.content_type or ""
+    is_video = content_type.startswith("video/")
     max_size = MAX_VIDEO_SIZE if is_video else MAX_IMAGE_SIZE
 
     try:
         content = await file.read()
         if len(content) > max_size:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"File too large. Max allowed: {max_size // (1024*1024)}MB",
             )
 
         upload_result = await storage_service.upload_file(
-            content, file.filename, file.content_type
+            content, file.filename or "", content_type
         )
 
         media_type = "IMAGE"
-        if file.content_type.startswith("video/"):
+        if content_type.startswith("video/"):
             media_type = "VIDEO"
 
         new_media = Media(

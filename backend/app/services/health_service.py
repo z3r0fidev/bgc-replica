@@ -1,6 +1,6 @@
 """Health service for system monitoring."""
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -95,7 +95,7 @@ class HealthService:
     ) -> Dict[str, Any]:
         """Get error summary from auth logs (as a proxy for errors)."""
         try:
-            since = datetime.utcnow() - timedelta(hours=hours)
+            since = datetime.now(UTC) - timedelta(hours=hours)
 
             # Count failed auth attempts as a proxy for errors
             result = await db.execute(
@@ -146,7 +146,7 @@ class HealthService:
             "redis": redis,
             "error_count_24h": errors["error_count"],
             "uptime_seconds": redis.get("uptime_seconds", 0),
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(UTC).isoformat(),
         }
 
 

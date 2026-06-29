@@ -50,7 +50,7 @@ async def setup_totp(
         )
 
     secret, qr_code, backup_codes = await totp_service.setup_totp(db, current_user)
-    provisioning_uri = totp_service.get_totp_uri(secret, current_user.email)
+    provisioning_uri = totp_service.get_totp_uri(secret, current_user.email or "")
 
     return TOTPSetupResponse(
         secret=secret,

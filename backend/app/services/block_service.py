@@ -212,7 +212,7 @@ class BlockService:
             redis = await get_redis()
             cache_key = f"blocks:{user_id}"
             id_list = [str(id) for id in block_ids]
-            await redis.setex(cache_key, BLOCK_IDS_CACHE_TTL, json.dumps(id_list))
+            await redis.set(cache_key, json.dumps(id_list), ex=BLOCK_IDS_CACHE_TTL)
         except Exception as e:
             logger.warning(f"Failed to cache block IDs: {e}")
 

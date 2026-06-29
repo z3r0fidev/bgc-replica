@@ -44,7 +44,7 @@ async def search_users(
     industry: Optional[str] = Query(None),
     gender_identity: Optional[str] = Query(None),
     # Location filters
-    radius_km: Optional[float] = Query(50),
+    radius_km: float = Query(50.0),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
     limit: int = 20,

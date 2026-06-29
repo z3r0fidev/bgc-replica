@@ -196,6 +196,9 @@ async def upload_gallery_media(
 ):
     content = await file.read()
 
+    if not file.content_type:
+        raise HTTPException(status_code=400, detail="Content-Type header required")
+
     # Validate file type, size, and magic bytes
     is_valid, error = media_processor.validate_upload(content, file.content_type)
     if not is_valid:
