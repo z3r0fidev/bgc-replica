@@ -1,11 +1,11 @@
 import pytest
 from httpx import AsyncClient
-import uuid
+from app.models.user import User
 
 
 @pytest.mark.asyncio
-async def test_rate_profile(client: AsyncClient, token: str):
-    target_id = str(uuid.uuid4())
+async def test_rate_profile(client: AsyncClient, token: str, test_target_user: User):
+    target_id = str(test_target_user.id)
     payload = {"score": 9}
     response = await client.post(
         f"/api/profiles/{target_id}/rate",
