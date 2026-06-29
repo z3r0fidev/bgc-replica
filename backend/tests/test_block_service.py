@@ -364,10 +364,10 @@ class TestCacheOperations:
         ):
             await block_service._cache_block_ids(user_ids["blocker"], block_ids)
 
-            mock_redis.setex.assert_called_once()
-            call_args = mock_redis.setex.call_args
+            mock_redis.set.assert_called_once()
+            call_args = mock_redis.set.call_args
             assert call_args[0][0] == f"blocks:{user_ids['blocker']}"
-            assert call_args[0][1] == BLOCK_IDS_CACHE_TTL
+            assert call_args[1]["ex"] == BLOCK_IDS_CACHE_TTL
 
     @pytest.mark.asyncio
     async def test_cache_block_ids_redis_error(self, block_service, user_ids):
