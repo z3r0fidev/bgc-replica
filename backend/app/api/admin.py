@@ -1,7 +1,7 @@
 """Admin API endpoints for user management and moderation."""
 import uuid
 from datetime import datetime, timedelta
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_limiter.depends import RateLimiter
 from pyrate_limiter import Duration, Limiter, Rate
@@ -271,7 +271,7 @@ async def update_user(
             )
 
     # Track changes for logging
-    changes = {}
+    changes: dict[str, Any] = {}
 
     if update_data.name is not None and user.name != update_data.name:
         changes["name"] = {"from": user.name, "to": update_data.name}

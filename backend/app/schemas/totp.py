@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class TOTPSetupResponse(BaseModel):
@@ -15,7 +15,7 @@ class TOTPSetupResponse(BaseModel):
 class TOTPVerifyRequest(BaseModel):
     """Request to verify TOTP code."""
 
-    code: str
+    code: str = Field(min_length=6, max_length=8, pattern=r"^[A-Za-z0-9 \-]+$")
 
     @field_validator("code")
     @classmethod
@@ -56,8 +56,8 @@ class BackupCodesResponse(BaseModel):
 class TwoFactorLoginRequest(BaseModel):
     """Request for 2FA verification during login."""
 
-    user_id: str
-    code: str
+    user_id: str = Field(min_length=1)
+    code: str = Field(min_length=6, max_length=8, pattern=r"^[A-Za-z0-9 \-]+$")
 
     @field_validator("code")
     @classmethod

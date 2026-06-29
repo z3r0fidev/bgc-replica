@@ -14,7 +14,7 @@ httpx
 pytest
 pytest-asyncio
 pytest-alembic
-python-socketio[asyncio]
+python-socketio
 supabase
 asyncpg
 prometheus-fastapi-instrumentator
