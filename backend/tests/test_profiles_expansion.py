@@ -119,7 +119,7 @@ async def test_search_filter_by_relationship_status(
 
     # Search with filter
     response = await client.get("/api/search/?relationship_status=Single")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"search got {response.status_code}: {response.text}"
     data = response.json()
     assert "items" in data
     # All returned profiles should have the matching relationship status

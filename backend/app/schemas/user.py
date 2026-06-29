@@ -5,6 +5,8 @@ import re
 
 
 class UserBase(BaseModel):
+    model_config = {"from_attributes": True}
+
     email: Optional[EmailStr] = None
     name: Optional[str] = None
     image: Optional[str] = None
