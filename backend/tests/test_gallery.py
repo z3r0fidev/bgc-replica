@@ -6,7 +6,7 @@ Spec 010 - Media Gallery & Albums
 
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 import uuid
 import io
 
