@@ -1,5 +1,5 @@
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from app.core.database import get_db
@@ -112,7 +112,7 @@ async def accept_friend_request(
 async def get_my_relationships(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 20,
+    limit: int = Query(default=20, ge=1, le=100),
     cursor: Optional[str] = None,
 ):
     query = select(Relationship).where(

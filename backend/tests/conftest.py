@@ -47,6 +47,28 @@ def disable_rate_limiting():
     RateLimiter.__call__ = original
 
 
+@pytest.fixture(scope="session", autouse=True)
+def mock_storage_upload():
+    """
+    Prevent storage_service.upload_file from calling Supabase in CI.
+
+    storage_service is a module-level singleton imported directly into gallery.py
+    (not a FastAPI Depends), so app.dependency_overrides cannot intercept it.
+    patch.object targets the singleton instance so Supabase credentials are never
+    required. scope="session" is required because the schemathesis contract test
+    is module-scoped; function-scoped monkeypatch cannot span it.
+    """
+    from unittest.mock import AsyncMock, patch
+    from app.services.storage import storage_service as _svc
+
+    fake = {
+        "url": "https://storage.example.com/ci-test.bin",
+        "storage_path": "media/ci-test.bin",
+    }
+    with patch.object(_svc, "upload_file", AsyncMock(return_value=fake)):
+        yield
+
+
 @pytest.fixture(scope="session")
 async def test_engine():
     engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
