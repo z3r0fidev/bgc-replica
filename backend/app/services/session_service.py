@@ -99,7 +99,7 @@ class SessionService:
             .where(
                 and_(
                     Session.user_id == user_id,
-                    Session.expires > datetime.now(UTC),
+                    Session.expires > datetime.now(UTC).replace(tzinfo=None),
                 )
             )
             .order_by(Session.last_active.desc().nullslast())
@@ -237,7 +237,7 @@ class SessionService:
         session = result.scalars().first()
 
         if session:
-            session.last_active = datetime.now(UTC)
+            session.last_active = datetime.now(UTC).replace(tzinfo=None)
             if ip_address and not session.ip_address:
                 session.ip_address = ip_address
             if user_agent and not session.device_info:
