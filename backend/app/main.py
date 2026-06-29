@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,7 @@ from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
 from app.core.config import settings
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from app.core.exceptions import BaseAppException
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -67,17 +69,18 @@ from app.core.logging_config import setup_logging
 
 setup_logging()
 
-app = FastAPI(title="BGCLive Replica API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await initialize_redis_manager()
+    yield
+
+
+app = FastAPI(title="BGCLive Replica API", lifespan=lifespan)
 
 # Instrument FastAPI
 if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
     FastAPIInstrumentor.instrument_app(app)
-
-
-@app.on_event("startup")
-async def startup():
-    # Initialize Socket.io Redis manager (graceful degradation if unavailable)
-    await initialize_redis_manager()
 
 
 
@@ -90,6 +93,22 @@ if os.getenv("TESTING") != "true":
 async def app_exception_handler(request: Request, exc: BaseAppException):
     return JSONResponse(
         status_code=exc.status_code, content={"detail": exc.detail, "code": exc.code}
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    orig_msg = str(exc.orig).lower() if exc.orig else ""
+    if "foreign key" in orig_msg or "23503" in orig_msg:
+        return JSONResponse(
+            status_code=404, content={"detail": "Referenced resource not found"}
+        )
+    if "unique" in orig_msg or "23505" in orig_msg:
+        return JSONResponse(
+            status_code=409, content={"detail": "Resource already exists"}
+        )
+    return JSONResponse(
+        status_code=422, content={"detail": "Database constraint violation"}
     )
 
 

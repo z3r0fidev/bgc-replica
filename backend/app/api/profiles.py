@@ -50,6 +50,8 @@ async def update_my_profile(
         select(ProfileModel).where(ProfileModel.id == current_user.id)
     )
     profile = result.scalars().first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
 
     update_data = profile_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():

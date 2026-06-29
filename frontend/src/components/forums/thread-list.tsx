@@ -13,6 +13,10 @@ interface ThreadListProps {
 }
 
 export function ThreadList({ threads, hasNext, onLoadMore, isLoading }: ThreadListProps) {
+  // useVirtualizer returns functions that cannot be safely memoized by React
+  // Compiler. Opt this component out of automatic memoization.
+  "use no memo";
+
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
