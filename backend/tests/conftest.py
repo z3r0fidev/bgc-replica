@@ -79,7 +79,7 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
         await transaction.rollback()
 
 
-from app.models.user import User
+from app.models.user import User, Profile
 import uuid
 
 
@@ -98,6 +98,34 @@ async def test_user(test_engine) -> User:
         await session.commit()
         await session.refresh(user)
         return user
+
+
+@pytest.fixture(scope="session")
+async def test_target_user(test_engine) -> User:
+    """A second user used as a target for social/ratings endpoints."""
+    async with async_sessionmaker(test_engine, class_=AsyncSession)() as session:
+        user = User(
+            id=uuid.uuid4(),
+            email=f"target-{uuid.uuid4()}@example.com",
+            name="Target User",
+            hashed_password="hashed_password",
+            is_active=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def test_profile(test_engine, test_user: User) -> Profile:
+    """Creates a profile for test_user so endpoints requiring a profile work."""
+    async with async_sessionmaker(test_engine, class_=AsyncSession)() as session:
+        profile = Profile(id=test_user.id, display_name="Test User")
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+        return profile
 
 
 @pytest.fixture(scope="session")
