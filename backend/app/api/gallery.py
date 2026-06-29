@@ -199,6 +199,18 @@ async def list_my_media(
     return GalleryPage(items=items, next_cursor=next_cursor, total_count=total_count)
 
 
+# NOTE: /albums must be registered before /{media_id} so FastAPI doesn't try to
+# parse "albums" as a UUID and return 422.
+@router.get("/albums", response_model=AlbumPage)
+async def list_my_albums_route(
+    limit: int = Query(20, ge=1, le=100),
+    cursor: Optional[str] = None,
+    current_user: Annotated[User, Depends(deps.get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    return await list_my_albums(limit=limit, cursor=cursor, current_user=current_user, db=db)
+
+
 @router.get("/{media_id}", response_model=GalleryMediaSchema)
 async def get_media(
     media_id: uuid.UUID,

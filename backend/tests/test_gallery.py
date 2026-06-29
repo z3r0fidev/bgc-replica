@@ -43,7 +43,7 @@ class TestMediaUpload:
             headers=auth_headers,
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 200, f"upload got {response.status_code}: {response.text}"
         data = response.json()
         assert data["type"] == "IMAGE"
         assert "id" in data

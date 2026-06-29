@@ -31,10 +31,13 @@ def disable_rate_limiting():
     Patch RateLimiter to a no-op for all tests.
     fastapi-limiter 0.2.0 accesses request.scope['router'].path which raises
     AttributeError on _IncludedRouter when using httpx ASGITransport.
+    The Request type annotation is required so FastAPI injects the HTTP request
+    object rather than treating 'request' as a required query/form parameter.
     """
+    from fastapi import Request, Response
     from fastapi_limiter.depends import RateLimiter
 
-    async def _noop(self, request, *args, **kwargs):
+    async def _noop(self, request: Request, response: Response = None):
         pass
 
     original = RateLimiter.__call__
