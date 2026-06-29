@@ -8,6 +8,14 @@ jobs:
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Use the official Playwright image so Chromium + all system deps are
+    # pre-installed. This bypasses:
+    #   - actions/cache incompatibility with deployment_status events (no Git ref)
+    #   - npx playwright install post-extract hang (silently takes >15 min)
+    #   - repeated 164 MiB binary downloads on every cold run
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
+      options: --ipc=host
     if: github.event.deployment_status.state == 'success' || github.event_name == 'workflow_dispatch'
     defaults:
       run:
@@ -26,53 +34,18 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Extract exact resolved @playwright/test version from node_modules after
-      # npm ci so semver ranges are already pinned. Produces a stable,
-      # Playwright-specific cache key that ignores unrelated dependency changes.
-      - name: Get Playwright version
-        id: playwright-version
-        run: |
-          VERSION=$(node -e "console.log(require('@playwright/test/package.json').version)")
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-          # Fallback key lets a near-version cache serve as a warm start so
-          # only the changed browser revision is re-downloaded on update.
-          restore-keys: |
-            playwright-chromium-${{ runner.os }}-
-
-      # OS-level libraries (libglib, libgtk, libnss3, etc.) are apt-installed
-      # into the system root and CANNOT be cached by actions/cache.
-      # This step must run on every job regardless of cache hit status.
-      - name: Install Playwright system dependencies
-        run: npx playwright install-deps chromium
-        timeout-minutes: 10
-
-      # The browser binary is what gets cached. Only download when cache missed.
-      # Do NOT use --with-deps here; system deps are handled in the step above.
-      - name: Install Playwright browser binary
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install chromium
-        timeout-minutes: 15
-        env:
-          # Controls per-request download timeout (ms). Default is too short
-          # for slow CDN responses on congested GitHub Actions runners.
-          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
-
       - name: Run Playwright Tests
         run: npx playwright test
         env:
           BASE_URL: ${{ github.event.deployment_status.target_url || 'http://localhost:3000' }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          # Required: container home differs from runner home; Playwright
+          # resolves browser paths relative to HOME.
+          HOME: /root
 
       - name: Upload Artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report
           path: frontend/playwright-report/
