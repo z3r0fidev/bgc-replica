@@ -12,6 +12,7 @@ from schemathesis.specs.openapi.checks import (
     status_code_conformance,
     response_schema_conformance,
     negative_data_rejection,
+    unsupported_method,
 )
 
 schema = schemathesis.openapi.from_asgi("/openapi.json", app)
@@ -59,6 +60,7 @@ def test_api_contract(case, auth_headers, test_client):
                 status_code_conformance,
                 response_schema_conformance,
                 negative_data_rejection,
+                unsupported_method,
             ],
         )
     except AttributeError as e:
