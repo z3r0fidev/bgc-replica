@@ -5,6 +5,17 @@ import re
 from datetime import datetime, date
 
 
+def _assert_safe_string(s: str) -> str:
+    """Raise ValueError for strings that asyncpg cannot encode (NUL bytes, lone surrogates)."""
+    if '\x00' in s:
+        raise ValueError("String contains invalid NUL character")
+    try:
+        s.encode('utf-8')
+    except UnicodeEncodeError:
+        raise ValueError("String contains invalid character encoding")
+    return s
+
+
 class ProfileBase(BaseModel):
     bio: Optional[str] = None
     height: Optional[str] = None
@@ -73,6 +84,15 @@ class ProfileBase(BaseModel):
                     platform = key.replace("_url", "").replace("_", " ").title()
                     raise ValueError(f"Invalid {platform} URL format")
         return v
+
+    @field_validator("looking_for", "roles", "interests", mode="before")
+    @classmethod
+    def validate_string_lists(cls, v):
+        if v is None:
+            return v
+        if not isinstance(v, list):
+            return v
+        return [_assert_safe_string(item) if isinstance(item, str) else item for item in v]
 
 
 class ProfileCreate(ProfileBase):
