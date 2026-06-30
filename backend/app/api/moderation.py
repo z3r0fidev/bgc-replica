@@ -95,7 +95,7 @@ async def get_moderation_queue(
         None, description="Filter by content type: USER, THREAD, POST, STATUS"
     ),
     limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     """Get the moderation queue with detailed report info."""
     require_admin(current_user)

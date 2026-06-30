@@ -149,7 +149,7 @@ async def list_users(
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc"),
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     """List users with search and filtering."""
     now = datetime.utcnow()
@@ -494,7 +494,7 @@ async def get_action_logs(
     admin_id: Optional[uuid.UUID] = Query(None, description="Filter by admin"),
     target_user_id: Optional[uuid.UUID] = Query(None, description="Filter by target"),
     limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10000),
 ):
     """Get admin action logs with filtering."""
     stmt = select(AdminActionLog)

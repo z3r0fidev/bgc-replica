@@ -100,5 +100,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Deploy to Railway
+        # Run from repo root so the uploaded archive contains backend/ at the
+        # path Railway expects (service Root Directory = "backend"). Running from
+        # ./backend uploads backend content as the archive root, causing Nixpacks
+        # to fail with "No such file or directory" when it looks for backend/.
         run: railway up --service=$RAILWAY_SERVICE_ID
-        working-directory: ./backend
