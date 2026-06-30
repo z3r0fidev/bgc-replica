@@ -29,7 +29,7 @@ router = APIRouter()
 async def get_rooms(
     db: Annotated[AsyncSession, Depends(get_db)],
     category: Optional[str] = Query(None),
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
     stmt = select(ChatRoom)
@@ -42,7 +42,7 @@ async def get_rooms(
 async def get_room_history(
     room_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
     from sqlalchemy.orm import selectinload
@@ -89,7 +89,7 @@ async def upload_chat_media(
 async def get_conversations(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
     stmt = select(Conversation).where(
@@ -131,7 +131,7 @@ async def get_conversation_history(
     conv_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(deps.get_current_user)],
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
     # Verify user is a participant in this conversation (IDOR protection)
