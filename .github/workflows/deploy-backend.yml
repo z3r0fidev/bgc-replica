@@ -6,6 +6,12 @@ on:
       - main
     paths:
       - "backend/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 jobs:
@@ -84,9 +90,15 @@ jobs:
     if: github.ref == 'refs/heads/main'
     container: ghcr.io/railwayapp/cli:latest
     env:
+      # RAILWAY_TOKEN must be a project-scoped token (created in Railway Dashboard
+      # > Project > Settings > Tokens), NOT an account/API token. The project token
+      # encodes which project to deploy to; no RAILWAY_PROJECT_ID is needed alongside it.
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      # Using the service UUID avoids case-sensitive name matching ("Service not found").
+      # Get this from Railway Dashboard: Cmd/Ctrl+K > "Copy Service ID".
+      RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
     steps:
       - uses: actions/checkout@v5
       - name: Deploy to Railway
-        run: railway up --service backend
+        run: railway up --service=$RAILWAY_SERVICE_ID
         working-directory: ./backend

@@ -1,5 +1,5 @@
 from typing import List, Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db
@@ -56,7 +56,7 @@ async def get_categories(db: Annotated[AsyncSession, Depends(get_db)]):
 async def get_category_threads(
     category_slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
     cat_result = await db.execute(

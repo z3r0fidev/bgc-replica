@@ -28,7 +28,7 @@ async def get_feed(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     feed_type: str = Query("global", pattern="^(global|following)$"),
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
     user_id = current_user.id if feed_type == "following" else None

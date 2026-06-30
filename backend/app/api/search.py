@@ -47,7 +47,7 @@ async def search_users(
     radius_km: float = Query(50.0),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=200),
     cursor: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(deps.get_current_user_optional),
