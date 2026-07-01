@@ -1,22 +1,12 @@
 from typing import Optional, List, Dict
-from pydantic import BaseModel, field_validator, computed_field
+from pydantic import field_validator, computed_field
 import uuid
 import re
 from datetime import datetime, date
+from app.schemas.base import SafeBaseModel, _assert_safe_string
 
 
-def _assert_safe_string(s: str) -> str:
-    """Raise ValueError for strings that asyncpg cannot encode (NUL bytes, lone surrogates)."""
-    if '\x00' in s:
-        raise ValueError("String contains invalid NUL character")
-    try:
-        s.encode('utf-8')
-    except UnicodeEncodeError:
-        raise ValueError("String contains invalid character encoding")
-    return s
-
-
-class ProfileBase(BaseModel):
+class ProfileBase(SafeBaseModel):
     bio: Optional[str] = None
     height: Optional[str] = None
     weight: Optional[int] = None
