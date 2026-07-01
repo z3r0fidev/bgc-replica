@@ -1157,6 +1157,96 @@ merged via PR #5.
 
 ---
 
+## Session: 2026-07-01 — asyncpg Encoding Hardening & CI/CD End-to-End (PR #41 + PR #42)
+
+**Duration**: 2026-07-01 (single session)
+**Branch**: `main`
+**Participants**: Developer + Claude Code
+
+### Session Summary
+
+This session's goal was to fix all CI failures until the Deploy Backend workflow passed end-to-end on Railway. The critical constraint maintained throughout: never use `continue-on-error: true` — genuine root-cause fixes only.
+
+### Root Cause Discovery
+
+asyncpg uses **3 different exception paths** depending on the column type receiving invalid input
+(NUL bytes `\x00` or lone Unicode surrogates `\ud800`–`\udfff`):
+
+| Column type            | Exception                                                     |
+|------------------------|---------------------------------------------------------------|
+| Plain `String`         | `asyncpg.exceptions._base.InterfaceError`                     |
+| `ARRAY(String)`        | Different encoding path — bypasses global handler             |
+| `JSONB` `Dict[str,str]`| JSON serializer raises a third exception type                 |
+
+The only reliable interception point is the **Pydantic validation layer**, before any asyncpg call.
+
+### PR #41 — `fix/schemathesis-interface-error` (squash merged as `22b4a35`)
+
+- `backend/app/main.py`: global `SQLAInterfaceError` + `UnicodeError` exception handlers
+- `backend/app/schemas/profile.py`: `ProfileBase.validate_string_lists` for `List[str]` fields
+
+### PR #42 — `fix/privacy-jsonb-invalid-chars` (squash merged as `eeb97b0`)
+
+**New file: `backend/app/schemas/base.py`**
+- `_assert_safe_string(s: str) -> str` — rejects NUL bytes and lone surrogates (MUST return `s`)
+- `SafeBaseModel(BaseModel)` — `model_validator(mode='before')` sanitizes all str/list[str] fields
+
+**Write schemas switched to `SafeBaseModel`:**
+- `backend/app/schemas/profile.py` — `ProfileBase`
+- `backend/app/schemas/community.py` — `ForumThreadCreate`, `ForumPostCreate`, `StatusUpdateCreate`,
+  `PostCommentCreate`, `GroupCreate`, `ReportCreate`, `UserReportCreate`, `ResolveReportRequest`
+- `backend/app/schemas/chat.py` — `MessageBase`, `ChatRoomBase`
+- `backend/app/schemas/group_chat.py` — `GroupChatCreate`, `GroupChatUpdate`, `GroupMemberUpdate`,
+  `GroupMessageCreate`, `GroupMessageUpdate`
+- `backend/app/schemas/story.py` — `StoryBase`, `StoryUpdate` (also fixed ruff F401)
+
+**Inline JSONB validation:**
+- `backend/app/api/profiles.py::update_privacy_settings` — explicit key+value validation loop
+
+**Bug fixed during PR #42:**
+- `_assert_safe_string` was missing `return s`, causing 422 on all valid string inputs.
+  Caught and fixed before merge.
+
+### Final CI Status
+
+- Backend CI: passing
+- PR Validation: passing
+- Deploy Backend (`quality-check` + `deploy`): passing — Railway end-to-end confirmed working for first time
+- 24 stale/failed workflow runs deleted from GitHub Actions
+
+### Key Technical Decisions
+
+1. **Pydantic layer as guard**: Only reliable point that handles all 3 asyncpg encoding paths.
+2. **`model_validator(mode='before')`**: Runs before field coercion; raw input sanitized first.
+3. **`SafeBaseModel` for write schemas only**: Read-only response schemas are excluded.
+4. **Dict fields require inline validation**: `model_validator` does not recurse into dict values;
+   JSONB endpoints must explicitly validate keys and values.
+5. **`return s` is required**: `_assert_safe_string` must return the input string after validation,
+   or Pydantic treats the field as None.
+
+### Outstanding Items
+
+- E2E tests: Playwright suite excluded from merge requirements; review for genuine failures
+- SafeBaseModel coverage: audit for any remaining write schemas using plain `BaseModel`
+- JSONB fields audit: find other endpoints writing Dict values that lack inline validation
+- Frontend CI: confirm clean
+- Railway monitoring: watch logs for new 500s
+
+### Session Artifacts
+
+**Created**: `backend/app/schemas/base.py` (SafeBaseModel)
+**Modified**: profile.py, community.py, chat.py, group_chat.py, story.py schemas; profiles.py API; main.py
+**Merged PRs**: #41 (`22b4a35`), #42 (`eeb97b0`)
+**Deleted**: 24 GitHub Actions workflow run records
+
+### Notes for Next Session
+
+- `SafeBaseModel` is the required base for all future write schemas in `backend/app/schemas/`
+- Railway is confirmed working; do not change `backend/railway.json` or the deploy step casually
+- Schemathesis runs in the `quality-check` job — new unprotected write endpoints will surface 500s
+
+---
+
 ## Session: [Previous Sessions]
 
 *To be populated with historical session data when available*
