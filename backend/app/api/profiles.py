@@ -126,6 +126,18 @@ async def update_privacy_settings(
         db.add(profile)
         await db.flush()
 
+    # Reject keys/values containing NUL bytes or lone surrogates — these cannot be
+    # stored in JSONB because asyncpg's JSON encoder fails on them differently than
+    # the global UnicodeError/InterfaceError handlers can catch.
+    for key, value in privacy_settings.items():
+        for s in (key, value):
+            if '\x00' in s:
+                raise HTTPException(status_code=422, detail="Invalid character in input")
+            try:
+                s.encode('utf-8')
+            except UnicodeEncodeError:
+                raise HTTPException(status_code=422, detail="Invalid character in input")
+
     # Merge or replace privacy settings
     current_settings = profile.privacy_settings or {}
     new_settings = {**current_settings, **privacy_settings}
