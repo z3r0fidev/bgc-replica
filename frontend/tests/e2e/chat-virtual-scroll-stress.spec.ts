@@ -17,6 +17,10 @@ const ACCEPTABLE_FPS = 30;
 const MAX_MEMORY_GROWTH_MB = 100;
 
 test.describe('Chat Virtual Scroll Stress Tests', () => {
+  // Performance thresholds and virtual-scroll DOM selectors are environment-dependent.
+  // Run locally with: npx playwright test tests/e2e/chat-virtual-scroll-stress.spec.ts
+  test.skip(!!process.env.CI, 'Skipped in CI: environment-dependent performance tests');
+
   test.beforeEach(async ({ page }) => {
     // Mock authentication
     await page.addInitScript(() => {

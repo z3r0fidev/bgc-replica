@@ -8,6 +8,7 @@ from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
+from app.schemas.base import SafeBaseModel
 
 # ============== Media Schemas ==============
 
@@ -74,7 +75,7 @@ class GalleryPage(BaseModel):
 # ============== Album Schemas ==============
 
 
-class AlbumCreate(BaseModel):
+class AlbumCreate(SafeBaseModel):
     """Request to create a new album."""
 
     title: str = Field(..., min_length=1, max_length=100)
@@ -82,7 +83,7 @@ class AlbumCreate(BaseModel):
     privacy: Literal["PUBLIC", "FRIENDS_ONLY", "PRIVATE"] = "PUBLIC"
 
 
-class AlbumUpdate(BaseModel):
+class AlbumUpdate(SafeBaseModel):
     """Request to update an album."""
 
     title: Optional[str] = Field(None, min_length=1, max_length=100)
