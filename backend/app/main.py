@@ -29,7 +29,7 @@ from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
 from app.core.config import settings
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError, DataError, ProgrammingError as SQLAProgrammingError
+from sqlalchemy.exc import IntegrityError, DataError, ProgrammingError as SQLAProgrammingError, InterfaceError as SQLAInterfaceError
 from app.core.exceptions import BaseAppException
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -123,6 +123,17 @@ async def programming_error_handler(request: Request, exc: SQLAProgrammingError)
     # Catches LIMIT/OFFSET must not be negative and other SQL errors from invalid input
     return JSONResponse(status_code=422, content={"detail": "Invalid query parameter"})
 
+
+@app.exception_handler(SQLAInterfaceError)
+async def interface_error_handler(request: Request, exc: SQLAInterfaceError):
+    # Catches asyncpg client-side rejections: NUL characters in string parameters
+    return JSONResponse(status_code=422, content={"detail": "Invalid character in input"})
+
+
+@app.exception_handler(UnicodeError)
+async def unicode_error_handler(request: Request, exc: UnicodeError):
+    # Catches lone surrogate encoding failures when asyncpg tries to UTF-8 encode strings
+    return JSONResponse(status_code=422, content={"detail": "Invalid character in input"})
 
 
 app.add_middleware(
