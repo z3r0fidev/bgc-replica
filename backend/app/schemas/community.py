@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict
 import uuid
 from datetime import datetime
 from app.schemas.user import UserBase
+from app.schemas.base import SafeBaseModel
 
 # --- Forums ---
 
@@ -49,14 +50,14 @@ class ForumThreadSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ForumThreadCreate(BaseModel):
+class ForumThreadCreate(SafeBaseModel):
     category_id: uuid.UUID
     title: str
     content: str
     media_url: Optional[str] = None
 
 
-class ForumPostCreate(BaseModel):
+class ForumPostCreate(SafeBaseModel):
     thread_id: uuid.UUID
     parent_id: Optional[uuid.UUID] = None
     content: str
@@ -75,7 +76,7 @@ class StatusUpdateSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class StatusUpdateCreate(BaseModel):
+class StatusUpdateCreate(SafeBaseModel):
     content: str
     image_url: Optional[str] = None
 
@@ -89,7 +90,7 @@ class PostCommentSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PostCommentCreate(BaseModel):
+class PostCommentCreate(SafeBaseModel):
     content: str
 
 
@@ -106,7 +107,7 @@ class GroupSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class GroupCreate(BaseModel):
+class GroupCreate(SafeBaseModel):
     name: str
     description: Optional[str] = None
     is_private: bool = False
@@ -159,13 +160,13 @@ class ReportDetailSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ReportCreate(BaseModel):
+class ReportCreate(SafeBaseModel):
     content_type: str
     content_id: uuid.UUID
     reason: str
 
 
-class UserReportCreate(BaseModel):
+class UserReportCreate(SafeBaseModel):
     """Schema for reporting a user."""
 
     user_id: uuid.UUID
@@ -173,7 +174,7 @@ class UserReportCreate(BaseModel):
     details: Optional[str] = None
 
 
-class ResolveReportRequest(BaseModel):
+class ResolveReportRequest(SafeBaseModel):
     """Request to resolve a report."""
 
     action: str  # dismiss, warn_user, delete_content, ban_user

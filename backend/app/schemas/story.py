@@ -2,9 +2,10 @@ from typing import Optional
 from pydantic import BaseModel
 import uuid
 from datetime import datetime
+from app.schemas.base import SafeBaseModel
 
 
-class StoryBase(BaseModel):
+class StoryBase(SafeBaseModel):
     title: str
     content: str
     cover_url: Optional[str] = None
@@ -14,7 +15,7 @@ class StoryCreate(StoryBase):
     pass
 
 
-class StoryUpdate(BaseModel):
+class StoryUpdate(SafeBaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     cover_url: Optional[str] = None
