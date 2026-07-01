@@ -2,7 +2,7 @@ from typing import Any
 from pydantic import BaseModel, model_validator
 
 
-def _assert_safe_string(s: str) -> None:
+def _assert_safe_string(s: str) -> str:
     """Raise ValueError for strings that asyncpg cannot encode (NUL bytes, lone surrogates).
 
     Plain String and ARRAY(String) columns use different asyncpg encoding paths;
@@ -16,6 +16,7 @@ def _assert_safe_string(s: str) -> None:
         s.encode('utf-8')
     except UnicodeEncodeError:
         raise ValueError("String contains invalid character encoding")
+    return s
 
 
 class SafeBaseModel(BaseModel):
