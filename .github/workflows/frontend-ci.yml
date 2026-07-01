@@ -3,10 +3,10 @@ name: Frontend CI
 on:
   push:
     branches: [ "main" ]
-    paths: [ "frontend/**" ]
+    paths: [ "frontend/**", ".github/workflows/**" ]
   pull_request:
     branches: [ "main" ]
-    paths: [ "frontend/**" ]
+    paths: [ "frontend/**", ".github/workflows/**" ]
   workflow_dispatch:
 
 jobs:
