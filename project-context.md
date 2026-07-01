@@ -158,14 +158,22 @@ bgc-replica/
     - Virtual scrolling in chat window (@tanstack/react-virtual)
     - New UI components: Progress, Separator, Table
     - E2E test suite for admin features
+11. **asyncpg Encoding Hardening / CI/CD End-to-End** (2026-07-01, PR #41 + PR #42):
+    - Discovered asyncpg uses 3 different encoding paths by column type (String, ARRAY(String), JSONB)
+    - `backend/app/schemas/base.py`: `SafeBaseModel` + `_assert_safe_string` — rejects NUL bytes and lone surrogates at Pydantic layer
+    - All write schemas across profile, community, chat, group_chat, story switched to `SafeBaseModel`
+    - Inline JSONB dict validation in `profiles.py::update_privacy_settings`
+    - Global `SQLAInterfaceError` + `UnicodeError` handlers added to `main.py`
+    - Fixed return-value bug in `_assert_safe_string` (was returning None)
+    - Backend CI, PR Validation, and Deploy Backend (Railway) all passing end-to-end
+    - 24 stale workflow runs cleaned up from GitHub Actions
 
 ### Recent Commits (chronological, newest first)
+- **eeb97b0** (2026-07-01): fix(api): validate privacy_settings dict for NUL bytes and lone surrogates (#42)
+- **22b4a35** (2026-07-01): fix(api): handle asyncpg InterfaceError and UnicodeError for invalid string input (#41)
+- **feddc9d**: fix(ci): run railway up from repo root to fix Nixpacks source dir error
+- **a954e1a**: fix(api): add le=10000 to all offset query params to prevent SQL overflow
 - **4d6f0b1** (2026-02-04): feat(admin): Add comprehensive admin dashboard with performance optimizations (#5) -- 28 files, 4961 insertions
-- **61aaf06**: Release: Merge production-readiness into main (#4)
-- **0ddaa96**: docs: Update project status to include Phase 9 (DevOps & CI/CD) completion
-- **8abf4d1**: ci(e2e): Add GitHub Actions workflow for Playwright end-to-end testing
-- **bd91416**: ci(frontend): Add GitHub Actions workflow for Next.js frontend linting, testing, and build
-- **db1343b**: ci(backend): Add GitHub Actions workflow for Python backend linting and testing
 
 ### Extracted Features (Standalone Subprojects)
 - **Personals** (Specs 010, 012): Moved to `bgc-personals/` subdirectory
@@ -175,16 +183,15 @@ bgc-replica/
 
 ### Active Branch
 - **Branch**: `main`
-- **HEAD**: `4d6f0b1`
+- **HEAD**: `eeb97b0`
 - **Status**: Clean working tree, up to date with origin/main
 
 ### Next Priorities
-1. Load-test and rate-limit admin API endpoints
-2. Benchmark GZip and Redis cache effectiveness in staging
-3. Profile chat virtual-scroll performance at scale
-4. Deploy security features (2FA, email verification) to production
-5. Admin dashboard user guide and deployment runbook updates
-6. E2E tests for 2FA and email verification flows
+1. E2E tests — review Playwright suite for genuinely failing vs flaky tests
+2. Audit remaining schemas for any write schemas still using plain `BaseModel`
+3. Audit other JSONB `Dict` fields in endpoints for inline validation gaps
+4. Confirm frontend CI is fully green
+5. Monitor Railway logs for new 500s from contract tests or production traffic
 
 ## Dependencies
 
@@ -315,12 +322,16 @@ bgc-replica/
    - E2E tests for 2FA login flow needed
    - Email delivery testing in production environment
    - Admin dashboard load testing under concurrent access needed
-5. **Documentation**:
+   - Playwright E2E suite may contain flaky tests (excluded from merge requirements)
+5. **Schema Coverage**:
+   - Any new write schemas must inherit `SafeBaseModel` from `backend/app/schemas/base.py`
+   - Any new endpoints writing `Dict` fields to JSONB must add inline key/value validation
+6. **Documentation**:
    - API documentation needs OpenAPI spec export
    - User guide for 2FA setup needed
    - Admin dashboard user guide needed (user management, analytics, health)
    - Deployment runbook needs updating with new health endpoints
-6. **Monitoring**:
+7. **Monitoring**:
    - Production alerting and dashboards not configured
    - Email delivery monitoring needed
    - 2FA adoption rate tracking needed

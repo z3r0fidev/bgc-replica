@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
+from app.schemas.base import SafeBaseModel
 
 
 class NotificationPreferences(BaseModel):
@@ -27,7 +28,7 @@ class NotificationPreferences(BaseModel):
     push_mentions: bool = True
 
 
-class NotificationPreferencesUpdate(BaseModel):
+class NotificationPreferencesUpdate(SafeBaseModel):
     """Partial update for notification preferences."""
 
     email_messages: Optional[bool] = None

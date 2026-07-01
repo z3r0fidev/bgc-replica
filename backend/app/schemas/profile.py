@@ -65,8 +65,10 @@ class ProfileBase(SafeBaseModel):
         }
 
         for key, url in v.items():
+            _assert_safe_string(key)
             if not url:
                 continue
+            _assert_safe_string(url)
             if not url.startswith("https://"):
                 raise ValueError(f"{key} must use HTTPS")
             if key in patterns:

@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from app.schemas.base import SafeBaseModel
 
 
 class AdminUserListItem(BaseModel):
@@ -57,7 +58,7 @@ class UserSearchParams(BaseModel):
     offset: int = Field(0, ge=0)
 
 
-class SuspendUserRequest(BaseModel):
+class SuspendUserRequest(SafeBaseModel):
     """Request to suspend a user."""
 
     reason: str = Field(..., min_length=5, max_length=500)
@@ -66,7 +67,7 @@ class SuspendUserRequest(BaseModel):
     )
 
 
-class BanUserRequest(BaseModel):
+class BanUserRequest(SafeBaseModel):
     """Request to ban a user."""
 
     reason: str = Field(..., min_length=5, max_length=500)
@@ -120,7 +121,7 @@ class AdminStatsOverview(BaseModel):
     new_users_this_month: int
 
 
-class UpdateUserRequest(BaseModel):
+class UpdateUserRequest(SafeBaseModel):
     """Request to update user fields."""
 
     name: Optional[str] = Field(None, max_length=255)

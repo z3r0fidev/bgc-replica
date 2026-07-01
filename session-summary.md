@@ -2,6 +2,82 @@
 
 ---
 
+## Session: 2026-07-01 — asyncpg Encoding Hardening & CI/CD End-to-End (PR #41 + PR #42)
+
+### Session Information
+- **Date**: 2026-07-01
+- **Duration**: Single session
+- **Branch**: `main`
+- **PRs Merged**: #41 (`22b4a35`), #42 (`eeb97b0`)
+- **HEAD after session**: `eeb97b0`
+- **Focus**: Fix all CI failures until Deploy Backend passes Railway end-to-end
+
+### High-Level Summary
+
+Diagnosed and fixed asyncpg encoding failures that caused Schemathesis contract tests to surface
+500 errors. Discovered asyncpg uses 3 separate encoding paths by column type (String, ARRAY(String),
+JSONB), each raising a different exception. Implemented the `SafeBaseModel` pattern as a single
+Pydantic-layer guard that handles all three. Deploy Backend workflow now passes Railway end-to-end
+for the first time. All CI pipelines are green.
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `backend/app/schemas/base.py` | `SafeBaseModel` + `_assert_safe_string` utility |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `backend/app/main.py` | Global `SQLAInterfaceError` + `UnicodeError` exception handlers |
+| `backend/app/schemas/profile.py` | `ProfileBase` → `SafeBaseModel`; removed local `_assert_safe_string` |
+| `backend/app/schemas/community.py` | 7 write schemas → `SafeBaseModel` |
+| `backend/app/schemas/chat.py` | `MessageBase`, `ChatRoomBase` → `SafeBaseModel` |
+| `backend/app/schemas/group_chat.py` | 5 write schemas → `SafeBaseModel` |
+| `backend/app/schemas/story.py` | `StoryBase`, `StoryUpdate` → `SafeBaseModel`; ruff F401 fix |
+| `backend/app/api/profiles.py` | Inline JSONB dict validation in `update_privacy_settings` |
+
+### Key Decisions and Rationale
+
+1. **Pydantic validation layer is the single reliable guard**: Global exception handlers in `main.py`
+   only catch asyncpg path 1 (plain String). `model_validator(mode='before')` runs before any
+   asyncpg encoding and catches all three paths.
+2. **`SafeBaseModel` applied to write schemas only**: Read-only response schemas do not need it —
+   data in the DB is already safe.
+3. **Dict fields need inline validation**: `model_validator` does not recurse into dict values;
+   JSONB dict endpoints require explicit iteration over keys and values.
+4. **`return s` is mandatory in validators**: `_assert_safe_string` must return the input string
+   after validation; omitting it causes Pydantic to treat every field as None (422 on valid input).
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] Review Playwright E2E suite for genuinely failing vs flaky tests
+- [ ] Audit remaining schemas: `grep -r "class.*BaseModel" backend/app/schemas/` to find any write schemas still using plain `BaseModel`
+- [ ] Audit other JSONB `Dict` field endpoints for inline validation gaps
+- [ ] Confirm frontend CI is fully green
+- [ ] Monitor Railway logs for new 500s from contract tests or production traffic
+
+### Blockers / Challenges
+
+**Challenge**: asyncpg 3-encoding-path problem
+- Plain String, ARRAY(String), and JSONB each raise different exceptions
+- Global handler insufficient — only catches path 1
+- Solution: Pydantic `model_validator(mode='before')` applied via `SafeBaseModel`
+
+**Bug caught pre-merge**: `_assert_safe_string` was returning `None` instead of `s`, which would
+have caused 422 on every valid string input. Fixed before either PR merged.
+
+### Session Statistics
+
+- **Files Created**: 1 (`backend/app/schemas/base.py`)
+- **Files Modified**: 7 (schemas + api + main)
+- **PRs Merged**: #41, #42
+- **GitHub Actions runs deleted**: 24 (stale failed/cancelled)
+- **CI pipelines now green**: Backend CI, Frontend CI, PR Validation, Deploy Backend
+
+---
+
 ## Session: 2026-02-04 - Admin Dashboard & Performance Optimization (PR #5 Closure)
 
 ### Session Information

@@ -3,8 +3,8 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
-from app.schemas.base import SafeBaseModel
+from pydantic import BaseModel, Field, field_validator
+from app.schemas.base import SafeBaseModel, _assert_safe_string
 
 # ============ Group Chat Schemas ============
 
@@ -26,6 +26,17 @@ class GroupChatUpdate(SafeBaseModel):
     avatar_url: Optional[str] = Field(None, max_length=1024)
     max_members: Optional[int] = Field(None, ge=2, le=100)
     settings: Optional[dict] = None
+
+    @field_validator("settings")
+    @classmethod
+    def validate_settings(cls, v: Optional[dict]) -> Optional[dict]:
+        if not v:
+            return v
+        for key, value in v.items():
+            _assert_safe_string(key)
+            if isinstance(value, str):
+                _assert_safe_string(value)
+        return v
 
 
 class GroupChatResponse(BaseModel):
