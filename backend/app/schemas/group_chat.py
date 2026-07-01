@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional, List
+from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 from app.schemas.base import SafeBaseModel, _assert_safe_string
 
