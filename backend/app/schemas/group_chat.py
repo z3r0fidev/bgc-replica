@@ -4,11 +4,12 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from app.schemas.base import SafeBaseModel
 
 # ============ Group Chat Schemas ============
 
 
-class GroupChatCreate(BaseModel):
+class GroupChatCreate(SafeBaseModel):
     """Schema for creating a group chat."""
 
     name: str = Field(..., min_length=1, max_length=100)
@@ -17,7 +18,7 @@ class GroupChatCreate(BaseModel):
     max_members: int = Field(default=50, ge=2, le=100)
 
 
-class GroupChatUpdate(BaseModel):
+class GroupChatUpdate(SafeBaseModel):
     """Schema for updating a group chat."""
 
     name: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -62,7 +63,7 @@ class GroupMemberAdd(BaseModel):
     user_id: uuid.UUID
 
 
-class GroupMemberUpdate(BaseModel):
+class GroupMemberUpdate(SafeBaseModel):
     """Schema for updating a member's settings."""
 
     role: Optional[str] = Field(None, pattern="^(admin|member)$")
@@ -92,7 +93,7 @@ class GroupMemberResponse(BaseModel):
 # ============ Group Message Schemas ============
 
 
-class GroupMessageCreate(BaseModel):
+class GroupMessageCreate(SafeBaseModel):
     """Schema for sending a message in a group."""
 
     content: str = Field(..., min_length=1, max_length=5000)
@@ -100,7 +101,7 @@ class GroupMessageCreate(BaseModel):
     reply_to_id: Optional[uuid.UUID] = None
 
 
-class GroupMessageUpdate(BaseModel):
+class GroupMessageUpdate(SafeBaseModel):
     """Schema for editing a message."""
 
     content: str = Field(..., min_length=1, max_length=5000)

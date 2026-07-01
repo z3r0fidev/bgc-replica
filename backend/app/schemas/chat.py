@@ -2,9 +2,10 @@ from typing import Optional
 from pydantic import BaseModel
 import uuid
 from datetime import datetime
+from app.schemas.base import SafeBaseModel
 
 
-class MessageBase(BaseModel):
+class MessageBase(SafeBaseModel):
     content: str
     type: str = "TEXT"
 
@@ -25,7 +26,7 @@ class Message(MessageBase):
         from_attributes = True
 
 
-class ChatRoomBase(BaseModel):
+class ChatRoomBase(SafeBaseModel):
     name: str
     description: Optional[str] = None
     category: str
