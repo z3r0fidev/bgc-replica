@@ -18,8 +18,13 @@ const MAX_MEMORY_GROWTH_MB = 100;
 
 test.describe('Chat Virtual Scroll Stress Tests', () => {
   // Performance thresholds and virtual-scroll DOM selectors are environment-dependent.
-  // Run locally with: npx playwright test tests/e2e/chat-virtual-scroll-stress.spec.ts
-  test.skip(!!process.env.CI, 'Skipped in CI: environment-dependent performance tests');
+  // Skipped in regular CI runs (PR validation, deploy) to avoid flaking the fast gates;
+  // runs locally, or in CI when explicitly opted in via RUN_STRESS_TESTS=true (see the
+  // nightly stress workflow at .github/workflows/e2e-nightly-stress.yml).
+  test.skip(
+    !!process.env.CI && !process.env.RUN_STRESS_TESTS,
+    'Skipped in CI: environment-dependent performance tests (run nightly via RUN_STRESS_TESTS=true)'
+  );
 
   test.beforeEach(async ({ page }) => {
     // Mock authentication
