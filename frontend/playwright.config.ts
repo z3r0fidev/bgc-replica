@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.BASE_URL || 'http://localhost:3000';
 const isRemoteURL = baseURL !== 'http://localhost:3000';
+const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -20,6 +21,14 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    // Vercel Deployment Protection (SSO) intercepts every request to preview/prod
+    // alias URLs otherwise; this header + cookie exempt automated test traffic.
+    ...(bypassSecret && {
+      extraHTTPHeaders: {
+        'x-vercel-protection-bypass': bypassSecret,
+        'x-vercel-set-bypass-cookie': 'true',
+      },
+    }),
   },
   projects: [
     {

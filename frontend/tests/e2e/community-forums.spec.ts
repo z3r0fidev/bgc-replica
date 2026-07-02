@@ -28,7 +28,6 @@ test.describe('Community Forums', () => {
     });
 
     await page.goto('/forums');
-    await page.waitForLoadState('networkidle');
 
     // Check page title
     await expect(page.getByRole('heading', { name: 'Community Forums' })).toBeVisible();
@@ -65,7 +64,6 @@ test.describe('Community Forums', () => {
     });
 
     await page.goto('/forums');
-    await page.waitForLoadState('networkidle');
 
     // Click on the General Discussion category
     await page.getByText('General Discussion').click();
@@ -105,7 +103,6 @@ test.describe('Community Forums', () => {
     });
 
     await page.goto('/forums/general');
-    await page.waitForLoadState('networkidle');
 
     // Check threads are displayed
     await expect(page.getByText('Welcome to the community!')).toBeVisible();
@@ -123,7 +120,6 @@ test.describe('Community Forums', () => {
     });
 
     await page.goto('/forums/general');
-    await page.waitForLoadState('networkidle');
 
     // Look for create thread button (FAB or regular button)
     const createButton = page.getByRole('button', { name: /create|new thread/i });
@@ -169,7 +165,6 @@ test.describe('Community Forums', () => {
     });
 
     await page.goto('/forums/general');
-    await page.waitForLoadState('networkidle');
 
     // Look for create thread button
     const createButton = page.getByRole('button', { name: /create|new thread/i });

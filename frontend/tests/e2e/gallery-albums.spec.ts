@@ -27,7 +27,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums');
-    await page.waitForLoadState('networkidle');
 
     // Check page title
     const heading = page.getByRole('heading', { name: /my albums/i });
@@ -48,7 +47,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums');
-    await page.waitForLoadState('networkidle');
 
     // Check empty state message
     const emptyMessage = page.getByText(/no albums yet/i);
@@ -87,7 +85,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums');
-    await page.waitForLoadState('networkidle');
 
     // Check album titles
     await expect(page.getByText('Summer Vacation')).toBeVisible();
@@ -108,7 +105,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums');
-    await page.waitForLoadState('networkidle');
 
     // Click new album button
     const newAlbumButton = page.getByRole('button', { name: /new album/i });
@@ -160,7 +156,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums');
-    await page.waitForLoadState('networkidle');
 
     // Click on album card
     const albumCard = page.getByText('Test Album');
@@ -192,7 +187,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums/album-1');
-    await page.waitForLoadState('networkidle');
 
     // Check title displays
     await expect(page.getByRole('heading', { name: 'Beach Photos' })).toBeVisible();
@@ -223,7 +217,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums/album-1');
-    await page.waitForLoadState('networkidle');
 
     // Click share button
     const shareButton = page.getByRole('button', { name: /share/i });
@@ -259,7 +252,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/gallery/albums/album-1');
-    await page.waitForLoadState('networkidle');
 
     // Click reorder button
     const reorderButton = page.getByRole('button', { name: /reorder/i });
@@ -296,7 +288,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/shared/album/test-token');
-    await page.waitForLoadState('networkidle');
 
     // Check shared album displays
     await expect(page.getByText('Shared Album')).toBeVisible();
@@ -315,7 +306,6 @@ test.describe('Gallery Albums', () => {
     });
 
     await page.goto('/shared/album/expired-token');
-    await page.waitForLoadState('networkidle');
 
     // Check error message displays
     await expect(page.getByText(/album not available/i)).toBeVisible();

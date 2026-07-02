@@ -8,7 +8,12 @@ jobs:
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    if: github.event.deployment_status.state == 'success' || github.event_name == 'workflow_dispatch'
+    # Railway's backend deploy also fires deployment_status on this repo, with
+    # target_url pointing at the Railway dashboard (not a live app) — restrict
+    # to Vercel's frontend deployments so BASE_URL is always a real app URL.
+    # workflow_dispatch is handled by the playwright-manual job below instead,
+    # since there's no deployment target_url to test against.
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.creator.login == 'vercel[bot]'
 
     strategy:
       fail-fast: false
@@ -48,11 +53,140 @@ jobs:
         env:
           BASE_URL: ${{ github.event.deployment_status.target_url || 'http://localhost:3000' }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: playwright-report-${{ matrix.shard }}
+          path: frontend/playwright-report/
+          retention-days: 30
+
+  # Manual smoke run: no deployment exists to point at, so this job stands up
+  # Postgres/Redis, the FastAPI backend, and the Next.js dev server itself.
+  # `next dev` proxies /api/* straight to 127.0.0.1:8000 (see next.config.ts),
+  # so BASE_URL is left unset and playwright.config.ts falls back to its
+  # localhost:3000 webServer, which needs that backend to actually be up.
+  playwright-manual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event_name == 'workflow_dispatch'
+
+    # Run inside the same prebuilt Playwright image as the job above instead
+    # of `npx playwright install`: that download has stalled silently for
+    # 20+ minutes against cdn.playwright.dev after finishing the chromium
+    # download (no output, no error), burning the whole job's time budget.
+    # Browsers are already baked into this image, so there's nothing to fetch.
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
+      env:
+        HOME: /root
+      options: >-
+        --ipc=host
+        --init
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: e2e_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # Steps run inside the container above, on the job's Docker network —
+    # services are reachable by service name, not `localhost`.
+    env:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/e2e_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: e2e-dispatch-test-secret-key
+      NEXTAUTH_SECRET: e2e-dispatch-test-secret-key
+      AUTH_SECRET: e2e-dispatch-test-secret-key
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          # cache: "pip" intentionally omitted — it shells out to the bare
+          # `pip` executable to resolve a cache dir, which isn't on PATH
+          # inside this container even though the Python toolchain itself
+          # sets up fine (spawn .../bin/pip ENOENT). Use `python -m pip`
+          # everywhere below instead of relying on a standalone pip binary.
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run Migrations
+        working-directory: ./backend
+        run: python -m alembic upgrade head
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Start Backend
+        working-directory: ./backend
+        run: |
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
+          echo "Backend PID: $!"
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/health > /dev/null; then
+              echo "Backend healthy after ~$((i * 3))s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::Backend did not become healthy within 180s"
+          echo "--- process list ---"
+          ps aux | grep -i uvicorn || true
+          echo "--- listening ports ---"
+          ss -tlnp 2>&1 || netstat -tlnp 2>&1 || true
+          echo "--- backend.log ---"
+          cat backend.log || true
+          exit 1
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci --loglevel=error
+
+      - name: Run Playwright Tests
+        working-directory: ./frontend
+        run: npx playwright test --project=chromium
+        env:
+          AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
+
+      - name: Show Backend Log on Failure
+        if: failure()
+        working-directory: ./backend
+        run: cat backend.log || true
+
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report-manual
           path: frontend/playwright-report/
           retention-days: 30

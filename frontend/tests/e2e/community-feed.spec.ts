@@ -25,7 +25,6 @@ test.describe('Social Feed', () => {
     });
 
     await page.goto('/feed');
-    await page.waitForLoadState('networkidle');
 
     // Check post composer is visible
     const textarea = page.getByPlaceholder(/what's on your mind/i);
@@ -67,7 +66,6 @@ test.describe('Social Feed', () => {
     });
 
     await page.goto('/feed');
-    await page.waitForLoadState('networkidle');
 
     // Wait for loading to complete
     await expect(page.getByText(/loading/i)).not.toBeVisible({ timeout: 10000 });
@@ -102,7 +100,6 @@ test.describe('Social Feed', () => {
     });
 
     await page.goto('/feed');
-    await page.waitForLoadState('networkidle');
 
     // Check Global tab is active by default
     const globalTab = page.getByRole('tab', { name: /global/i });
@@ -150,7 +147,6 @@ test.describe('Social Feed', () => {
     });
 
     await page.goto('/feed');
-    await page.waitForLoadState('networkidle');
 
     // Type in the post composer
     const textarea = page.getByPlaceholder(/what's on your mind/i);
@@ -180,7 +176,6 @@ test.describe('Social Feed', () => {
     });
 
     await page.goto('/feed');
-    await page.waitForLoadState('networkidle');
 
     // Check post button is disabled initially
     const postButton = page.getByRole('button', { name: /post/i });
@@ -211,7 +206,6 @@ test.describe('Social Feed', () => {
     });
 
     await page.goto('/feed');
-    await page.waitForLoadState('networkidle');
 
     // Wait for loading to complete
     await expect(page.getByText(/loading/i)).not.toBeVisible({ timeout: 10000 });

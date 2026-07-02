@@ -25,8 +25,17 @@ test.describe("Profile Privacy Rules", () => {
     user: { id: "test-user-id", name: "Test User" },
   };
 
-  test.beforeEach(async ({ page }) => {
-    // Mock authenticated user
+  test.beforeEach(async ({ page, context, baseURL }) => {
+    // proxy.ts middleware reads the access_token cookie server-side, so
+    // localStorage alone never satisfies auth checks on protected routes.
+    await context.addCookies([
+      {
+        name: "access_token",
+        value: "fake-token",
+        domain: baseURL ? new URL(baseURL).hostname : "localhost",
+        path: "/",
+      },
+    ]);
     await page.addInitScript(() => {
       localStorage.setItem("access_token", "fake-token");
     });
@@ -42,7 +51,6 @@ test.describe("Profile Privacy Rules", () => {
     });
 
     await page.goto("/profile/edit");
-    await page.waitForLoadState("networkidle");
 
     // Verify all 5 tabs are present
     await expect(page.getByRole("tab", { name: /basics/i })).toBeVisible();
@@ -62,7 +70,6 @@ test.describe("Profile Privacy Rules", () => {
     });
 
     await page.goto("/profile/edit");
-    await page.waitForLoadState("networkidle");
 
     // Navigate to Identity tab
     await page.getByRole("tab", { name: /identity/i }).click();
@@ -84,7 +91,6 @@ test.describe("Profile Privacy Rules", () => {
     });
 
     await page.goto("/profile/edit");
-    await page.waitForLoadState("networkidle");
 
     // Test Identity tab
     await page.getByRole("tab", { name: /identity/i }).click();
@@ -116,7 +122,6 @@ test.describe("Profile Privacy Rules", () => {
     });
 
     await page.goto("/profile/edit");
-    await page.waitForLoadState("networkidle");
 
     // Check completion meter is visible
     await expect(page.getByText(/profile completion/i)).toBeVisible();
@@ -153,7 +158,6 @@ test.describe("Profile Privacy Rules", () => {
     });
 
     await page.goto("/profile/edit");
-    await page.waitForLoadState("networkidle");
 
     // Update bio field
     await page.getByRole("tab", { name: /basics/i }).click();
@@ -178,7 +182,6 @@ test.describe("Profile Privacy Rules", () => {
     });
 
     await page.goto("/profile/edit");
-    await page.waitForLoadState("networkidle");
 
     // Navigate to Social Links tab
     await page.getByRole("tab", { name: /social/i }).click();
@@ -208,7 +211,6 @@ test.describe("Profile Privacy Rules", () => {
     });
 
     await page.goto("/profile/edit");
-    await page.waitForLoadState("networkidle");
 
     // Navigate to Lifestyle tab
     await page.getByRole("tab", { name: /lifestyle/i }).click();

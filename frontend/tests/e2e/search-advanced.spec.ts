@@ -34,7 +34,6 @@ test.describe('Advanced Search', () => {
     });
 
     await page.goto('/users');
-    await page.waitForLoadState('networkidle');
 
     // Open filters and select options
     
@@ -64,7 +63,6 @@ test.describe('Advanced Search', () => {
     await context.setGeolocation({ latitude: 33.7490, longitude: -84.3880 });
 
     await page.goto('/users');
-    await page.waitForLoadState('networkidle');
 
     // Click GPS button
     await page.getByRole('button', { name: /Use My Location/i }).click();
