@@ -38,8 +38,17 @@ test.describe("Search Profile Expansion Filters", () => {
     has_more: false,
   };
 
-  test.beforeEach(async ({ page }) => {
-    // Mock authenticated user
+  test.beforeEach(async ({ page, context, baseURL }) => {
+    // proxy.ts middleware reads the access_token cookie server-side, so
+    // localStorage alone never satisfies auth checks on protected routes.
+    await context.addCookies([
+      {
+        name: "access_token",
+        value: "fake-token",
+        domain: baseURL ? new URL(baseURL).hostname : "localhost",
+        path: "/",
+      },
+    ]);
     await page.addInitScript(() => {
       localStorage.setItem("access_token", "fake-token");
     });
@@ -67,7 +76,6 @@ test.describe("Search Profile Expansion Filters", () => {
     });
 
     await page.goto("/search");
-    await page.waitForLoadState("networkidle");
 
     // Check if relationship_status filter exists
     const filterExists = await page.locator('[name="relationship_status"]').count();
@@ -104,7 +112,6 @@ test.describe("Search Profile Expansion Filters", () => {
     });
 
     await page.goto("/search");
-    await page.waitForLoadState("networkidle");
 
     // Check if industry filter exists
     const filterExists = await page.locator('[name="industry"]').count();
@@ -139,7 +146,6 @@ test.describe("Search Profile Expansion Filters", () => {
     });
 
     await page.goto("/search");
-    await page.waitForLoadState("networkidle");
 
     // Check if gender_identity filter exists
     const filterExists = await page.locator('[name="gender_identity"]').count();
@@ -166,7 +172,6 @@ test.describe("Search Profile Expansion Filters", () => {
     });
 
     await page.goto("/search");
-    await page.waitForLoadState("networkidle");
 
     // Check if looking_for filter exists
     const filterExists = await page.locator('[name="looking_for"]').count();
@@ -196,7 +201,6 @@ test.describe("Search Profile Expansion Filters", () => {
     });
 
     await page.goto("/search");
-    await page.waitForLoadState("networkidle");
 
     // Check if filters exist and apply multiple
     const statusFilterExists = await page.locator('[name="relationship_status"]').count();

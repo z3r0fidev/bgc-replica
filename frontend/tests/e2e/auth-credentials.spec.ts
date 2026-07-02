@@ -20,7 +20,6 @@ test.describe('Credentials Auth', () => {
     });
 
     await page.goto('/register');
-    await page.waitForLoadState('networkidle');
     
     // Use name-based selectors for better stability
     const nameInput = page.locator('input[name="name"]');
@@ -59,7 +58,6 @@ test.describe('Credentials Auth', () => {
     });
 
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
     
     const emailInput = page.locator('input[name="email"]');
     const passwordInput = page.locator('input[name="password"]');
@@ -121,7 +119,6 @@ test.describe('Credentials Auth', () => {
     });
 
     await page.goto('/register');
-    await page.waitForLoadState('networkidle');
     
     await page.locator('input[name="name"]').fill('Test User');
     await page.locator('input[name="email"]').fill('existing@example.com');

@@ -334,7 +334,6 @@ test.describe('Passkey Authentication', () => {
   test.describe('Login Page - Passkey Button', () => {
     test('should display passkey login button', async ({ page }) => {
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
       await expect(passkeyButton).toBeVisible();
@@ -343,7 +342,6 @@ test.describe('Passkey Authentication', () => {
 
     test('should show passkey button in alternative login methods section', async ({ page }) => {
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       // Check that passkey button is in the "Or continue with" section
       const divider = page.getByText(/or continue with/i);
@@ -385,7 +383,6 @@ test.describe('Passkey Authentication', () => {
       });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
       await passkeyButton.click();
@@ -414,7 +411,6 @@ test.describe('Passkey Authentication', () => {
       });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
 
@@ -534,7 +530,6 @@ test.describe('Passkey Authentication', () => {
       });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
 
@@ -559,7 +554,6 @@ test.describe('Passkey Authentication', () => {
       await setupPasskeyApiMocks(page, { loginSuccess: true });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
 
@@ -589,7 +583,6 @@ test.describe('Passkey Authentication', () => {
       });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       // The passkey button should be visible when platform authenticator is available
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
@@ -604,7 +597,6 @@ test.describe('Passkey Authentication', () => {
       });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       // Page should still load without errors
       await expect(page.getByText(/login/i).first()).toBeVisible();
@@ -629,7 +621,6 @@ test.describe('Passkey Authentication', () => {
       });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
       await passkeyButton.click();
@@ -670,7 +661,6 @@ test.describe('Passkey Authentication', () => {
       await injectWebAuthnMocks(page, { shouldSucceed: true });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
       await expect(passkeyButton).toBeVisible();
@@ -688,7 +678,6 @@ test.describe('Passkey Authentication', () => {
       await injectWebAuthnMocks(page, { shouldSucceed: true });
 
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
       await expect(passkeyButton).toBeVisible();
@@ -705,7 +694,6 @@ test.describe('Passkey Authentication', () => {
   test.describe('Accessibility', () => {
     test('should have accessible passkey button on login page', async ({ page }) => {
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
 
@@ -746,7 +734,6 @@ test.describe('Passkey Authentication', () => {
 
     test('should display passkey button on mobile login page', async ({ page }) => {
       await page.goto('/login');
-      await page.waitForLoadState('networkidle');
 
       const passkeyButton = page.getByRole('button', { name: /sign in with passkey/i });
       await expect(passkeyButton).toBeVisible();

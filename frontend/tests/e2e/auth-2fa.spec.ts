@@ -25,7 +25,6 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
 
     const emailInput = page.locator('input[name="email"]');
     const passwordInput = page.locator('input[name="password"]');
@@ -94,7 +93,6 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
 
     // Step 1: Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
@@ -155,7 +153,6 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
 
     // Step 1: Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
@@ -229,7 +226,6 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
 
     // Step 1: Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
@@ -282,7 +278,6 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
 
     await page.locator('input[name="email"]').fill('regular-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
@@ -355,7 +350,6 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
 
     // Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');

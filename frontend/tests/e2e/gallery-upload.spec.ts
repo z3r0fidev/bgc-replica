@@ -25,7 +25,6 @@ test.describe('Gallery Upload', () => {
     });
 
     await page.goto('/gallery');
-    await page.waitForLoadState('networkidle');
 
     // Check gallery tab exists
     const galleryTab = page.getByRole('tab', { name: /gallery/i });
@@ -46,7 +45,6 @@ test.describe('Gallery Upload', () => {
     });
 
     await page.goto('/gallery');
-    await page.waitForLoadState('networkidle');
 
     // Click upload tab
     const uploadTab = page.getByRole('tab', { name: /upload/i });
@@ -67,7 +65,6 @@ test.describe('Gallery Upload', () => {
     });
 
     await page.goto('/gallery');
-    await page.waitForLoadState('networkidle');
 
     // Click upload tab
     const uploadTab = page.getByRole('tab', { name: /upload/i });
@@ -113,7 +110,6 @@ test.describe('Gallery Upload', () => {
     });
 
     await page.goto('/gallery');
-    await page.waitForLoadState('networkidle');
 
     // Check images are displayed
     const images = page.locator('img[alt="Gallery item"]');
@@ -144,7 +140,6 @@ test.describe('Gallery Upload', () => {
     });
 
     await page.goto('/gallery');
-    await page.waitForLoadState('networkidle');
 
     // Click on image
     const image = page.locator('img[alt="Gallery item"]').first();
@@ -179,7 +174,6 @@ test.describe('Gallery Upload', () => {
     });
 
     await page.goto('/gallery');
-    await page.waitForLoadState('networkidle');
 
     // Click on image to open lightbox
     const image = page.locator('img[alt="Gallery item"]').first();
@@ -219,13 +213,11 @@ test.describe('Gallery Upload', () => {
     });
 
     await page.goto('/gallery');
-    await page.waitForLoadState('networkidle');
 
     // Click photos filter tab
     const photosTab = page.getByRole('tab', { name: /photos/i });
     await photosTab.click();
 
     // Should have made filtered request
-    await page.waitForLoadState('networkidle');
   });
 });
