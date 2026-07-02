@@ -68,5 +68,6 @@ jobs:
       - name: Upload Coverage
         uses: codecov/codecov-action@v6
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./backend/coverage.xml
           flags: backend
