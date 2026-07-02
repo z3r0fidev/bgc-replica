@@ -73,6 +73,19 @@ jobs:
     timeout-minutes: 25
     if: github.event_name == 'workflow_dispatch'
 
+    # Run inside the same prebuilt Playwright image as the job above instead
+    # of `npx playwright install`: that download has stalled silently for
+    # 20+ minutes against cdn.playwright.dev after finishing the chromium
+    # download (no output, no error), burning the whole job's time budget.
+    # Browsers are already baked into this image, so there's nothing to fetch.
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
+      env:
+        HOME: /root
+      options: >-
+        --ipc=host
+        --init
+
     services:
       postgres:
         image: postgres:15
@@ -80,8 +93,6 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_DB: e2e_db
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -89,17 +100,17 @@ jobs:
           --health-retries 5
       redis:
         image: redis:7
-        ports:
-          - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
+    # Steps run inside the container above, on the job's Docker network —
+    # services are reachable by service name, not `localhost`.
     env:
-      DATABASE_URL: postgresql://postgres:password@localhost:5432/e2e_db
-      REDIS_URL: redis://localhost:6379/0
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/e2e_db
+      REDIS_URL: redis://redis:6379/0
       SECRET_KEY: e2e-dispatch-test-secret-key
       NEXTAUTH_SECRET: e2e-dispatch-test-secret-key
       AUTH_SECRET: e2e-dispatch-test-secret-key
@@ -156,10 +167,6 @@ jobs:
       - name: Install Frontend Dependencies
         working-directory: ./frontend
         run: npm ci --loglevel=error
-
-      - name: Install Playwright Browsers
-        working-directory: ./frontend
-        run: npx playwright install --with-deps chromium
 
       - name: Run Playwright Tests
         working-directory: ./frontend
