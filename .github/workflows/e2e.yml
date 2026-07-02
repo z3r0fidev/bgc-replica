@@ -136,9 +136,22 @@ jobs:
         working-directory: ./backend
         run: |
           nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
-          # Cold `pip install` + importing ~20 routers plus otel/prometheus/sentry
-          # SDKs takes well over the 60s a first pass allowed for; give it 3min.
-          npx --yes wait-on@latest -t 180000 -i 2000 http://127.0.0.1:8000/health
+          echo "Backend PID: $!"
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/health > /dev/null; then
+              echo "Backend healthy after ~$((i * 3))s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::Backend did not become healthy within 180s"
+          echo "--- process list ---"
+          ps aux | grep -i uvicorn || true
+          echo "--- listening ports ---"
+          ss -tlnp 2>&1 || netstat -tlnp 2>&1 || true
+          echo "--- backend.log ---"
+          cat backend.log || true
+          exit 1
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
