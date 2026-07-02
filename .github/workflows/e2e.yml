@@ -136,7 +136,9 @@ jobs:
         working-directory: ./backend
         run: |
           nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
-          npx --yes wait-on@latest -t 60000 http://127.0.0.1:8000/health
+          # Cold `pip install` + importing ~20 routers plus otel/prometheus/sentry
+          # SDKs takes well over the 60s a first pass allowed for; give it 3min.
+          npx --yes wait-on@latest -t 180000 -i 2000 http://127.0.0.1:8000/health
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
