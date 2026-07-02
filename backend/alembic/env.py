@@ -111,14 +111,20 @@ async def run_async_migrations() -> None:
     db_url = settings.DATABASE_URL.replace(
         "postgresql://", "postgresql+asyncpg://"
     )
+
+    # SSL required for external hosts (Supabase); not for Railway internal,
+    # localhost, or the plain `postgres:15` service container CI jobs use
+    # (its hostname is the Docker service alias "postgres", not localhost).
+    # Must run before resolve_to_ipv4_url below, which replaces the hostname
+    # with a bare IP that these substring checks would no longer match.
+    # Supabase's PgBouncer pooler uses a private CA not in Python's standard
+    # bundle, so external connections encrypt without chain verification.
+    _is_external_db = not any(
+        x in db_url for x in (".railway.internal", "localhost", "127.0.0.1", "@postgres:")
+    )
+
     db_url = resolve_to_ipv4_url(db_url)
     configuration["sqlalchemy.url"] = db_url
-
-    # Supabase's PgBouncer pooler uses a private CA not in Python's standard bundle,
-    # so we encrypt without chain verification (CERT_NONE).
-    _is_external_db = not any(
-        x in db_url for x in (".railway.internal", "localhost", "127.0.0.1")
-    )
     _connect_args: dict = {"timeout": 30, "command_timeout": 60}
     if _is_external_db:
         _ssl_ctx = _ssl.create_default_context()
