@@ -46,6 +46,7 @@ test.describe('Social Feed', () => {
             {
               id: 'p1',
               content: 'Hello, this is my first post!',
+              author_id: 'u1',
               author: { id: 'u1', name: 'John Doe' },
               created_at: new Date().toISOString(),
               likes_count: 5,
@@ -54,6 +55,7 @@ test.describe('Social Feed', () => {
             {
               id: 'p2',
               content: 'Another great day in the community.',
+              author_id: 'u2',
               author: { id: 'u2', name: 'Jane Smith' },
               created_at: new Date().toISOString(),
               likes_count: 10,
@@ -82,7 +84,7 @@ test.describe('Social Feed', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          items: [{ id: 'g1', content: 'Global post', author: { name: 'User1' }, created_at: new Date().toISOString() }],
+          items: [{ id: 'g1', content: 'Global post', author_id: 'user1', author: { id: 'user1', name: 'User1' }, created_at: new Date().toISOString() }],
           next_cursor: null,
         }),
       });
@@ -93,7 +95,7 @@ test.describe('Social Feed', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          items: [{ id: 'f1', content: 'Following post', author: { name: 'Friend' }, created_at: new Date().toISOString() }],
+          items: [{ id: 'f1', content: 'Following post', author_id: 'friend1', author: { id: 'friend1', name: 'Friend' }, created_at: new Date().toISOString() }],
           next_cursor: null,
         }),
       });
@@ -135,6 +137,7 @@ test.describe('Social Feed', () => {
           body: JSON.stringify({
             id: 'new-post-id',
             content: body.content,
+            author_id: 'me',
             author: { id: 'me', name: 'Test User' },
             created_at: new Date().toISOString(),
             likes_count: 0,
