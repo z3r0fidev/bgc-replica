@@ -7,8 +7,13 @@ on:
 jobs:
   playwright:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 25
     if: github.event.deployment_status.state == 'success' || github.event_name == 'workflow_dispatch'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     container:
       image: mcr.microsoft.com/playwright:v1.57.0-noble
@@ -39,7 +44,7 @@ jobs:
         run: npm ci --loglevel=error
 
       - name: Run Playwright Tests
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
           BASE_URL: ${{ github.event.deployment_status.target_url || 'http://localhost:3000' }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
@@ -48,6 +53,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: frontend/playwright-report/
           retention-days: 30
