@@ -10,12 +10,12 @@ test.describe('Auth Protection', () => {
     await expect(page.url()).toContain('from=%2Fprofile%2Fedit');
   });
 
-  test('should allow access to protected routes when authenticated', async ({ page, context }) => {
+  test('should allow access to protected routes when authenticated', async ({ page, context, baseURL }) => {
     // Manually set the access_token cookie to simulate being logged in
     await context.addCookies([{
       name: 'access_token',
       value: 'fake-token',
-      domain: 'localhost',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
 

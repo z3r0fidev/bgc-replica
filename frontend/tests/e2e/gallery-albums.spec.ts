@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Gallery Albums', () => {
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ page, context, baseURL }) => {
     // Set up authenticated session
     await context.addCookies([{
       name: 'access_token',
       value: 'fake-token',
-      domain: 'localhost',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
     await page.addInitScript(() => {

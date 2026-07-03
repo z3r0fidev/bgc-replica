@@ -41,7 +41,7 @@ test.describe("Profile Privacy Rules", () => {
     });
   });
 
-  test("should load profile edit page with 5 tabs", async ({ page }) => {
+  test("should load profile edit page with 4 tabs", async ({ page }) => {
     await page.route("**/api/profiles/me", async (route) => {
       await route.fulfill({
         status: 200,
@@ -52,11 +52,10 @@ test.describe("Profile Privacy Rules", () => {
 
     await page.goto("/profile/edit");
 
-    // Verify all 5 tabs are present
-    await expect(page.getByRole("tab", { name: /basics/i })).toBeVisible();
+    // Verify all 4 tabs are present
     await expect(page.getByRole("tab", { name: /identity/i })).toBeVisible();
     await expect(page.getByRole("tab", { name: /lifestyle/i })).toBeVisible();
-    await expect(page.getByRole("tab", { name: /work/i })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /professional/i })).toBeVisible();
     await expect(page.getByRole("tab", { name: /social/i })).toBeVisible();
   });
 
@@ -103,7 +102,7 @@ test.describe("Profile Privacy Rules", () => {
     await expect(page.getByText(/looking for/i)).toBeVisible();
 
     // Test Professional tab
-    await page.getByRole("tab", { name: /work/i }).click();
+    await page.getByRole("tab", { name: /professional/i }).click();
     await expect(page.getByLabel(/occupation/i)).toBeVisible();
     await expect(page.getByLabel(/industry/i)).toBeVisible();
 
@@ -159,8 +158,8 @@ test.describe("Profile Privacy Rules", () => {
 
     await page.goto("/profile/edit");
 
-    // Update bio field
-    await page.getByRole("tab", { name: /basics/i }).click();
+    // Update bio field (lives on the Identity tab)
+    await page.getByRole("tab", { name: /identity/i }).click();
     const bioField = page.getByLabel(/about me/i);
     await bioField.fill("Updated bio text");
 

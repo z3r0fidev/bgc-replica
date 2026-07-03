@@ -220,7 +220,7 @@ test.describe("Search Profile Expansion Filters", () => {
     request,
   }) => {
     // This test directly calls the API to verify backend filtering
-    const response = await request.get("/api/search", {
+    const response = await request.get("/api/search/", {
       params: {
         relationship_status: "Single",
       },

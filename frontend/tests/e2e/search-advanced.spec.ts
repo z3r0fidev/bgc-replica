@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Advanced Search', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, baseURL }) => {
     // Authenticate the user for each test
     await context.addCookies([{
       name: 'access_token',
       value: 'fake-token',
-      domain: 'localhost',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
   });

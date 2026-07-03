@@ -164,6 +164,8 @@ export default function LoginPage() {
             <form onSubmit={handleTwoFactorSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Input
+                  name="code"
+                  aria-label="Two-factor authentication verification code"
                   placeholder="000000"
                   value={twoFactorCode}
                   onChange={(e) => setTwoFactorCode(e.target.value)}

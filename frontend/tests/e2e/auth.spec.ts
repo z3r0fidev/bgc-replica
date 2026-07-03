@@ -51,7 +51,9 @@ test.describe("Authentication", () => {
     await page.waitForTimeout(2000);
 
     // Should show error for invalid token
-    await expect(page.getByText(/verification failed|invalid|expired/i)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /verification failed/i })
+    ).toBeVisible();
   });
 
   test("login page shows 2FA input after valid credentials", async () => {

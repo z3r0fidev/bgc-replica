@@ -116,7 +116,7 @@ test.describe('Two-Factor Authentication', () => {
     expect(response2fa.status()).toBe(200);
 
     // Should redirect to home page after successful 2FA
-    await expect(page).toHaveURL('http://localhost:3000/', { timeout: 10000 });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
 
     // Verify token is stored
     const token = await page.evaluate(() => localStorage.getItem('access_token'));
@@ -172,7 +172,7 @@ test.describe('Two-Factor Authentication', () => {
     await page.getByRole('button', { name: /verify|submit|confirm/i }).click();
 
     // Should stay on login/2FA page
-    await expect(page).not.toHaveURL('http://localhost:3000/');
+    await expect(page).not.toHaveURL('/');
 
     // Should show error message
     await expect(page.getByText(/invalid.*code|verification.*failed/i)).toBeVisible({ timeout: 10000 });
@@ -255,7 +255,7 @@ test.describe('Two-Factor Authentication', () => {
     expect(response2fa.status()).toBe(200);
 
     // Should redirect to home page after successful backup code login
-    await expect(page).toHaveURL('http://localhost:3000/', { timeout: 10000 });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
 
     // Verify token is stored
     const token = await page.evaluate(() => localStorage.getItem('access_token'));
@@ -289,7 +289,7 @@ test.describe('Two-Factor Authentication', () => {
     expect(response.status()).toBe(200);
 
     // Should redirect directly to home without 2FA prompt
-    await expect(page).toHaveURL('http://localhost:3000/', { timeout: 10000 });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
 
     // Verify no 2FA prompt appeared
     const twoFactorText = page.getByText(/Two-factor authentication/i);

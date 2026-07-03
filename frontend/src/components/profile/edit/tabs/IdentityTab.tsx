@@ -9,6 +9,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,32 @@ export function IdentityTab({
             <FormControl>
               <Input
                 placeholder="How you want to be known"
+                {...field}
+                value={field.value || ""}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="bio"
+        render={({ field }) => (
+          <FormItem>
+            <div className="flex items-center justify-between">
+              <FormLabel>About Me</FormLabel>
+              <PrivacyToggle
+                field="bio"
+                value={privacySettings.bio || "PUBLIC"}
+                onChange={onPrivacyChange}
+              />
+            </div>
+            <FormControl>
+              <Textarea
+                placeholder="Tell others a bit about yourself"
+                maxLength={500}
                 {...field}
                 value={field.value || ""}
               />

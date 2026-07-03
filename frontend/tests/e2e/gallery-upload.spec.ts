@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Gallery Upload', () => {
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ page, context, baseURL }) => {
     // Set up authenticated session
     await context.addCookies([{
       name: 'access_token',
       value: 'fake-token',
-      domain: 'localhost',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
     await page.addInitScript(() => {
@@ -77,7 +77,7 @@ test.describe('Gallery Upload', () => {
 
   test('should display gallery grid with images', async ({ page }) => {
     // Mock gallery with images
-    await page.route('**/api/gallery/', async (route) => {
+    await page.route('**/api/gallery/*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -117,7 +117,7 @@ test.describe('Gallery Upload', () => {
   });
 
   test('should open lightbox when clicking an image', async ({ page }) => {
-    await page.route('**/api/gallery/', async (route) => {
+    await page.route('**/api/gallery/*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -151,7 +151,7 @@ test.describe('Gallery Upload', () => {
   });
 
   test('should close lightbox with escape key', async ({ page }) => {
-    await page.route('**/api/gallery/', async (route) => {
+    await page.route('**/api/gallery/*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -198,7 +198,7 @@ test.describe('Gallery Upload', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            items: [{ id: 'img-1', type: 'IMAGE', url: 'test.jpg', privacy: 'PUBLIC', view_count: 0, created_at: new Date().toISOString() }],
+            items: [{ id: 'img-1', type: 'IMAGE', url: 'https://example.com/test.jpg', privacy: 'PUBLIC', view_count: 0, created_at: new Date().toISOString() }],
             next_cursor: null,
             total_count: 1,
           }),
@@ -214,10 +214,11 @@ test.describe('Gallery Upload', () => {
 
     await page.goto('/gallery');
 
-    // Click photos filter tab
-    const photosTab = page.getByRole('tab', { name: /photos/i });
-    await photosTab.click();
+    // Click photos filter button
+    const photosButton = page.getByRole('button', { name: /photos/i });
+    await photosButton.click();
 
-    // Should have made filtered request
+    // Should have made filtered request and rendered the single IMAGE result
+    await expect(page.locator('img[alt="Gallery item"]')).toHaveCount(1);
   });
 });

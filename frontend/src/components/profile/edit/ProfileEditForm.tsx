@@ -38,6 +38,7 @@ export function ProfileEditForm() {
     resolver: zodResolver(profileUpdateSchema),
     defaultValues: {
       display_name: "",
+      bio: "",
       pronouns: "",
       birthdate: "",
       gender_identity: "",
@@ -75,6 +76,7 @@ export function ProfileEditForm() {
 
         form.reset({
           display_name: data.display_name || "",
+          bio: data.bio || "",
           pronouns: data.pronouns || "",
           birthdate: formattedBirthdate,
           gender_identity: data.gender_identity || "",
@@ -125,6 +127,7 @@ export function ProfileEditForm() {
             : undefined,
         // Convert empty strings to undefined for optional fields
         display_name: values.display_name || undefined,
+        bio: values.bio || undefined,
         pronouns: values.pronouns || undefined,
         birthdate: values.birthdate || undefined,
         gender_identity: values.gender_identity || undefined,
