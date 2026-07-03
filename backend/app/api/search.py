@@ -25,7 +25,7 @@ def escape_like(value: str) -> str:
 @router.get(
     "/",
     response_model=PaginatedResponse[ProfileSchema],
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(60, Duration.MINUTE))))],
 )
 async def search_users(
     min_age: Optional[int] = Query(None),

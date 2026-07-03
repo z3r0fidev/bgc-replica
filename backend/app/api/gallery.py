@@ -48,7 +48,7 @@ router = APIRouter()
 @router.post(
     "/upload",
     response_model=MediaUploadResponse,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(60, Duration.MINUTE))))],
 )
 async def upload_media(
     file: UploadFile = File(...),

@@ -58,7 +58,7 @@ async def get_room_history(
 @router.post(
     "/media",
     response_model=dict,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(40, Duration.MINUTE))))],
 )
 async def upload_chat_media(
     current_user: Annotated[User, Depends(deps.get_current_user)],
@@ -107,7 +107,7 @@ async def get_conversations(
 @router.post(
     "/conversations",
     response_model=ConversationSchema,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(60, Duration.MINUTE))))],
 )
 async def get_or_create_conversation(
     recipient_id: uuid.UUID,

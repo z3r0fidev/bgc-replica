@@ -19,7 +19,7 @@ router = APIRouter()
 @router.post(
     "/upload",
     response_model=MediaSchema,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(60, Duration.MINUTE))))],
 )
 async def upload_media(
     current_user: Annotated[User, Depends(deps.get_current_user)],
