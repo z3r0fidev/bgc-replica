@@ -40,7 +40,6 @@ export const identityTabSchema = z.object({
     .max(255)
     .optional()
     .or(z.literal("")),
-  bio: z.string().max(500, "Bio must be 500 characters or fewer").optional().or(z.literal("")),
   pronouns: z.string().optional().or(z.literal("")),
   birthdate: z
     .string()

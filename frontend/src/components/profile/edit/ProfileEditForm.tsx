@@ -38,7 +38,6 @@ export function ProfileEditForm() {
     resolver: zodResolver(profileUpdateSchema),
     defaultValues: {
       display_name: "",
-      bio: "",
       pronouns: "",
       birthdate: "",
       gender_identity: "",
@@ -76,7 +75,6 @@ export function ProfileEditForm() {
 
         form.reset({
           display_name: data.display_name || "",
-          bio: data.bio || "",
           pronouns: data.pronouns || "",
           birthdate: formattedBirthdate,
           gender_identity: data.gender_identity || "",
@@ -127,7 +125,6 @@ export function ProfileEditForm() {
             : undefined,
         // Convert empty strings to undefined for optional fields
         display_name: values.display_name || undefined,
-        bio: values.bio || undefined,
         pronouns: values.pronouns || undefined,
         birthdate: values.birthdate || undefined,
         gender_identity: values.gender_identity || undefined,
@@ -185,7 +182,6 @@ export function ProfileEditForm() {
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger
                     value="identity"
-                    aria-label="Identity"
                     className="flex items-center gap-2"
                   >
                     <User className="h-4 w-4" />
@@ -193,7 +189,6 @@ export function ProfileEditForm() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="lifestyle"
-                    aria-label="Lifestyle"
                     className="flex items-center gap-2"
                   >
                     <Heart className="h-4 w-4" />
@@ -201,7 +196,6 @@ export function ProfileEditForm() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="professional"
-                    aria-label="Professional"
                     className="flex items-center gap-2"
                   >
                     <Briefcase className="h-4 w-4" />
@@ -209,7 +203,6 @@ export function ProfileEditForm() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="social"
-                    aria-label="Social"
                     className="flex items-center gap-2"
                   >
                     <Share2 className="h-4 w-4" />
