@@ -217,10 +217,17 @@ test.describe("Search Profile Expansion Filters", () => {
   });
 
   test("API should return filtered results based on relationship_status", async ({
-    request,
+    page,
   }) => {
+    // Use page.request (not the standalone request fixture) so this call
+    // shares the browser context's cookie jar - Vercel's deployment
+    // protection bypass sets a cookie on first request that the standalone
+    // APIRequestContext doesn't pick up the same way, which was surfacing
+    // as an unexpected 404 here.
+    await page.goto("/");
+
     // This test directly calls the API to verify backend filtering
-    const response = await request.get("/api/search/", {
+    const response = await page.request.get("/api/search/", {
       params: {
         relationship_status: "Single",
       },
