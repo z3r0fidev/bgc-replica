@@ -12,6 +12,12 @@ export function OfflineIndicator() {
     const handleOnline = () => setOnline(true);
     const handleOffline = () => setOnline(false);
 
+    // The store's initial isOnline value is captured once at module load,
+    // before React mounts - resync it now in case it drifted (e.g. some
+    // browsers report navigator.onLine as false at that point even though
+    // no offline/online transition event will ever fire to correct it).
+    setOnline(navigator.onLine);
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
