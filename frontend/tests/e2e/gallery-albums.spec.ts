@@ -157,9 +157,12 @@ test.describe('Gallery Albums', () => {
 
     await page.goto('/gallery/albums');
 
-    // Click on album card
+    // Click on album card. force: true skips Playwright's "stable position"
+    // actionability check - AlbumCard's whileHover={{ y: -4 }} (framer-motion)
+    // shifts the card the instant the pointer reaches it, which can otherwise
+    // send Playwright into a hover/reposition loop that never resolves.
     const albumCard = page.getByText('Test Album');
-    await albumCard.click();
+    await albumCard.click({ force: true });
 
     // Should navigate to album detail
     await expect(page).toHaveURL(/\/gallery\/albums\/album-1/);

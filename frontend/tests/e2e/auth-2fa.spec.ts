@@ -16,6 +16,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -56,6 +57,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -76,6 +78,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             access_token: 'fake-2fa-token',
             token_type: 'bearer',
@@ -85,6 +88,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 401,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             detail: 'Invalid verification code',
           }),
@@ -134,6 +138,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -147,6 +152,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 401,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           detail: 'Invalid verification code',
         }),
@@ -191,6 +197,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -211,6 +218,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             access_token: 'fake-backup-token',
             token_type: 'bearer',
@@ -220,6 +228,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 401,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             detail: 'Invalid verification code',
           }),
@@ -273,6 +282,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           access_token: 'fake-no2fa-token',
           token_type: 'bearer',
@@ -316,6 +326,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -333,6 +344,7 @@ test.describe('Two-Factor Authentication', () => {
           status: 429,
           contentType: 'application/json',
           headers: {
+            'Access-Control-Allow-Origin': '*',
             'Retry-After': '60',
             'X-RateLimit-Limit': '5',
             'X-RateLimit-Remaining': '0',
@@ -345,6 +357,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 401,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             detail: 'Invalid verification code',
           }),

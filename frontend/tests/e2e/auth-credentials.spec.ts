@@ -15,6 +15,7 @@ test.describe('Credentials Auth', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ message: 'User created' }),
       });
     });
@@ -53,6 +54,7 @@ test.describe('Credentials Auth', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ access_token: 'fake-token', token_type: 'bearer' }),
       });
     });
@@ -114,6 +116,7 @@ test.describe('Credentials Auth', () => {
       await route.fulfill({
         status: 400,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ detail: 'Email already exists' }),
       });
     });
