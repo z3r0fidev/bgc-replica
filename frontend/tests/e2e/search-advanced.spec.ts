@@ -41,12 +41,19 @@ test.describe('Advanced Search', () => {
     // Find the container with the label "Ethnicity", then find the combobox inside it.
     // .filter({ has: ... }) matches every ancestor div containing that text, not
     // just the immediate wrapper, so take .last() (the innermost/most specific match).
-    await page.locator('div').filter({ has: page.getByText('Ethnicity') }).getByRole('combobox').last().click();
+    const ethnicityCombobox = page.locator('div').filter({ has: page.getByText('Ethnicity') }).getByRole('combobox').last();
+    await ethnicityCombobox.click();
     await page.getByRole('option', { name: 'Black', exact: true }).click();
+    // Wait for the select to actually commit and close before interacting with
+    // the next dropdown - otherwise the next click can land on the closing
+    // popover instead of the intended trigger (Radix Select close animation).
+    await expect(ethnicityCombobox).toHaveText('Black');
 
     // Select Position: Top
-    await page.locator('div').filter({ has: page.getByText('Position') }).getByRole('combobox').last().click();
+    const positionCombobox = page.locator('div').filter({ has: page.getByText('Position') }).getByRole('combobox').last();
+    await positionCombobox.click();
     await page.getByRole('option', { name: 'Top', exact: true }).click();
+    await expect(positionCombobox).toHaveText('Top');
 
     // Click Apply Filters
     const responsePromise = page.waitForResponse(searchUrl);
