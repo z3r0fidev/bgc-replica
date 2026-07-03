@@ -38,12 +38,14 @@ test.describe('Advanced Search', () => {
     // Open filters and select options
     
     // Select Ethnicity: Black
-    // Robust selector: Find the container with the label "Ethnicity", then find the combobox inside it.
-    await page.locator('div').filter({ has: page.getByText('Ethnicity') }).getByRole('combobox').click();
+    // Find the container with the label "Ethnicity", then find the combobox inside it.
+    // .filter({ has: ... }) matches every ancestor div containing that text, not
+    // just the immediate wrapper, so take .last() (the innermost/most specific match).
+    await page.locator('div').filter({ has: page.getByText('Ethnicity') }).getByRole('combobox').last().click();
     await page.getByRole('option', { name: 'Black', exact: true }).click();
 
     // Select Position: Top
-    await page.locator('div').filter({ has: page.getByText('Position') }).getByRole('combobox').click();
+    await page.locator('div').filter({ has: page.getByText('Position') }).getByRole('combobox').last().click();
     await page.getByRole('option', { name: 'Top', exact: true }).click();
 
     // Click Apply Filters

@@ -98,8 +98,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form to appear
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });
@@ -158,8 +159,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });
@@ -231,8 +233,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });
@@ -355,8 +358,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });

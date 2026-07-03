@@ -290,8 +290,10 @@ test.describe('Gallery Albums', () => {
     await page.goto('/shared/album/test-token');
 
     // Check shared album displays
-    await expect(page.getByText('Shared Album')).toBeVisible();
-    await expect(page.getByText(/shared album/i)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Shared Album" })
+    ).toBeVisible();
+    await expect(page.getByText("This is a shared album")).toBeVisible();
   });
 
   test('should show error for expired shared album', async ({ page, context }) => {

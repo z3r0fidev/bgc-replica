@@ -9,7 +9,7 @@ import { Plus, User, Clock } from "lucide-react";
 
 export default function CategoryThreadsPage() {
   const params = useParams();
-  const [threads, setThreads] = useState<{ id: string; title: string; last_activity: string; author_id: string }[]>([]);
+  const [threads, setThreads] = useState<{ id: string; title: string; last_activity: string; author?: { name?: string } }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function CategoryThreadsPage() {
                   </div>
                   <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                     <User className="h-4 w-4" />
-                    <span>Posted by {thread.author_id.slice(0, 8)}</span>
+                    <span>Posted by {thread.author?.name || "Unknown"}</span>
                   </div>
                 </CardHeader>
               </Card>

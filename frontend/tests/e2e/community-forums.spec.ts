@@ -34,7 +34,7 @@ test.describe('Community Forums', () => {
 
     // Check categories are displayed
     await expect(page.getByText('General Discussion')).toBeVisible();
-    await expect(page.getByText('Events')).toBeVisible();
+    await expect(page.getByText('Events', { exact: true })).toBeVisible();
   });
 
   test('should navigate to category page when clicked', async ({ page }) => {
@@ -83,16 +83,16 @@ test.describe('Community Forums', () => {
             {
               id: 't1',
               title: 'Welcome to the community!',
-              author: { name: 'Admin', id: 'u1' },
-              created_at: new Date().toISOString(),
+              author: { name: 'Admin' },
+              last_activity: new Date().toISOString(),
               reply_count: 5,
               is_sticky: true,
             },
             {
               id: 't2',
               title: 'Introduce yourself',
-              author: { name: 'Moderator', id: 'u2' },
-              created_at: new Date().toISOString(),
+              author: { name: 'Moderator' },
+              last_activity: new Date().toISOString(),
               reply_count: 12,
               is_sticky: false,
             },

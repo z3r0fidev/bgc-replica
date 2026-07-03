@@ -43,9 +43,15 @@ _redis_available = False
 
 # Initialize Socket.io Server WITHOUT Redis manager (in-memory mode)
 # This ensures the app can start even if Redis is unavailable
+#
+# cors_allowed_origins is left open here because python-socketio only
+# supports exact-match origins at this layer (no regex/callable), which
+# can't express Vercel's per-deployment preview origins. The real origin
+# check happens below in connect(), via settings.is_allowed_origin(),
+# which does support the Vercel preview pattern.
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=settings.cors_origins_list,
+    cors_allowed_origins="*",
     client_manager=None,  # Start with in-memory, upgrade to Redis in startup
 )
 
@@ -124,7 +130,7 @@ async def connect(sid, environ, auth):
         # 3. Validate origin if user is authenticated
         if user_id:
             origin = environ.get("HTTP_ORIGIN", "")
-            if origin and origin not in settings.cors_origins_list:
+            if origin and not settings.is_allowed_origin(origin):
                 print(f"Connection rejected for {sid}: invalid origin {origin}")
                 return False
 
