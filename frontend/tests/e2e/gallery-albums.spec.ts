@@ -123,7 +123,11 @@ test.describe('Gallery Albums', () => {
   });
 
   test('should navigate to album detail page', async ({ page }) => {
-    await page.route('**/api/gallery/albums', async (route) => {
+    // Missing trailing '*' meant this never matched the real fetch call,
+    // which always appends query params (?limit=20&cursor=...) - the mock
+    // silently never intercepted, so the unmocked real backend response
+    // (or lack of one) determined whether "Test Album" ever rendered.
+    await page.route('**/api/gallery/albums*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -157,12 +161,9 @@ test.describe('Gallery Albums', () => {
 
     await page.goto('/gallery/albums');
 
-    // Click on album card. force: true skips Playwright's "stable position"
-    // actionability check - AlbumCard's whileHover={{ y: -4 }} (framer-motion)
-    // shifts the card the instant the pointer reaches it, which can otherwise
-    // send Playwright into a hover/reposition loop that never resolves.
+    // Click on album card
     const albumCard = page.getByText('Test Album');
-    await albumCard.click({ force: true });
+    await albumCard.click();
 
     // Should navigate to album detail
     await expect(page).toHaveURL(/\/gallery\/albums\/album-1/);
