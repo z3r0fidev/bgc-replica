@@ -59,10 +59,18 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   async rewrites() {
+    // Mirrors vercel.json's rewrite (same source, same env var) so both
+    // mechanisms agree regardless of which one actually handles a given
+    // request on Vercel. This was previously hardcoded to
+    // http://127.0.0.1:8000 unconditionally - correct for local `next dev`,
+    // but unreachable from Vercel's infrastructure in any deployed
+    // environment, and a real source of divergence from vercel.json's
+    // rewrite for requests that don't go through Vercel's edge rewrite.
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:8000/api/:path*",
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },
