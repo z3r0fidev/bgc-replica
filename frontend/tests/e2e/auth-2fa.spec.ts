@@ -26,6 +26,7 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
+    await page.waitForLoadState('domcontentloaded');
 
     const emailInput = page.locator('input[name="email"]');
     const passwordInput = page.locator('input[name="password"]');
@@ -97,6 +98,7 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
+    await page.waitForLoadState('domcontentloaded');
 
     // Step 1: Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
@@ -111,6 +113,9 @@ test.describe('Two-Factor Authentication', () => {
 
     // Step 2: Enter 2FA code
     const codeInput = page.locator('input[name="code"], input[placeholder*="code" i], input[aria-label*="2fa" i], input[aria-label*="verification" i]').first();
+    await expect(codeInput).toBeVisible({ timeout: 5000 });
+    await codeInput.click();
+    await page.waitForTimeout(100);
     await codeInput.fill('123456');
 
     // Submit 2FA
@@ -160,6 +165,7 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
+    await page.waitForLoadState('domcontentloaded');
 
     // Step 1: Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
@@ -174,6 +180,9 @@ test.describe('Two-Factor Authentication', () => {
 
     // Step 2: Enter wrong code
     const codeInput = page.locator('input[name="code"], input[placeholder*="code" i], input[aria-label*="2fa" i], input[aria-label*="verification" i]').first();
+    await expect(codeInput).toBeVisible({ timeout: 5000 });
+    await codeInput.click();
+    await page.waitForTimeout(100);
     await codeInput.fill('000000');
 
     // Submit
@@ -237,6 +246,7 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
+    await page.waitForLoadState('domcontentloaded');
 
     // Step 1: Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
@@ -251,12 +261,19 @@ test.describe('Two-Factor Authentication', () => {
 
     // Step 2: Look for "use backup code" option or enter directly
     const backupCodeLink = page.getByText(/backup code|recovery code|lost.*device/i);
-    if (await backupCodeLink.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await backupCodeLink.click();
+    const backupOptionExists = await backupCodeLink.count() > 0;
+    if (backupOptionExists) {
+      await backupCodeLink.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(100);
+      await backupCodeLink.click().catch(() => {});
+      await page.waitForTimeout(200);
     }
 
     // Enter backup code
     const codeInput = page.locator('input[name="code"], input[placeholder*="code" i], input[aria-label*="2fa" i], input[aria-label*="backup" i], input[aria-label*="verification" i]').first();
+    await expect(codeInput).toBeVisible({ timeout: 5000 });
+    await codeInput.click();
+    await page.waitForTimeout(100);
     await codeInput.fill(backupCode);
 
     // Submit
@@ -291,6 +308,7 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.locator('input[name="email"]').fill('regular-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
@@ -366,6 +384,7 @@ test.describe('Two-Factor Authentication', () => {
     });
 
     await page.goto('/login');
+    await page.waitForLoadState('domcontentloaded');
 
     // Enter credentials
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
@@ -380,12 +399,24 @@ test.describe('Two-Factor Authentication', () => {
 
     // Make multiple failed attempts to trigger rate limit
     const codeInput = page.locator('input[name="code"], input[placeholder*="code" i], input[aria-label*="2fa" i], input[aria-label*="verification" i]').first();
+    await expect(codeInput).toBeVisible({ timeout: 5000 });
 
     for (let i = 0; i < 6; i++) {
+      await codeInput.click();
+      await page.waitForTimeout(50);
       await codeInput.clear();
+      await page.waitForTimeout(50);
       await codeInput.fill(`00000${i}`);
-      await page.getByRole('button', { name: /verify|submit|confirm/i }).click();
-      await page.waitForTimeout(500); // Brief pause between attempts
+
+      const submitButton = page.getByRole('button', { name: /verify|submit|confirm/i });
+      await submitButton.click();
+
+      // Wait for error message or rate limit to appear (state-based instead of hard timeout)
+      await page.waitForSelector('text=/invalid|rate limit|too many|error/i', {
+        timeout: 3000,
+        state: 'visible'
+      }).catch(() => {});
+      await page.waitForTimeout(200); // Brief settle time
     }
 
     // Should show rate limit message
