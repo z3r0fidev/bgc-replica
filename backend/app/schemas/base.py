@@ -19,8 +19,22 @@ def _assert_safe_string(s: str) -> str:
     return s
 
 
+def _validate_value_recursive(value: Any) -> None:
+    """Recursively validate all strings in a value (str, list, dict)."""
+    if isinstance(value, str):
+        _assert_safe_string(value)
+    elif isinstance(value, list):
+        for item in value:
+            _validate_value_recursive(item)
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            if isinstance(k, str):
+                _assert_safe_string(k)
+            _validate_value_recursive(v)
+
+
 class SafeBaseModel(BaseModel):
-    """BaseModel that rejects NUL bytes and lone surrogates in all str fields and list[str] items."""
+    """BaseModel that rejects NUL bytes and lone surrogates in all str fields, including nested dicts."""
 
     @model_validator(mode='before')
     @classmethod
@@ -28,10 +42,5 @@ class SafeBaseModel(BaseModel):
         if not isinstance(values, dict):
             return values
         for value in values.values():
-            if isinstance(value, str):
-                _assert_safe_string(value)
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, str):
-                        _assert_safe_string(item)
+            _validate_value_recursive(value)
         return values
