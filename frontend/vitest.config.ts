@@ -13,5 +13,25 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // Coverage configuration for CodeCov
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary', 'html', 'lcov', 'json'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'node_modules/',
+        'tests/',
+        '**/*.d.ts',
+        '**/*.config.{ts,js}',
+        '**/types/**',
+        'src/app/layout.tsx',
+      ],
+    },
+    // JUnit reporter for CodeCov Test Analytics
+    reporters: ['default', 'junit'],
+    outputFile: {
+      junit: './test-report.junit.xml',
+    },
   },
 })
