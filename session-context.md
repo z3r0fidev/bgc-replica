@@ -1,10 +1,123 @@
 # Session Context
 
-**Last Updated**: 2026-07-01 (Session Closing)
+**Last Updated**: 2026-07-03 (Session Closing — PR #55 merged)
 **Current Branch**: `main`
-**Session Status**: Closed — asyncpg encoding hardening complete, CI/CD fully green, Railway confirmed
+**Session Status**: Closed — E2E CSP/rate-limit/CORS hardening merged (PR #55); production DB migration incident found and fixed live; E2E health went from near-total failure to 60-73/65-76 passing per shard
 
 ## Current State
+
+### Latest Merged Work — E2E CSP, Rate Limits, CORS & Production DB Migration (PR #55)
+
+PR #55 (`b1a9e2e`, branch `fix/e2e-csp-and-rate-limits`) was a large E2E-reliability and
+production-hardening session. Merged via standard merge commit (not squash, matching repo
+convention) after confirming all required branch-protection checks (`quality-check` × 3) were
+green; the Playwright E2E shards are informational-only (not in `required_status_checks.contexts`)
+and were still running at merge time — this is expected and does not block merge.
+
+**Fixes shipped, in order:**
+1. **CSP blocked Socket.io in production**: `frontend/next.config.ts`'s `connect-src` only
+   allowlisted localhost; added `https://*.up.railway.app` / `wss://*.up.railway.app` so the
+   Railway-hosted Socket.io backend can be reached over `wss://` from real deployments.
+2. **Rate limits tuned for single-user traffic were starving E2E's concurrent workers**: ~13
+   `fastapi-limiter` routes across auth.py, profiles.py, gallery.py, media.py, chat.py, forums.py,
+   group_chats.py, search.py loosened ~4-6x (e.g. login 5→30/min, register 3/hour→30/hour).
+   Admin routes intentionally left untouched.
+3. **Cookie-domain bug**: 8 E2E spec files hardcoded `domain: 'localhost'` for the auth cookie,
+   which never attaches against a real Vercel preview domain — fixed to resolve the domain from
+   `baseURL` (pattern already correct in 2 other spec files).
+4. **Backend Socket.io CORS 403 against Vercel previews**: `backend/app/core/socket_config.py`'s
+   manual origin check only allowed exact-match origins from a static `CORS_ORIGINS` env var, which
+   can never enumerate Vercel's per-deployment preview origins. Added a Vercel-preview regex check
+   (`app/core/config.py::is_allowed_origin`), used by both the Socket.io `connect()` handler and
+   FastAPI's `CORSMiddleware` (`allow_origin_regex`).
+5. **Mobile tab accessibility gap**: `app/(protected)/profile/edit/page.tsx`'s `TabsTrigger` labels
+   were wrapped in `<span className="hidden sm:inline">` with no `aria-label` fallback — zero
+   accessible name below 640px, breaking every `getByRole('tab', ...)` query in
+   `profile-privacy.spec.ts` on mobile viewports. Fixed with explicit `aria-label`.
+   - **Correction made mid-session**: this fix (plus a "missing bio field" fix) was initially
+     misapplied to `frontend/src/components/profile/edit/ProfileEditForm.tsx`, which turned out to
+     be **dead code, never imported anywhere**. The real route is the `page.tsx` above, which
+     already had its own 5 tabs and bio field. Reverted the wrong file, reapplied correctly.
+     Lesson: verify a component is actually imported/rendered before editing it.
+6. **Real production bug found via E2E investigation**: `app/(protected)/forums/[category]/page.tsx`
+   read `thread.author_id.slice(0, 8)`, but the backend's `ForumThreadSchema` only returns
+   `author: {name, email, image}` — `author_id` does not exist in the contract. Would have crashed
+   for every real user. Fixed to render `thread.author?.name`.
+7. **2FA code input had no accessible name**: the 2FA `<Input>` in `(auth)/login/page.tsx` had no
+   `name`/`aria-label` at all. Added `name="code"` + `aria-label`.
+8. **Built the `/share-target` route (spec task T019, previously incomplete)**:
+   `frontend/src/app/share-target/route.ts` — parses an OS share-sheet POST, optionally uploads an
+   attached file to the gallery, creates a feed post, redirects to `/feed`. The PWA manifest had
+   declared this `share_target` action for a long time with nothing behind it.
+9. **Assorted E2E test bugs**: promise-ordering races (`waitForResponse` called after the
+   triggering click in auth-2fa.spec.ts / profile-privacy.spec.ts), strict-mode substring-collision
+   locators (community-forums "Events", gallery-albums "Shared Album", PrivacyToggle aria-label vs
+   field-label collisions), a missing wildcard in a gallery-albums mock route, a route handler
+   asserting the wrong (auto-fired-on-mount) request in search-advanced.spec.ts, WebKit CORS
+   headers added to mocked auth routes.
+10. **`next.config.ts` rewrite bug**: `rewrites()` was hardcoded to `http://127.0.0.1:8000`
+    unconditionally — correct for local dev, unreachable from Vercel in any deployed environment.
+    Fixed to derive from `NEXT_PUBLIC_API_URL`, matching `vercel.json`'s environment-aware rewrite.
+11. **CRITICAL — production Supabase DB had never been migrated** (fixed live, user-approved):
+    zero application tables existed in the `public` schema backing the Railway backend (confirmed
+    via direct `asyncpg` queries through Railway CLI + the backend's own venv). Every DB-touching
+    action (registration, login, ...) was silently broken for real users — `/health` only checks
+    connectivity, not schema. Ran `alembic upgrade head` directly against production; all 33 tables
+    now exist, verified live via curl (`/api/search/` → 200, registration creates a real user,
+    test user cleaned up afterward).
+12. **Vercel Protection-Bypass platform limitation, conclusively diagnosed**: Vercel's "Protection
+    Bypass for Automation" redirect handshake does not re-apply `vercel.json`/`next.config.ts`
+    rewrites on the follow-up request (confirmed via direct curl with the user's
+    `VERCEL_AUTOMATION_BYPASS_SECRET` — real pages return 200, every rewrite-proxied `/api/*` path
+    404s regardless of trailing slash/headers/cookies). Only affects automated/bypass-authenticated
+    traffic, never real users. Worked around in the one affected test
+    (`search-profile-filters.spec.ts`) by hitting `NEXT_PUBLIC_API_URL` directly.
+
+**E2E health trajectory**: started the session near-total failure (~384 tests, CSP blocking
+sockets + 429 rate-limit storms); ended at 60-73 passing per shard out of ~65-76, with 1-2 known
+remaining issues (see Next Session Priorities below).
+
+### Bridging Note — PRs #46-#54 (landed between last doc update and this session, not individually detailed here)
+
+The context files had not been updated since PR #45 (`9e6527e`). In the interim, the following
+merged to `main` — see `git log --merges 9e6527e..656a523` and the memory file `ci-fixes.md` for
+specifics: #46 `fix/e2e-timeout-sharding`, #47 `ci/wire-codecov-sentry-tokens`, #48
+`ci/nightly-stress-tests`, #49 `fix/e2e-deployment-targeting`, #52
+`fix/community-feed-mock-author-id`, #53 `fix/admin-route-protection`, #54
+`fix/pin-fastapi-includedrouter-regression`.
+
+### Previous Session — Deploy Frontend Smoke-Test Confirmation (PR #45)
+
+PR #45 (`9e6527e`, branch `chore/verify-deploy-frontend`) was a deliberate smoke-test change:
+added `1440` to `deviceSizes` in `frontend/next.config.ts` to trigger a real frontend build and
+deploy. Both the `quality-check` and `deploy` jobs in the Deploy Frontend workflow succeeded
+(GitHub Actions run ID 28516698586), confirming the PR #44 Vercel path fix works end-to-end in
+production. Branch deleted after merge.
+
+### Latest Merged Work — Deploy Frontend Vercel Path Fix (PR #44)
+
+PR #44 (`7676fa2`) fixed the `Deploy Frontend` workflow. The Vercel CLI steps (`vercel pull`,
+`vercel build --prod`, `vercel deploy --prebuilt`) were running with `working-directory: ./frontend`,
+which caused Vercel to resolve the source path as `frontend/frontend` (double-nesting against the
+dashboard-configured Root Directory = `frontend`). The fix removes those `working-directory:` keys
+so the CLI runs from the repo root, where Root Directory = `frontend` resolves correctly.
+
+Two bonus fixes landed in the same PR:
+- `workflow_dispatch` added to `frontend-ci.yml` — enables manual runs from the GitHub Actions UI
+- `.github/workflows/**` added to `frontend-ci.yml` path filter — workflow-only PRs now
+  automatically trigger `quality-check` without any manual workaround
+
+CI gate finding: GitHub does NOT count `workflow_dispatch` runs toward branch protection required
+status checks. The path filter addition (not `workflow_dispatch`) is what permanently resolves the
+workflow-only PR gate problem.
+
+### Latest Merged Work — Write-Schema Audit Completion + E2E Reliability (PR #43)
+
+PR #43 (`a8e7a7c`) extended SafeBaseModel coverage to the remaining write schemas that were
+not migrated in PR #42 (admin, gallery, notification schemas), closed a JSONB dict validation
+gap in `profile.py::validate_social_links`, added JSONB settings dict validation in
+`group_chat.py`, and applied CI skip guards to the 7 most flaky Playwright stress tests.
+Squash-merged cleanly to main.
 
 ### Latest Merged Work — SafeBaseModel NUL/Surrogate Hardening (PR #41 + PR #42)
 
@@ -38,32 +151,61 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 - `backend/app/api/profiles.py` — inline JSONB validation loop in `update_privacy_settings`
 - **Bug fixed**: `_assert_safe_string` was returning `None` (missing `return s`) — caused 422 on valid inputs
 
+#### PR #43 — Remaining Schema Coverage + E2E Reliability (commit `a8e7a7c`)
+- `backend/app/schemas/admin.py` — `SuspendUserRequest`, `BanUserRequest`, `UpdateUserRequest` → `SafeBaseModel`
+- `backend/app/schemas/gallery.py` — `AlbumCreate`, `AlbumUpdate` → `SafeBaseModel`
+- `backend/app/schemas/notification.py` — `NotificationPreferencesUpdate` → `SafeBaseModel`
+- `backend/app/schemas/profile.py` — `validate_social_links` now calls `_assert_safe_string` on every key and URL value (previously unguarded for unknown keys)
+- `backend/app/schemas/group_chat.py` — `GroupChatUpdate.settings` field_validator walking all keys/string values for NUL bytes
+- `frontend/tests/e2e/chat-virtual-scroll-stress.spec.ts` — `test.skip(!!process.env.CI)` guards all 7 stress tests in CI
+- `frontend/tests/e2e/auth-google.spec.ts` — replaced 30s unbounded `waitForRequest` with 5s timeout + null-safe assertion branches
+
 ### Repository Health
-- **Branch**: `main`, local synced to `eeb97b0`
-- **CI Status**: All passing — Backend CI, PR Validation, Deploy Backend (quality-check + deploy)
-- **Railway**: End-to-end deployment confirmed working for first time
-- **Working tree**: Clean (untracked: `.agents/`, `.claude/skills/`, `skills-lock.json`)
-- **Workflow cleanup**: 24 failed/cancelled runs deleted from GitHub Actions
+- **Branch**: `main`, local synced to `b1a9e2e` (merge commit for PR #55)
+- **CI Status**: All required checks green (`quality-check` × 3, `changes`, `codecov/patch`,
+  `frontend-check`, `backend-check`, Vercel). E2E Tests (Playwright shards) is informational-only,
+  not a required branch-protection check.
+- **Railway**: Merging to `main` triggers a REAL `deploy-backend.yml` `deploy` job (only runs on
+  `refs/heads/main`) — this fired as expected right after the PR #55 merge.
+- **Production DB**: Migrated for the first time this session (`alembic upgrade head` run directly
+  against production Supabase) — all 33 tables now exist. Previously the schema was completely
+  empty despite `/health` reporting OK.
+- **Working tree**: untracked `.agents/`, `.claude/skills/`, `backend/.agents/`, `backend/.mcp.json`,
+  `backend/skills-lock.json`, `skills-lock.json` (skill/MCP tooling artifacts, not app code)
+- **SafeBaseModel coverage**: Complete for `search.py`'s query params this session; `chat.py`,
+  `admin.py`, `groups.py`, `moderation.py` still need the same NUL-byte/surrogate audit (see below)
 
 ## Current Objectives
 
-### Completed (as of 2026-07-01)
-- [x] PR #41 merged — global SQLAInterfaceError + UnicodeError exception handlers
-- [x] PR #42 merged — SafeBaseModel pattern across all write schemas
-- [x] asyncpg 3-encoding-path root cause fully diagnosed and fixed
-- [x] Deploy Backend workflow passing Railway end-to-end
-- [x] 24 stale workflow runs cleaned up from GitHub Actions
+### Completed (as of 2026-07-03)
+- [x] PR #55 merged — CSP Railway allowlist, rate-limit loosening, cookie-domain fix, Socket.io
+      CORS regex, mobile tab a11y, forums author_id bug, 2FA input a11y, `/share-target` route,
+      assorted E2E fixes, `next.config.ts` rewrite env-awareness fix
+- [x] Production Supabase database migrated for the first time (`alembic upgrade head`)
+- [x] Vercel Protection-Bypass rewrite limitation diagnosed and worked around
+- [x] E2E health improved from near-total failure (~384 tests) to 60-73/65-76 passing per shard
+- [x] PRs #46-#54 merged in the interim (E2E timeout sharding, CODECOV/SENTRY tokens, nightly
+      stress workflow, E2E deployment targeting, mock data fixes, admin route protection,
+      fastapi version pin) — see bridging note above
 
 ### Next Session Priorities
-1. **E2E Tests**: Playwright E2E tests excluded from PR merge requirements but still run.
-   Review whether any are genuinely failing vs slow/flaky.
-2. **Remaining SafeBaseModel coverage**: Run `grep -r "class.*BaseModel" backend/app/schemas/`
-   to find any write schemas still using plain `BaseModel`.
-3. **JSONB audit**: Identify other endpoints writing `Dict` fields (besides `privacy_settings`)
-   and add inline validation matching the pattern in `profiles.py`.
-4. **Frontend CI**: `frontend-ci.yml` was in the initial modified file list — confirm it is green.
-5. **Railway monitoring**: Check Railway logs periodically for new 500s from contract tests
-   or production traffic.
+1. **`search-advanced.spec.ts` "should apply filters and update results"**: the Ethnicity/Position
+   dropdown's option list stops appearing after selecting the first filter
+   (`getByRole('option', {name: 'Black'})` times out). A separate, still-open bug — needs
+   Playwright UI mode or trace viewer to diagnose (curl can't drive client-rendered React).
+2. **Residual WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari went from
+   100%-deterministic failure to intermittent after the DB migration fix, but aren't fully
+   resolved. Likely Playwright-WebKit-on-Linux-CI environmental flakiness rather than an app bug.
+3. **NUL-byte/surrogate query-param validation audit**: the same class of bug fixed in `search.py`
+   this session (query params bypassing `SafeBaseModel`) likely exists in `chat.py`'s `category`
+   param, `admin.py`'s `query`/`action` params, `groups.py`'s `query` param, and `moderation.py`'s
+   `status_filter`/`content_type` params. Only `search.py` was fixed since Schemathesis's random
+   fuzzing happened to catch it there this run.
+4. **Consider a dedicated non-production backend/database for E2E**: flagged in an earlier session
+   too. The production-DB-never-migrated incident this session is a strong argument — E2E currently
+   shares fate with production data/schema.
+5. Carried forward, still non-blocking: move CI-skipped E2E stress tests to a nightly workflow,
+   `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` secrets (may already be wired via PR #47 — verify).
 
 ## Environment Status
 
@@ -77,8 +219,8 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 
 ### Branch & Git State
 - Active branch: `main`
-- HEAD: `eeb97b0` — fix(api): validate privacy_settings dict for NUL bytes and lone surrogates (#42)
-- All changes pushed, working tree clean
+- HEAD: `b1a9e2e` — Merge pull request #55 fix/e2e-csp-and-rate-limits
+- All changes pushed; only session-doc/tooling files pending commit
 - Remote: https://github.com/z3r0fidev/bgc-replica
 
 ## Key Decisions
@@ -105,10 +247,39 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 ## Notes for Next Session
 
 ### Important Context
-- `backend/app/schemas/base.py` is new — the `SafeBaseModel` import must be used wherever
-  `BaseModel` was used in write schemas.
+- `backend/app/schemas/base.py` holds `SafeBaseModel` and `_assert_safe_string`. ALL new write
+  schemas must inherit `SafeBaseModel`. Dict-typed fields still require explicit inline validation
+  in the endpoint (model_validator does not recurse into dict values).
 - Railway end-to-end is confirmed working; do not change `backend/railway.json` or the deploy
   workflow without understanding the Nixpacks / `railway up --service=$RAILWAY_SERVICE_ID` pattern.
+- Vercel CLI steps in `deploy-frontend.yml` MUST run from the repo root (no `working-directory:
+  ./frontend`). Vercel resolves Root Directory = `frontend` relative to the repo root. Adding a
+  `working-directory` causes double-nesting (`frontend/frontend`) which breaks the deploy.
 - Schemathesis contract tests run in the Backend CI `quality-check` job — if they start failing
   again, check for new write endpoints that were not given `SafeBaseModel`.
-- 24 failed/cancelled GitHub Actions runs were deleted this session; history is clean.
+- Railway CLI v5.23.3 introduces `railway logs` (stream deploy/build logs), `railway restart`,
+  and stateless `railway up --project <id>`. Token auth skips 2FA. Use `railway logs` before
+  grepping Railway dashboard for 500s.
+- E2E stress tests in `chat-virtual-scroll-stress.spec.ts` are now CI-skipped via
+  `test.skip(!!process.env.CI)`. They still run locally. Consider scheduling them nightly.
+- 24 failed/cancelled GitHub Actions runs were deleted in a previous session; history is clean.
+- `workflow_dispatch` runs do NOT satisfy GitHub branch protection required status checks; only
+  `pull_request`-triggered runs count. The `.github/workflows/**` path filter in `frontend-ci.yml`
+  is what ensures workflow-only PRs trigger the required `quality-check` automatically.
+- Only `quality-check` is a literal required branch-protection status check on `main` (confirmed
+  via `gh api repos/z3r0fidev/bgc-replica/branches/main/protection`); it matches by context name
+  across all three workflows that produce it (Backend CI, Deploy Backend, Frontend CI) — all three
+  must be green. Playwright E2E shards, Vercel, and codecov/patch are informational/advisory only
+  for merge purposes even though they show in the PR checks list.
+- `is_allowed_origin` in `backend/app/core/config.py` now backs both Socket.io's `connect()`
+  handler and FastAPI's `CORSMiddleware` (`allow_origin_regex`) — any future CORS logic changes
+  must update both call sites or they will drift out of sync again.
+- The production Supabase DB is migrated as of this session — do not assume `/health` returning OK
+  means the schema exists; it only checks connectivity. If a fresh Railway/Supabase environment is
+  ever provisioned again, run `alembic upgrade head` against it explicitly before assuming it works.
+- Railway CLI is authenticated locally as Z3r0fiDeV (project "BGCLive Backend", service
+  "bgc-replica", env "production"). Direct DB access works via `backend/venv/Scripts/python.exe`
+  (has `asyncpg`+`alembic`) run through WSL interop with `-X utf8` (avoids a cp1252 console crash
+  on an emoji arrow in `database.py`'s IPv4-resolution log line).
+- Supabase MCP server was added to `backend/.mcp.json` and authenticated mid-session-before-last,
+  but requires a fresh Claude Code session to actually connect.
