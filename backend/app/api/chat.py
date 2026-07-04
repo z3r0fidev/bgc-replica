@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
+from app.core.validation import validate_query_params
 from app.api import deps
 from app.models.user import User
 from app.models.chat import ChatRoom, Message, Conversation
@@ -32,6 +33,7 @@ async def get_rooms(
     limit: int = Query(20, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
+    validate_query_params(category=category, cursor=cursor)
     stmt = select(ChatRoom)
     if category:
         stmt = stmt.where(ChatRoom.category == category)
@@ -45,6 +47,7 @@ async def get_room_history(
     limit: int = Query(50, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
+    validate_query_params(cursor=cursor)
     from sqlalchemy.orm import selectinload
 
     stmt = (
@@ -92,6 +95,7 @@ async def get_conversations(
     limit: int = Query(20, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
+    validate_query_params(cursor=cursor)
     stmt = select(Conversation).where(
         or_(
             Conversation.user_one_id == current_user.id,
@@ -134,6 +138,7 @@ async def get_conversation_history(
     limit: int = Query(50, ge=1, le=200),
     cursor: Optional[str] = None,
 ):
+    validate_query_params(cursor=cursor)
     # Verify user is a participant in this conversation (IDOR protection)
     conv_result = await db.execute(
         select(Conversation).where(
