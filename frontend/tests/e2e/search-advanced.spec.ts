@@ -43,34 +43,31 @@ test.describe('Advanced Search', () => {
     await expect(page.getByRole('button', { name: /Apply Filters/i })).toBeVisible();
 
     // Select Ethnicity: Black
-    // Use a more specific locator that targets the Ethnicity section's combobox
-    const ethnicitySection = page.locator('[data-slot="select"]').filter({ has: page.locator('text=All Ethnicities') }).first();
-    const ethnicityTrigger = ethnicitySection.getByRole('combobox');
-
-    // Ensure trigger is visible and clickable
-    await expect(ethnicityTrigger).toBeVisible();
+    // Find the combobox that currently shows "All Ethnicities" (the default value)
+    const ethnicityTrigger = page.getByRole('combobox', { name: /All Ethnicities/i });
+    await expect(ethnicityTrigger).toBeVisible({ timeout: 10000 });
     await ethnicityTrigger.click();
 
-    // Wait for dropdown to appear (Radix uses a Portal)
+    // Wait for dropdown to appear (Radix uses a Portal) and select
     const blackOption = page.getByRole('option', { name: 'Black', exact: true });
     await expect(blackOption).toBeVisible({ timeout: 5000 });
     await blackOption.click();
 
-    // Wait for the select to close and show selected value
-    await expect(ethnicityTrigger).toContainText('Black');
+    // Wait for the select to close - the trigger should now show "Black"
+    await expect(page.getByRole('combobox', { name: /Black/i })).toBeVisible();
 
     // Select Position: Top
-    const positionSection = page.locator('[data-slot="select"]').filter({ has: page.locator('text=All Positions') }).first();
-    const positionTrigger = positionSection.getByRole('combobox');
-
-    await expect(positionTrigger).toBeVisible();
+    // Find the combobox that currently shows "All Positions"
+    const positionTrigger = page.getByRole('combobox', { name: /All Positions/i });
+    await expect(positionTrigger).toBeVisible({ timeout: 5000 });
     await positionTrigger.click();
 
     const topOption = page.getByRole('option', { name: 'Top', exact: true });
     await expect(topOption).toBeVisible({ timeout: 5000 });
     await topOption.click();
 
-    await expect(positionTrigger).toContainText('Top');
+    // Wait for the select to close
+    await expect(page.getByRole('combobox', { name: /^Top$/i })).toBeVisible();
 
     // Click Apply Filters
     const responsePromise = page.waitForResponse(searchUrl);
