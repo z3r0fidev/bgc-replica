@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('PWA Deep-linking', () => {
+  test.beforeEach(async ({ context, baseURL }) => {
+    await context.addCookies([{
+      name: 'access_token',
+      value: 'fake-token',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
+      path: '/',
+    }]);
+  });
+
   test('redirects from pwa-handler to profile page', async ({ page }) => {
     const testId = '123e4567-e89b-12d3-a456-426614174000';
     const protocolUrl = `web+bgclive://profile/${testId}`;

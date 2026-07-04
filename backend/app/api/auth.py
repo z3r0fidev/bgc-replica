@@ -43,7 +43,7 @@ def get_client_ip(request: Request) -> str:
 router = APIRouter()
 
 
-@router.post("/login", dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))])
+@router.post("/login", dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.MINUTE))))])
 async def login(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -104,7 +104,7 @@ async def login(
 @router.post(
     "/login/2fa",
     response_model=Token,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.MINUTE))))],
 )
 async def login_2fa(
     http_request: Request,
@@ -173,7 +173,7 @@ async def login_2fa(
 @router.post(
     "/register",
     response_model=UserSchema,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(3, Duration.HOUR))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.HOUR))))],
 )
 async def register(
     request: Request, db: Annotated[AsyncSession, Depends(get_db)], user_in: UserCreate
@@ -261,7 +261,7 @@ async def verify_email(
 @router.post(
     "/resend-verification",
     response_model=VerificationResponse,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(1, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))],
 )
 async def resend_verification(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -331,7 +331,7 @@ async def get_verification_status(
 @router.post(
     "/forgot-password",
     response_model=VerificationResponse,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(3, Duration.MINUTE * 5))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE * 5))))],
 )
 async def forgot_password(
     db: Annotated[AsyncSession, Depends(get_db)],

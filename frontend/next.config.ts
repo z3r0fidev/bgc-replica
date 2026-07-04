@@ -59,10 +59,18 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   async rewrites() {
+    // Mirrors vercel.json's rewrite (same source, same env var) so both
+    // mechanisms agree regardless of which one actually handles a given
+    // request on Vercel. This was previously hardcoded to
+    // http://127.0.0.1:8000 unconditionally - correct for local `next dev`,
+    // but unreachable from Vercel's infrastructure in any deployed
+    // environment, and a real source of divergence from vercel.json's
+    // rewrite for requests that don't go through Vercel's edge rewrite.
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:8000/api/:path*",
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },
@@ -89,13 +97,13 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://*.sentry.io; font-src 'self' data:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:; frame-src 'self' https://accounts.google.com; worker-src 'self' blob:;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://*.sentry.io; font-src 'self' data:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.up.railway.app wss://*.up.railway.app https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:; frame-src 'self' https://accounts.google.com; worker-src 'self' blob:;",
           },
           {
             // Report-only CSP to test stricter policy without breaking the site
             // Monitor violations before enforcing removal of unsafe-inline/eval
             key: "Content-Security-Policy-Report-Only",
-            value: "default-src 'self'; script-src 'self' https://accounts.google.com; style-src 'self'; img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://*.sentry.io; font-src 'self' data:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:; frame-src 'self' https://accounts.google.com; worker-src 'self' blob:; report-uri /api/csp-report;",
+            value: "default-src 'self'; script-src 'self' https://accounts.google.com; style-src 'self'; img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://*.sentry.io; font-src 'self' data:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.up.railway.app wss://*.up.railway.app https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:; frame-src 'self' https://accounts.google.com; worker-src 'self' blob:; report-uri /api/csp-report;",
           },
         ],
       },

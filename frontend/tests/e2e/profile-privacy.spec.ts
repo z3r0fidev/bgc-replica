@@ -95,17 +95,19 @@ test.describe("Profile Privacy Rules", () => {
     // Test Identity tab
     await page.getByRole("tab", { name: /identity/i }).click();
     await expect(page.getByLabel(/display name/i)).toBeVisible();
-    await expect(page.getByLabel(/pronouns/i)).toBeVisible();
+    // Anchored: PrivacyToggle's own aria-label ("Privacy setting for
+    // pronouns") also contains "pronouns", so an unanchored regex matches both.
+    await expect(page.getByLabel(/^pronouns$/i)).toBeVisible();
 
     // Test Lifestyle tab
     await page.getByRole("tab", { name: /lifestyle/i }).click();
-    await expect(page.getByLabel(/relationship status/i)).toBeVisible();
+    await expect(page.getByLabel(/^relationship status$/i)).toBeVisible();
     await expect(page.getByText(/looking for/i)).toBeVisible();
 
-    // Test Professional tab
+    // Test Professional tab (labeled "Work" in the UI)
     await page.getByRole("tab", { name: /work/i }).click();
-    await expect(page.getByLabel(/occupation/i)).toBeVisible();
-    await expect(page.getByLabel(/industry/i)).toBeVisible();
+    await expect(page.getByLabel(/^occupation$/i)).toBeVisible();
+    await expect(page.getByLabel(/^industry$/i)).toBeVisible();
 
     // Test Social Links tab
     await page.getByRole("tab", { name: /social/i }).click();
@@ -159,16 +161,17 @@ test.describe("Profile Privacy Rules", () => {
 
     await page.goto("/profile/edit");
 
-    // Update bio field
+    // Update bio field (lives on the Basics tab)
     await page.getByRole("tab", { name: /basics/i }).click();
     const bioField = page.getByLabel(/about me/i);
     await bioField.fill("Updated bio text");
 
     // Submit form
+    const saveResponsePromise = page.waitForResponse("**/api/profiles/me");
     await page.getByRole("button", { name: /save changes/i }).click();
 
     // Verify data was saved
-    await page.waitForResponse("**/api/profiles/me");
+    await saveResponsePromise;
     expect(savedData.bio).toBe("Updated bio text");
   });
 

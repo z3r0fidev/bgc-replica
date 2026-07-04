@@ -16,6 +16,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -56,6 +57,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -76,6 +78,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             access_token: 'fake-2fa-token',
             token_type: 'bearer',
@@ -85,6 +88,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 401,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             detail: 'Invalid verification code',
           }),
@@ -98,8 +102,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form to appear
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });
@@ -116,7 +121,7 @@ test.describe('Two-Factor Authentication', () => {
     expect(response2fa.status()).toBe(200);
 
     // Should redirect to home page after successful 2FA
-    await expect(page).toHaveURL('http://localhost:3000/', { timeout: 10000 });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
 
     // Verify token is stored
     const token = await page.evaluate(() => localStorage.getItem('access_token'));
@@ -133,6 +138,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -146,6 +152,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 401,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           detail: 'Invalid verification code',
         }),
@@ -158,8 +165,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });
@@ -172,7 +180,7 @@ test.describe('Two-Factor Authentication', () => {
     await page.getByRole('button', { name: /verify|submit|confirm/i }).click();
 
     // Should stay on login/2FA page
-    await expect(page).not.toHaveURL('http://localhost:3000/');
+    await expect(page).not.toHaveURL('/');
 
     // Should show error message
     await expect(page.getByText(/invalid.*code|verification.*failed/i)).toBeVisible({ timeout: 10000 });
@@ -189,6 +197,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -209,6 +218,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             access_token: 'fake-backup-token',
             token_type: 'bearer',
@@ -218,6 +228,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 401,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             detail: 'Invalid verification code',
           }),
@@ -231,8 +242,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });
@@ -255,7 +267,7 @@ test.describe('Two-Factor Authentication', () => {
     expect(response2fa.status()).toBe(200);
 
     // Should redirect to home page after successful backup code login
-    await expect(page).toHaveURL('http://localhost:3000/', { timeout: 10000 });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
 
     // Verify token is stored
     const token = await page.evaluate(() => localStorage.getItem('access_token'));
@@ -270,6 +282,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           access_token: 'fake-no2fa-token',
           token_type: 'bearer',
@@ -289,7 +302,7 @@ test.describe('Two-Factor Authentication', () => {
     expect(response.status()).toBe(200);
 
     // Should redirect directly to home without 2FA prompt
-    await expect(page).toHaveURL('http://localhost:3000/', { timeout: 10000 });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
 
     // Verify no 2FA prompt appeared
     const twoFactorText = page.getByText(/Two-factor authentication/i);
@@ -313,6 +326,7 @@ test.describe('Two-Factor Authentication', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
           requires_2fa: true,
           user_id: testUserId,
@@ -330,6 +344,7 @@ test.describe('Two-Factor Authentication', () => {
           status: 429,
           contentType: 'application/json',
           headers: {
+            'Access-Control-Allow-Origin': '*',
             'Retry-After': '60',
             'X-RateLimit-Limit': '5',
             'X-RateLimit-Remaining': '0',
@@ -342,6 +357,7 @@ test.describe('Two-Factor Authentication', () => {
         await route.fulfill({
           status: 401,
           contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: JSON.stringify({
             detail: 'Invalid verification code',
           }),
@@ -355,8 +371,9 @@ test.describe('Two-Factor Authentication', () => {
     await page.locator('input[name="email"]').fill('2fa-user@example.com');
     await page.locator('input[name="password"]').fill('Password123!');
 
-    await page.waitForResponse(loginUrl);
+    const loginResponsePromise = page.waitForResponse(loginUrl);
     await page.getByRole('button', { name: 'Login', exact: true }).click();
+    await loginResponsePromise;
 
     // Wait for 2FA form
     await expect(page.getByText(/Two-factor authentication/i)).toBeVisible({ timeout: 10000 });

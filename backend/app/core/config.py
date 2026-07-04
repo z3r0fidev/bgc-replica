@@ -1,4 +1,15 @@
+import re
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Ephemeral Vercel preview deployments get a unique origin per build
+# (e.g. https://bgc-replica-lu17s1ndp-open-logic-distribution.vercel.app),
+# so a static CORS_ORIGINS allowlist can never include them. Match the
+# project's preview URL naming convention instead of widening to all of
+# *.vercel.app.
+VERCEL_PREVIEW_ORIGIN_PATTERN = re.compile(
+    r"^https://bgc-replica-[a-z0-9]+-open-logic-distribution\.vercel\.app$"
+)
 
 
 class Settings(BaseSettings):
@@ -16,6 +27,14 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Parse CORS_ORIGINS into a list of origins."""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    def is_allowed_origin(self, origin: str) -> bool:
+        """Check an Origin header against the static allowlist plus Vercel previews."""
+        if not origin:
+            return False
+        if origin in self.cors_origins_list:
+            return True
+        return bool(VERCEL_PREVIEW_ORIGIN_PATTERN.match(origin))
 
     NEXTAUTH_SECRET: str = ""
     SENTRY_DSN: str = ""

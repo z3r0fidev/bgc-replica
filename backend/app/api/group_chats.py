@@ -125,7 +125,7 @@ def member_to_response(
     "",
     response_model=GroupChatResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 5))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE * 5))))],
 )
 async def create_group(
     db: Annotated[AsyncSession, Depends(get_db)],

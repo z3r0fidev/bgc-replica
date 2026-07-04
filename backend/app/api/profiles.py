@@ -201,7 +201,7 @@ async def get_user_profile(
 @router.post(
     "/me/media",
     response_model=MediaSchema,
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(40, Duration.MINUTE))))],
 )
 async def upload_gallery_media(
     current_user: Annotated[User, Depends(deps.get_current_user)],

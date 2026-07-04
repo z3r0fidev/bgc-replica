@@ -219,8 +219,19 @@ test.describe("Search Profile Expansion Filters", () => {
   test("API should return filtered results based on relationship_status", async ({
     request,
   }) => {
-    // This test directly calls the API to verify backend filtering
-    const response = await request.get("/api/search", {
+    // Hit the backend directly via NEXT_PUBLIC_API_URL instead of the
+    // relative /api/search/ path. This test's actual intent is to verify
+    // backend query-filtering logic, not Vercel's rewrite behavior -
+    // and Vercel's "Protection Bypass for Automation" redirect flow has a
+    // confirmed platform-level limitation where vercel.json/next.config.ts
+    // rewrites never get re-applied on the post-redirect request, so any
+    // relative /api/* path 404s here even though the backend itself and
+    // the rewrite config are both correct (verified directly: curling the
+    // deployed backend returns 200, and real pages/real Next.js routes
+    // return 200 through the same bypass flow - only rewrite-proxied paths
+    // are affected).
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const response = await request.get(`${apiUrl}/api/search/`, {
       params: {
         relationship_status: "Single",
       },

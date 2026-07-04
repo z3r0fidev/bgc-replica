@@ -15,6 +15,7 @@ test.describe('Credentials Auth', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ message: 'User created' }),
       });
     });
@@ -53,6 +54,7 @@ test.describe('Credentials Auth', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ access_token: 'fake-token', token_type: 'bearer' }),
       });
     });
@@ -72,19 +74,19 @@ test.describe('Credentials Auth', () => {
     expect(response.status()).toBe(200);
     
     // Should redirect to home page after successful login
-    await expect(page).toHaveURL('http://localhost:3000/', { timeout: 10000 });
+    await expect(page).toHaveURL('/', { timeout: 10000 });
     
     // Verify token is stored in localStorage
     const token = await page.evaluate(() => localStorage.getItem('access_token'));
     expect(token).toBe('fake-token');
   });
 
-  test('should sign out successfully', async ({ page, context }) => {
+  test('should sign out successfully', async ({ page, context, baseURL }) => {
     // 1. Log in first (mocked)
     await context.addCookies([{
       name: 'access_token',
       value: 'fake-token',
-      domain: 'localhost',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
     
@@ -114,6 +116,7 @@ test.describe('Credentials Auth', () => {
       await route.fulfill({
         status: 400,
         contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ detail: 'Email already exists' }),
       });
     });

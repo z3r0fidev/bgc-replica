@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Gallery Albums', () => {
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ page, context, baseURL }) => {
     // Set up authenticated session
     await context.addCookies([{
       name: 'access_token',
       value: 'fake-token',
-      domain: 'localhost',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
     await page.addInitScript(() => {
@@ -123,7 +123,11 @@ test.describe('Gallery Albums', () => {
   });
 
   test('should navigate to album detail page', async ({ page }) => {
-    await page.route('**/api/gallery/albums', async (route) => {
+    // Missing trailing '*' meant this never matched the real fetch call,
+    // which always appends query params (?limit=20&cursor=...) - the mock
+    // silently never intercepted, so the unmocked real backend response
+    // (or lack of one) determined whether "Test Album" ever rendered.
+    await page.route('**/api/gallery/albums*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -290,8 +294,10 @@ test.describe('Gallery Albums', () => {
     await page.goto('/shared/album/test-token');
 
     // Check shared album displays
-    await expect(page.getByText('Shared Album')).toBeVisible();
-    await expect(page.getByText(/shared album/i)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Shared Album" })
+    ).toBeVisible();
+    await expect(page.getByText("This is a shared album")).toBeVisible();
   });
 
   test('should show error for expired shared album', async ({ page, context }) => {

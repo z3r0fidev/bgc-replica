@@ -211,7 +211,7 @@ export function GalleryGrid({
 
                     {/* Video indicator */}
                     {item.type === "VIDEO" && (
-                      <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="p-3 rounded-full bg-black/50 text-white">
                           <Play className="h-6 w-6" fill="white" />
                         </div>
@@ -228,7 +228,7 @@ export function GalleryGrid({
                     {showPrivacyBadge && item.privacy !== "PUBLIC" && (
                       <Badge
                         variant="secondary"
-                        className="absolute top-2 left-2 text-xs gap-1"
+                        className="absolute top-2 left-2 text-xs gap-1 pointer-events-none"
                       >
                         {getPrivacyIcon(item.privacy)}
                         {item.privacy === "PRIVATE" ? "Private" : "Friends"}
@@ -241,6 +241,7 @@ export function GalleryGrid({
                         className={`
                           absolute top-2 right-2 w-6 h-6 rounded-full border-2
                           flex items-center justify-center transition-colors
+                          pointer-events-none
                           ${
                             isSelected
                               ? "bg-primary border-primary text-primary-foreground"
@@ -263,11 +264,11 @@ export function GalleryGrid({
                     )}
 
                     {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
 
                     {/* View count on hover */}
                     {item.view_count > 0 && (
-                      <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                         <span className="flex items-center gap-1 text-xs text-white bg-black/50 px-2 py-1 rounded">
                           <Eye className="h-3 w-3" />
                           {item.view_count}

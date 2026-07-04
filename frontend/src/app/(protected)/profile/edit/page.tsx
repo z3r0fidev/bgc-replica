@@ -246,6 +246,7 @@ export default function ProfileEditPage() {
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger
                     value="basics"
+                    aria-label="Basics"
                     className="flex items-center gap-2"
                   >
                     <FileText className="h-4 w-4" />
@@ -253,6 +254,7 @@ export default function ProfileEditPage() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="identity"
+                    aria-label="Identity"
                     className="flex items-center gap-2"
                   >
                     <User className="h-4 w-4" />
@@ -260,6 +262,7 @@ export default function ProfileEditPage() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="lifestyle"
+                    aria-label="Lifestyle"
                     className="flex items-center gap-2"
                   >
                     <Heart className="h-4 w-4" />
@@ -267,6 +270,7 @@ export default function ProfileEditPage() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="professional"
+                    aria-label="Work"
                     className="flex items-center gap-2"
                   >
                     <Briefcase className="h-4 w-4" />
@@ -274,6 +278,7 @@ export default function ProfileEditPage() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="social"
+                    aria-label="Social"
                     className="flex items-center gap-2"
                   >
                     <Share2 className="h-4 w-4" />

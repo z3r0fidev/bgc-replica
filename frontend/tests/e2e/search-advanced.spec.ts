@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Advanced Search', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, baseURL }) => {
     // Authenticate the user for each test
     await context.addCookies([{
       name: 'access_token',
       value: 'fake-token',
-      domain: 'localhost',
+      domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
   });
@@ -14,13 +14,17 @@ test.describe('Advanced Search', () => {
   test('should apply filters and update results', async ({ page }) => {
     const searchUrl = '**/api/search/**';
     
-    // Intercept search API call
+    // Intercept search API call. The /users page fires an automatic
+    // unfiltered search on mount (before any filter is selected), so this
+    // route fires more than once - only assert on query params once the
+    // filtered request actually goes out, rather than on every match.
     await page.route(searchUrl, async (route) => {
       const url = new URL(route.request().url());
-      // Verify query params are being passed
-      expect(url.searchParams.get('ethnicity')).toBe('Black');
-      expect(url.searchParams.get('position')).toBe('Top');
-      
+      if (url.searchParams.get('ethnicity')) {
+        expect(url.searchParams.get('ethnicity')).toBe('Black');
+        expect(url.searchParams.get('position')).toBe('Top');
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -38,13 +42,22 @@ test.describe('Advanced Search', () => {
     // Open filters and select options
     
     // Select Ethnicity: Black
-    // Robust selector: Find the container with the label "Ethnicity", then find the combobox inside it.
-    await page.locator('div').filter({ has: page.getByText('Ethnicity') }).getByRole('combobox').click();
+    // Find the container with the label "Ethnicity", then find the combobox inside it.
+    // .filter({ has: ... }) matches every ancestor div containing that text, not
+    // just the immediate wrapper, so take .last() (the innermost/most specific match).
+    const ethnicityCombobox = page.locator('div').filter({ has: page.getByText('Ethnicity') }).getByRole('combobox').last();
+    await ethnicityCombobox.click();
     await page.getByRole('option', { name: 'Black', exact: true }).click();
+    // Wait for the select to actually commit and close before interacting with
+    // the next dropdown - otherwise the next click can land on the closing
+    // popover instead of the intended trigger (Radix Select close animation).
+    await expect(ethnicityCombobox).toHaveText('Black');
 
     // Select Position: Top
-    await page.locator('div').filter({ has: page.getByText('Position') }).getByRole('combobox').click();
+    const positionCombobox = page.locator('div').filter({ has: page.getByText('Position') }).getByRole('combobox').last();
+    await positionCombobox.click();
     await page.getByRole('option', { name: 'Top', exact: true }).click();
+    await expect(positionCombobox).toHaveText('Top');
 
     // Click Apply Filters
     const responsePromise = page.waitForResponse(searchUrl);

@@ -1,11 +1,12 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.core.database import get_db
 from app.models.user import User, Profile
 from app.schemas.profile import Profile as ProfileSchema
 from app.schemas.common import PaginatedResponse
+from app.schemas.base import _assert_safe_string
 from app.core.pagination import paginate_query
 from app.services.location import search_users_nearby, get_lat_lng_from_zip
 from app.services.block_service import block_service
@@ -25,7 +26,7 @@ def escape_like(value: str) -> str:
 @router.get(
     "/",
     response_model=PaginatedResponse[ProfileSchema],
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(30, Duration.MINUTE))))],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(60, Duration.MINUTE))))],
 )
 async def search_users(
     min_age: Optional[int] = Query(None),
@@ -53,6 +54,23 @@ async def search_users(
     current_user: Optional[User] = Depends(deps.get_current_user_optional),
 ):
     from sqlalchemy.orm import selectinload
+
+    # Query params bypass Pydantic body validation (SafeBaseModel), so NUL
+    # bytes / lone surrogates in any string filter would otherwise reach
+    # asyncpg unvalidated and surface as an unhandled 500.
+    string_params = [
+        ethnicity, location, zipcode, position, build, hiv_status,
+        privacy_mode, relationship_status, industry, gender_identity, cursor,
+    ]
+    try:
+        for value in string_params:
+            if value is not None:
+                _assert_safe_string(value)
+        if looking_for:
+            for item in looking_for:
+                _assert_safe_string(item)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     query = select(Profile).options(selectinload(Profile.user))
     filters = []

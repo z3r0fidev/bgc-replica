@@ -27,7 +27,7 @@ from app.api.verification import router as verification_router
 from app.api.admin import router as admin_router
 from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
-from app.core.config import settings
+from app.core.config import settings, VERCEL_PREVIEW_ORIGIN_PATTERN
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, DataError, ProgrammingError as SQLAProgrammingError, InterfaceError as SQLAInterfaceError
 from app.core.exceptions import BaseAppException
@@ -139,6 +139,7 @@ async def unicode_error_handler(request: Request, exc: UnicodeError):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=VERCEL_PREVIEW_ORIGIN_PATTERN.pattern,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],

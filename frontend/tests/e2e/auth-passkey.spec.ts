@@ -304,18 +304,19 @@ async function setupPasskeyApiMocks(page: Page, options: {
 /**
  * Helper to simulate authenticated state for protected pages.
  */
-async function simulateAuthenticatedState(context: BrowserContext) {
+async function simulateAuthenticatedState(context: BrowserContext, baseURL?: string) {
+  const domain = baseURL ? new URL(baseURL).hostname : 'localhost';
   await context.addCookies([
     {
       name: 'access_token',
       value: 'fake-auth-token',
-      domain: 'localhost',
+      domain,
       path: '/',
     },
     {
       name: 'next-auth.session-token',
       value: 'mock-session-token',
-      domain: 'localhost',
+      domain,
       path: '/',
     },
   ]);
@@ -435,10 +436,10 @@ test.describe('Passkey Authentication', () => {
     // In a production CI environment, these would run against a test database with
     // seeded user sessions.
 
-    test.skip('should display passkey registration section when authenticated', async ({ page, context }) => {
+    test.skip('should display passkey registration section when authenticated', async ({ page, context, baseURL }) => {
       // This test requires a real authenticated session
       // Skip in E2E - covered by unit tests for the component
-      await simulateAuthenticatedState(context);
+      await simulateAuthenticatedState(context, baseURL);
 
       await page.route('**/api/auth/2fa/status', async (route) => {
         await route.fulfill({
@@ -454,9 +455,9 @@ test.describe('Passkey Authentication', () => {
       await expect(passkeySection.first()).toBeVisible({ timeout: 5000 });
     });
 
-    test.skip('should show passkey registration info when authenticated', async ({ page, context }) => {
+    test.skip('should show passkey registration info when authenticated', async ({ page, context, baseURL }) => {
       // This test requires a real authenticated session
-      await simulateAuthenticatedState(context);
+      await simulateAuthenticatedState(context, baseURL);
 
       await page.route('**/api/auth/2fa/status', async (route) => {
         await route.fulfill({
@@ -472,9 +473,9 @@ test.describe('Passkey Authentication', () => {
       await expect(infoText).toBeVisible({ timeout: 5000 });
     });
 
-    test.skip('should trigger passkey registration feedback when register button is clicked', async ({ page, context }) => {
+    test.skip('should trigger passkey registration feedback when register button is clicked', async ({ page, context, baseURL }) => {
       // This test requires a real authenticated session
-      await simulateAuthenticatedState(context);
+      await simulateAuthenticatedState(context, baseURL);
       await injectWebAuthnMocks(page, { shouldSucceed: true });
       await setupPasskeyApiMocks(page, { registrationSuccess: true });
 
@@ -495,9 +496,9 @@ test.describe('Passkey Authentication', () => {
       await expect(registerButton).toBeVisible();
     });
 
-    test.skip('should handle registration cancellation gracefully when authenticated', async ({ page, context }) => {
+    test.skip('should handle registration cancellation gracefully when authenticated', async ({ page, context, baseURL }) => {
       // This test requires a real authenticated session
-      await simulateAuthenticatedState(context);
+      await simulateAuthenticatedState(context, baseURL);
       await injectWebAuthnMocks(page, {
         shouldSucceed: false,
         errorType: 'NotAllowedError'
@@ -633,9 +634,9 @@ test.describe('Passkey Authentication', () => {
       expect(currentUrl).toMatch(/\/(login|api\/auth)/);
     });
 
-    test.skip('should handle duplicate credential scenario', async ({ page, context }) => {
+    test.skip('should handle duplicate credential scenario', async ({ page, context, baseURL }) => {
       // This test requires a real authenticated session for security settings
-      await simulateAuthenticatedState(context);
+      await simulateAuthenticatedState(context, baseURL);
       await injectWebAuthnMocks(page, {
         shouldSucceed: false,
         errorType: 'InvalidStateError'
@@ -706,9 +707,9 @@ test.describe('Passkey Authentication', () => {
       await expect(passkeyButton).toBeEnabled();
     });
 
-    test.skip('should have accessible passkey section in security settings when authenticated', async ({ page, context }) => {
+    test.skip('should have accessible passkey section in security settings when authenticated', async ({ page, context, baseURL }) => {
       // This test requires a real authenticated session
-      await simulateAuthenticatedState(context);
+      await simulateAuthenticatedState(context, baseURL);
 
       await page.route('**/api/auth/2fa/status', async (route) => {
         await route.fulfill({
@@ -748,9 +749,9 @@ test.describe('Passkey Authentication', () => {
       }
     });
 
-    test.skip('should display passkey section on mobile security settings when authenticated', async ({ page, context }) => {
+    test.skip('should display passkey section on mobile security settings when authenticated', async ({ page, context, baseURL }) => {
       // This test requires a real authenticated session
-      await simulateAuthenticatedState(context);
+      await simulateAuthenticatedState(context, baseURL);
 
       await page.route('**/api/auth/2fa/status', async (route) => {
         await route.fulfill({
