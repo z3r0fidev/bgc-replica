@@ -13,7 +13,7 @@ test.describe('Advanced Search', () => {
 
   test('should apply filters and update results', async ({ page }) => {
     const searchUrl = '**/api/search/**';
-    
+
     // Intercept search API call. The /users page fires an automatic
     // unfiltered search on mount (before any filter is selected), so this
     // route fires more than once - only assert on query params once the
@@ -39,30 +39,43 @@ test.describe('Advanced Search', () => {
 
     await page.goto('/users');
 
-    // Open filters and select options
-    
+    // Wait for page to be fully loaded and hydrated
+    await expect(page.getByRole('button', { name: /Apply Filters/i })).toBeVisible();
+
     // Select Ethnicity: Black
-    // Find the container with the label "Ethnicity", then find the combobox inside it.
-    // .filter({ has: ... }) matches every ancestor div containing that text, not
-    // just the immediate wrapper, so take .last() (the innermost/most specific match).
-    const ethnicityCombobox = page.locator('div').filter({ has: page.getByText('Ethnicity') }).getByRole('combobox').last();
-    await ethnicityCombobox.click();
-    await page.getByRole('option', { name: 'Black', exact: true }).click();
-    // Wait for the select to actually commit and close before interacting with
-    // the next dropdown - otherwise the next click can land on the closing
-    // popover instead of the intended trigger (Radix Select close animation).
-    await expect(ethnicityCombobox).toHaveText('Black');
+    // Use a more specific locator that targets the Ethnicity section's combobox
+    const ethnicitySection = page.locator('[data-slot="select"]').filter({ has: page.locator('text=All Ethnicities') }).first();
+    const ethnicityTrigger = ethnicitySection.getByRole('combobox');
+
+    // Ensure trigger is visible and clickable
+    await expect(ethnicityTrigger).toBeVisible();
+    await ethnicityTrigger.click();
+
+    // Wait for dropdown to appear (Radix uses a Portal)
+    const blackOption = page.getByRole('option', { name: 'Black', exact: true });
+    await expect(blackOption).toBeVisible({ timeout: 5000 });
+    await blackOption.click();
+
+    // Wait for the select to close and show selected value
+    await expect(ethnicityTrigger).toContainText('Black');
 
     // Select Position: Top
-    const positionCombobox = page.locator('div').filter({ has: page.getByText('Position') }).getByRole('combobox').last();
-    await positionCombobox.click();
-    await page.getByRole('option', { name: 'Top', exact: true }).click();
-    await expect(positionCombobox).toHaveText('Top');
+    const positionSection = page.locator('[data-slot="select"]').filter({ has: page.locator('text=All Positions') }).first();
+    const positionTrigger = positionSection.getByRole('combobox');
+
+    await expect(positionTrigger).toBeVisible();
+    await positionTrigger.click();
+
+    const topOption = page.getByRole('option', { name: 'Top', exact: true });
+    await expect(topOption).toBeVisible({ timeout: 5000 });
+    await topOption.click();
+
+    await expect(positionTrigger).toContainText('Top');
 
     // Click Apply Filters
     const responsePromise = page.waitForResponse(searchUrl);
     await page.getByRole('button', { name: /Apply Filters/i }).click();
-    
+
     await responsePromise;
 
     // Verify result is displayed
