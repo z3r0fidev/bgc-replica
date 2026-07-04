@@ -11,8 +11,10 @@
 
 # testing
 /coverage
+**/coverage/
 **/playwright-report/
 **/test-results/
+*.junit.xml
 error-context.md
 
 # next.js
