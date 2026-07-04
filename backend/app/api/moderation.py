@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.core.database import get_db
+from app.core.validation import validate_query_params
 from app.api import deps
 from app.models.user import User
 from app.models.community import ContentReport, ForumThread, ForumPost, StatusUpdate
@@ -99,6 +100,7 @@ async def get_moderation_queue(
 ):
     """Get the moderation queue with detailed report info."""
     require_admin(current_user)
+    validate_query_params(status_filter=status_filter, content_type=content_type)
 
     # Build query
     query = select(ContentReport)
