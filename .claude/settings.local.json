@@ -1,12 +1,26 @@
 {
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "shadcn"
-  ],
   "permissions": {
     "allow": [
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.railway.com)",
+      "Bash(gh run *)",
+      "Bash(python3 -c ' *)",
+      "Bash(gh api *)",
+      "Bash(gh secret *)",
+      "Skill(github-ci-engineer)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)",
+      "Bash(curl -s -D - -o /dev/null \"https://bgc-replica-6d6h87jlq-open-logic-distribution.vercel.app/rooms\")",
+      "Bash(curl -sL \"https://bgc-replica-6d6h87jlq-open-logic-distribution.vercel.app/rooms\")",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('/mnt/c/Users/isaiah.muhammad/bgc-replica/.github/workflows/e2e.yml'\\)\\)\")",
+      "Bash(npx tsc *)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
 }
