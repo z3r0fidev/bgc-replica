@@ -38,6 +38,8 @@ test.describe('Advanced Search', () => {
     });
 
     await page.goto('/users');
+    // Wait for page hydration to complete (important for WebKit)
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for page to be fully loaded and hydrated
     await expect(page.getByRole('button', { name: /Apply Filters/i })).toBeVisible();
@@ -48,13 +50,19 @@ test.describe('Advanced Search', () => {
     await expect(ethnicityTrigger).toBeVisible({ timeout: 10000 });
     await ethnicityTrigger.click();
 
+    // Wait for Radix portal animation to complete (200ms animation + buffer)
+    await page.waitForTimeout(300);
+
     // Wait for dropdown to appear (Radix uses a Portal) and select
     const blackOption = page.getByRole('option', { name: 'Black', exact: true });
     await expect(blackOption).toBeVisible({ timeout: 5000 });
     await blackOption.click();
 
+    // Wait for dropdown to close and animation to settle
+    await page.waitForTimeout(200);
+
     // Wait for the select to close - the trigger should now show "Black"
-    await expect(page.getByRole('combobox', { name: /Black/i })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: /Black/i })).toBeVisible({ timeout: 5000 });
 
     // Select Position: Top
     // Find the combobox that currently shows "All Positions"
@@ -62,12 +70,18 @@ test.describe('Advanced Search', () => {
     await expect(positionTrigger).toBeVisible({ timeout: 5000 });
     await positionTrigger.click();
 
+    // Wait for portal animation
+    await page.waitForTimeout(300);
+
     const topOption = page.getByRole('option', { name: 'Top', exact: true });
     await expect(topOption).toBeVisible({ timeout: 5000 });
     await topOption.click();
 
+    // Wait for dropdown to close
+    await page.waitForTimeout(200);
+
     // Wait for the select to close
-    await expect(page.getByRole('combobox', { name: /^Top$/i })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: /^Top$/i })).toBeVisible({ timeout: 5000 });
 
     // Click Apply Filters
     const responsePromise = page.waitForResponse(searchUrl);
@@ -86,15 +100,24 @@ test.describe('Advanced Search', () => {
     await context.setGeolocation({ latitude: 33.7490, longitude: -84.3880 });
 
     await page.goto('/users');
+    // Wait for page hydration (important for WebKit)
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait for GPS button to be ready
+    const gpsButton = page.getByRole('button', { name: /Use My Location/i });
+    await expect(gpsButton).toBeEnabled({ timeout: 10000 });
 
     // Click GPS button
-    await page.getByRole('button', { name: /Use My Location/i }).click();
+    await gpsButton.click();
+
+    // Wait for geolocation API call to complete (WebKit may be slower)
+    await page.waitForTimeout(500);
 
     // Verify visual feedback
     // Find the location input (which has the placeholder) and check its value
-    await expect(page.getByPlaceholder('Or Search by City...')).toHaveValue('My Current Location');
-    
+    await expect(page.getByPlaceholder('Or Search by City...')).toHaveValue('My Current Location', { timeout: 5000 });
+
     // Verify toast notification
-    await expect(page.getByText('Location acquired!')).toBeVisible();
+    await expect(page.getByText('Location acquired!')).toBeVisible({ timeout: 5000 });
   });
 });
