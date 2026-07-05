@@ -2,9 +2,17 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Advanced Search', () => {
   // Default mock response for search API
+  // Note: profile.user.name is used for display (see users/page.tsx:406)
   const mockSearchResponse = {
     items: [
-      { id: '1', name: 'Test User', height: "5'10", location_city: 'Atlanta', ethnicity: 'Black', position: 'Top' }
+      {
+        id: '1',
+        user: { id: '1', name: 'Test User' },
+        height: "5'10",
+        location_city: 'Atlanta',
+        ethnicity: 'Black',
+        position: 'Top'
+      }
     ],
     metadata: { has_next: false, count: 1 }
   };
