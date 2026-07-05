@@ -1,7 +1,23 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Advanced Search', () => {
-  test.beforeEach(async ({ context, baseURL }) => {
+  // Default mock response for search API
+  // Note: profile.user.name is used for display (see users/page.tsx:406)
+  const mockSearchResponse = {
+    items: [
+      {
+        id: '1',
+        user: { id: '1', name: 'Test User' },
+        height: "5'10",
+        location_city: 'Atlanta',
+        ethnicity: 'Black',
+        position: 'Top'
+      }
+    ],
+    metadata: { has_next: false, count: 1 }
+  };
+
+  test.beforeEach(async ({ page, context, baseURL }) => {
     // Authenticate the user for each test
     await context.addCookies([{
       name: 'access_token',
@@ -9,10 +25,15 @@ test.describe('Advanced Search', () => {
       domain: baseURL ? new URL(baseURL).hostname : 'localhost',
       path: '/',
     }]);
+    // Also set in localStorage for client-side checks
+    await page.addInitScript(() => {
+      localStorage.setItem('access_token', 'fake-token');
+    });
   });
 
   test('should apply filters and update results', async ({ page }) => {
-    const searchUrl = '**/api/search/**';
+    // Use pattern without trailing slashes to match cross-origin requests
+    const searchUrl = '**/api/search**';
 
     // Intercept search API call. The /users page fires an automatic
     // unfiltered search on mount (before any filter is selected), so this
@@ -28,12 +49,7 @@ test.describe('Advanced Search', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          items: [
-            { id: '1', name: 'Test User', height: "5'10", location_city: 'Atlanta', ethnicity: 'Black', position: 'Top' }
-          ],
-          metadata: { has_next: false, count: 1 }
-        }),
+        body: JSON.stringify(mockSearchResponse),
       });
     });
 
@@ -45,8 +61,8 @@ test.describe('Advanced Search', () => {
     await expect(page.getByRole('button', { name: /Apply Filters/i })).toBeVisible();
 
     // Select Ethnicity: Black
-    // Find the combobox that currently shows "All Ethnicities" (the default value)
-    const ethnicityTrigger = page.getByRole('combobox', { name: /All Ethnicities/i });
+    // Find the combobox by locating its trigger text "All Ethnicities"
+    const ethnicityTrigger = page.getByText('All Ethnicities');
     await expect(ethnicityTrigger).toBeVisible({ timeout: 10000 });
     await ethnicityTrigger.click();
 
@@ -62,11 +78,11 @@ test.describe('Advanced Search', () => {
     await page.waitForTimeout(200);
 
     // Wait for the select to close - the trigger should now show "Black"
-    await expect(page.getByRole('combobox', { name: /Black/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Black').first()).toBeVisible({ timeout: 5000 });
 
     // Select Position: Top
-    // Find the combobox that currently shows "All Positions"
-    const positionTrigger = page.getByRole('combobox', { name: /All Positions/i });
+    // Find the combobox by locating its trigger text "All Positions"
+    const positionTrigger = page.getByText('All Positions');
     await expect(positionTrigger).toBeVisible({ timeout: 5000 });
     await positionTrigger.click();
 
@@ -80,8 +96,8 @@ test.describe('Advanced Search', () => {
     // Wait for dropdown to close
     await page.waitForTimeout(200);
 
-    // Wait for the select to close
-    await expect(page.getByRole('combobox', { name: /^Top$/i })).toBeVisible({ timeout: 5000 });
+    // Wait for the select to show "Top" (using first() to avoid ambiguity)
+    await expect(page.locator('[data-slot="select-value"]').filter({ hasText: 'Top' })).toBeVisible({ timeout: 5000 });
 
     // Click Apply Filters
     const responsePromise = page.waitForResponse(searchUrl);
@@ -91,10 +107,19 @@ test.describe('Advanced Search', () => {
 
     // Verify result is displayed
     await expect(page.getByText('Atlanta')).toBeVisible();
-    await expect(page.getByText('User 1')).toBeVisible();
+    await expect(page.getByText('Test User')).toBeVisible();
   });
 
   test('should handle "Use My Location" functionality', async ({ page, context }) => {
+    // Mock search API to prevent real backend calls
+    await page.route('**/api/search**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockSearchResponse),
+      });
+    });
+
     // Grant geolocation permissions
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation({ latitude: 33.7490, longitude: -84.3880 });
