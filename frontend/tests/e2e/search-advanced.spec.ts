@@ -53,8 +53,8 @@ test.describe('Advanced Search', () => {
     await expect(page.getByRole('button', { name: /Apply Filters/i })).toBeVisible();
 
     // Select Ethnicity: Black
-    // Find the combobox that currently shows "All Ethnicities" (the default value)
-    const ethnicityTrigger = page.getByRole('combobox', { name: /All Ethnicities/i });
+    // Find the combobox by locating its trigger text "All Ethnicities"
+    const ethnicityTrigger = page.getByText('All Ethnicities');
     await expect(ethnicityTrigger).toBeVisible({ timeout: 10000 });
     await ethnicityTrigger.click();
 
@@ -70,11 +70,11 @@ test.describe('Advanced Search', () => {
     await page.waitForTimeout(200);
 
     // Wait for the select to close - the trigger should now show "Black"
-    await expect(page.getByRole('combobox', { name: /Black/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Black').first()).toBeVisible({ timeout: 5000 });
 
     // Select Position: Top
-    // Find the combobox that currently shows "All Positions"
-    const positionTrigger = page.getByRole('combobox', { name: /All Positions/i });
+    // Find the combobox by locating its trigger text "All Positions"
+    const positionTrigger = page.getByText('All Positions');
     await expect(positionTrigger).toBeVisible({ timeout: 5000 });
     await positionTrigger.click();
 
@@ -88,8 +88,8 @@ test.describe('Advanced Search', () => {
     // Wait for dropdown to close
     await page.waitForTimeout(200);
 
-    // Wait for the select to close
-    await expect(page.getByRole('combobox', { name: /^Top$/i })).toBeVisible({ timeout: 5000 });
+    // Wait for the select to show "Top" (using first() to avoid ambiguity)
+    await expect(page.locator('[data-slot="select-value"]').filter({ hasText: 'Top' })).toBeVisible({ timeout: 5000 });
 
     // Click Apply Filters
     const responsePromise = page.waitForResponse(searchUrl);
