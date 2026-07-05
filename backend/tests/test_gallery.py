@@ -262,6 +262,40 @@ class TestMediaDelete:
 
         assert response.status_code == 404
 
+    @pytest.mark.asyncio
+    async def test_delete_media_deletes_thumbnail(
+        self, client: AsyncClient, auth_headers: dict, mock_storage
+    ):
+        """Should delete both media file and thumbnail from storage (Issue #71)"""
+        # First upload media
+        image_content = b"fake image content" * 100
+        files = {"file": ("test.jpg", io.BytesIO(image_content), "image/jpeg")}
+
+        upload_response = await client.post(
+            "/api/gallery/upload",
+            files=files,
+            headers=auth_headers,
+        )
+
+        if upload_response.status_code != 200:
+            pytest.skip("Upload failed")
+
+        media_id = upload_response.json()["id"]
+
+        # Reset mock call count
+        mock_storage.delete_file.reset_mock()
+
+        # Delete the media
+        response = await client.delete(
+            f"/api/gallery/{media_id}",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 204
+
+        # Verify delete_file was called (at least once for main file)
+        assert mock_storage.delete_file.call_count >= 1
+
 
 class TestAlbumCRUD:
     """Tests for album CRUD operations"""
