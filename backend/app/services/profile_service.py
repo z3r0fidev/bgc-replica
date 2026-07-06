@@ -4,13 +4,14 @@ import logging
 from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
-from app.models.user import Relationship
+from sqlalchemy.orm import selectinload
+from app.models.user import Relationship, Profile as ProfileModel
 from app.schemas.user import UserBase
+from app.schemas.profile import Profile
 from app.core.redis_config import get_redis
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-FRIENDSHIP_STATUS_CACHE_TTL = 600  # 10 minutes
 
 
 class ProfileService:
@@ -80,7 +81,7 @@ class ProfileService:
             redis = await get_redis()
             cache_key = await self._get_friendship_cache_key(user_id1, user_id2)
             await redis.setex(
-                cache_key, FRIENDSHIP_STATUS_CACHE_TTL, json.dumps(is_friend)
+                cache_key, settings.FRIENDSHIP_CACHE_TTL, json.dumps(is_friend)
             )
         except Exception as e:
             logger.warning(f"Failed to cache friendship status: {e}")
@@ -95,6 +96,35 @@ class ProfileService:
             await redis.delete(cache_key)
         except Exception as e:
             logger.warning(f"Failed to invalidate friendship cache: {e}")
+
+    async def get_profile_cached(
+        self, db: AsyncSession, user_id: uuid.UUID
+    ) -> Optional[Profile]:
+        """
+        Get a profile using cache-aside pattern.
+        Returns Pydantic Profile schema for consistent API responses.
+        """
+        from app.services.cache import profile_cache
+
+        async def fetch_from_db() -> Optional[Profile]:
+            result = await db.execute(
+                select(ProfileModel)
+                .where(ProfileModel.id == user_id)
+                .options(selectinload(ProfileModel.user))
+            )
+            profile_obj = result.scalars().first()
+            if profile_obj:
+                return Profile.model_validate(profile_obj)
+            return None
+
+        return await profile_cache.get_or_set(str(user_id), Profile, fetch_from_db)
+
+    async def invalidate_profile_cache(self, user_id: uuid.UUID) -> None:
+        """Invalidate cached profile for a user."""
+        from app.services.cache import profile_cache
+
+        await profile_cache.invalidate(str(user_id))
+        logger.debug(f"Profile cache invalidated for user {user_id}")
 
     def apply_privacy_mask(
         self, profile_obj: Any, is_friend: bool, is_owner: bool
