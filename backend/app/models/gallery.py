@@ -38,6 +38,7 @@ class GalleryMedia(Base):
     type: Mapped[str] = mapped_column(String(10), nullable=False)  # IMAGE, VIDEO
     url: Mapped[str] = mapped_column(Text, nullable=False)
     thumbnail_url: Mapped[Optional[str]] = mapped_column(Text)
+    thumbnail_storage_path: Mapped[Optional[str]] = mapped_column(Text)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
 
     # File metadata

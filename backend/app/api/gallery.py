@@ -105,15 +105,14 @@ async def upload_media(
 
         # Generate and upload thumbnail (works for both images and videos)
         thumbnail_url = None
+        thumbnail_storage_path = None
         thumb_bytes = media_processor.generate_thumbnail(content, content_type)
         if thumb_bytes:
-            _thumb_path = (
-                f"{current_user.id}/gallery/thumbs/{media_id}.webp"  # noqa: F841
-            )
             thumb_result = await storage_service.upload_file(
                 thumb_bytes, f"{media_id}.webp", "image/webp"
             )
             thumbnail_url = thumb_result["url"]
+            thumbnail_storage_path = thumb_result["storage_path"]
 
         # Create database record
         new_media = GalleryMedia(
@@ -122,6 +121,7 @@ async def upload_media(
             type=media_processor.get_media_type(content_type),
             url=upload_result["url"],
             thumbnail_url=thumbnail_url,
+            thumbnail_storage_path=thumbnail_storage_path,
             storage_path=upload_result["storage_path"],
             filename=file.filename,
             mime_type=content_type,
@@ -298,12 +298,18 @@ async def delete_media(
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    # Delete from storage
+    # Delete main file from storage
     try:
         await storage_service.delete_file(media.storage_path)
-        # TODO: Delete thumbnail as well
     except Exception:
         pass  # Continue even if storage delete fails
+
+    # Delete thumbnail from storage if exists
+    if media.thumbnail_storage_path:
+        try:
+            await storage_service.delete_file(media.thumbnail_storage_path)
+        except Exception:
+            pass  # Continue even if thumbnail delete fails
 
     await db.delete(media)
     await db.commit()
