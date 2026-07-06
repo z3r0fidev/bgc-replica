@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS_ORIGINS into a list of origins."""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        return [
+            origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()
+        ]
 
     def is_allowed_origin(self, origin: str) -> bool:
         """Check an Origin header against the static allowlist plus Vercel previews."""
@@ -52,6 +54,11 @@ class Settings(BaseSettings):
     APP_URL: str = "http://localhost:3000"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 1
+
+    # Cache TTLs (in seconds)
+    PROFILE_CACHE_TTL: int = 3600  # 1 hour
+    FRIENDSHIP_CACHE_TTL: int = 600  # 10 minutes
+    BLOCK_IDS_CACHE_TTL: int = 300  # 5 minutes
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
