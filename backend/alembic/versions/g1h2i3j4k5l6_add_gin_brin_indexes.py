@@ -31,6 +31,7 @@ def upgrade() -> None:
         ["looking_for"],
         unique=False,
         postgresql_using="gin",
+        if_not_exists=True,
     )
 
     # GIN index on profiles.social_links (JSONB)
@@ -42,6 +43,7 @@ def upgrade() -> None:
         ["social_links"],
         unique=False,
         postgresql_using="gin",
+        if_not_exists=True,
     )
 
     # ============ BRIN Indexes (Time-Series) ============
@@ -49,12 +51,14 @@ def upgrade() -> None:
     # BRIN index on messages.created_at
     # Efficient for time-range queries on naturally ordered data
     # Much smaller than B-tree for large tables with sequential inserts
+    # NOTE: This index may already exist from initial_schema - use if_not_exists
     op.create_index(
         "ix_messages_created_at_brin",
         "messages",
         ["created_at"],
         unique=False,
         postgresql_using="brin",
+        if_not_exists=True,
     )
 
     # BRIN index on status_updates.created_at
@@ -65,12 +69,13 @@ def upgrade() -> None:
         ["created_at"],
         unique=False,
         postgresql_using="brin",
+        if_not_exists=True,
     )
 
 
 def downgrade() -> None:
     """Remove GIN and BRIN indexes."""
-    op.drop_index("ix_status_updates_created_at_brin", table_name="status_updates")
-    op.drop_index("ix_messages_created_at_brin", table_name="messages")
-    op.drop_index("ix_profiles_social_links_gin", table_name="profiles")
-    op.drop_index("ix_profiles_looking_for_gin", table_name="profiles")
+    op.drop_index("ix_status_updates_created_at_brin", table_name="status_updates", if_exists=True)
+    op.drop_index("ix_messages_created_at_brin", table_name="messages", if_exists=True)
+    op.drop_index("ix_profiles_social_links_gin", table_name="profiles", if_exists=True)
+    op.drop_index("ix_profiles_looking_for_gin", table_name="profiles", if_exists=True)
