@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { Profile, PrivacySettings } from "@/types/profile";
+import { Profile, PrivacySettings, ProfileCompletion } from "@/types/profile";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -74,6 +74,21 @@ export const profileService = {
         });
         if (!response.ok) {
           throw new Error("Failed to fetch profile");
+        }
+        return response.json();
+      }
+    );
+  },
+
+  async getProfileCompletion(): Promise<ProfileCompletion> {
+    return Sentry.startSpan(
+      { name: "GET /api/profiles/me/completion", op: "http.client" },
+      async () => {
+        const response = await fetch(`${API_URL}/api/profiles/me/completion`, {
+          headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile completion");
         }
         return response.json();
       }
