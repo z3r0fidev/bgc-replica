@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -39,7 +39,7 @@ import { SocialLinksTab } from "@/components/profile/edit/tabs/SocialLinksTab";
 import { ProfileCompletionMeter } from "@/components/profile/ProfileCompletionMeter";
 import { profileService } from "@/services/profileService";
 import { profileUpdateSchema } from "@/lib/validations/profile";
-import { Profile, PrivacyLevel, PrivacySettings } from "@/types/profile";
+import { Profile, PrivacyLevel, PrivacySettings, CompletionTip } from "@/types/profile";
 
 // Basic profile schema for the first tab
 const basicProfileSchema = z.object({
@@ -157,6 +157,32 @@ export default function ProfileEditPage() {
     setPrivacySettings((prev) => ({ ...prev, [field]: level }));
   };
 
+  // Handle suggestion click from completion meter
+  const handleSuggestionClick = useCallback((tip: CompletionTip) => {
+    // Map field names to form field names (handle social link fields)
+    const fieldToFormField: Record<string, string> = {
+      instagram_url: "social_links.instagram_url",
+      x_url: "social_links.x_url",
+      tiktok_url: "social_links.tiktok_url",
+      website_url: "social_links.website_url",
+    };
+
+    // Switch to the correct tab
+    setActiveTab(tip.tab);
+
+    // Focus the field after a short delay to allow tab switch
+    setTimeout(() => {
+      const formFieldName = fieldToFormField[tip.field] || tip.field;
+      // Try to find and focus the input element
+      const selector = `[name="${formFieldName}"], [id="${tip.field}"], [data-field="${tip.field}"]`;
+      const element = document.querySelector<HTMLElement>(selector);
+      if (element) {
+        element.focus();
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  }, []);
+
   async function onSubmit(values: FullProfileFormData) {
     setIsLoading(true);
     try {
@@ -229,7 +255,12 @@ export default function ProfileEditPage() {
 
   return (
     <div className="container max-w-3xl py-10">
-      {profile && <ProfileCompletionMeter profile={profile} />}
+      {profile && (
+        <ProfileCompletionMeter
+          profile={profile}
+          onSuggestionClick={handleSuggestionClick}
+        />
+      )}
 
       <Card className="mt-6">
         <CardHeader>

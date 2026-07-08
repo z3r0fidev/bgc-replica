@@ -98,6 +98,51 @@ class ProfileUpdate(ProfileBase):
 from app.schemas.user import UserBase
 
 
+class CompletionTip(SafeBaseModel):
+    """A suggestion for completing a profile field."""
+    field: str
+    label: str
+    category: str  # "critical", "important", "nice_to_have"
+    tab: str  # Tab name in the edit form: "basics", "identity", "lifestyle", "professional", "social"
+    weight: float  # How much this field contributes to completion
+    quick_win: bool = False  # True if this is easy to fill in
+
+
+class MilestoneStatus(SafeBaseModel):
+    """Status of a gamification milestone."""
+    level: int
+    name: str  # "Beginner", "Explorer", "Socialite", "Complete"
+    threshold: int  # Percentage required
+    reached: bool
+    badge_icon: str  # Icon name: "seedling", "compass", "star", "trophy"
+
+
+class FeatureUnlock(SafeBaseModel):
+    """A feature that unlocks at a certain completion level."""
+    threshold: int
+    name: str
+    description: str
+    unlocked: bool
+
+
+class ProfileCompletionResponse(SafeBaseModel):
+    """Complete profile completion data with gamification."""
+    percentage: int  # 0-100 (inflated from 20% base)
+    raw_percentage: int  # Actual calculated percentage
+    critical_filled: int
+    critical_total: int
+    important_filled: int
+    important_total: int
+    nice_to_have_filled: int
+    nice_to_have_total: int
+    suggestions: List[CompletionTip]  # Top 5 quick wins
+    milestones: List[MilestoneStatus]
+    current_milestone: str
+    next_milestone: Optional[str] = None
+    status_label: str  # "Incomplete"/"Basic"/"Social"/"Robust"
+    feature_unlocks: List[FeatureUnlock]
+
+
 class Profile(ProfileBase):
     id: uuid.UUID
     last_active: datetime

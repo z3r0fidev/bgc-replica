@@ -7,7 +7,7 @@ from sqlalchemy import select, func, and_
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User, Profile as ProfileModel, Media, ProfileRating
-from app.schemas.profile import Profile, ProfileUpdate
+from app.schemas.profile import Profile, ProfileUpdate, ProfileCompletionResponse
 from app.schemas.media import Media as MediaSchema
 from app.schemas.social import ProfileRatingCreate
 from app.services.storage import storage_service
@@ -39,6 +39,24 @@ async def get_my_profile(
     return profile
 
 
+@router.get("/me/completion", response_model=ProfileCompletionResponse)
+async def get_my_profile_completion(
+    current_user: Annotated[User, Depends(deps.get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Get profile completion status with weighted scoring and gamification.
+
+    Returns:
+    - percentage: Inflated score (20% base + earned)
+    - raw_percentage: Actual field completion
+    - suggestions: Top 5 fields to complete for quick wins
+    - milestones: Gamification badges and progress
+    - feature_unlocks: Features unlocked at completion thresholds
+    """
+    return await profile_service.get_completion_cached(db, current_user.id)
+
+
 @router.put("/me", response_model=Profile)
 async def update_my_profile(
     profile_in: ProfileUpdate,
@@ -60,8 +78,9 @@ async def update_my_profile(
     await db.commit()
     await db.refresh(profile)
 
-    # Invalidate cache
+    # Invalidate caches
     await profile_service.invalidate_profile_cache(current_user.id)
+    await profile_service.invalidate_completion_cache(current_user.id)
 
     return profile
 
@@ -95,8 +114,9 @@ async def patch_my_profile(
     await db.commit()
     await db.refresh(profile)
 
-    # Invalidate cache
+    # Invalidate caches
     await profile_service.invalidate_profile_cache(current_user.id)
+    await profile_service.invalidate_completion_cache(current_user.id)
 
     # Load author relationship for the response
     # (Actually we return Profile which has user via relationship)
@@ -149,8 +169,9 @@ async def update_privacy_settings(
     db.add(profile)
     await db.commit()
 
-    # Invalidate cache
+    # Invalidate caches
     await profile_service.invalidate_profile_cache(current_user.id)
+    await profile_service.invalidate_completion_cache(current_user.id)
 
     return {"status": "ok", "privacy_settings": new_settings}
 

@@ -129,3 +129,46 @@ export const EDUCATION_LEVEL_OPTIONS = [
   "Trade School",
   "Other",
 ] as const;
+
+// Profile Completion Types
+
+export interface CompletionTip {
+  field: string;
+  label: string;
+  category: "critical" | "important" | "nice_to_have";
+  tab: "basics" | "identity" | "lifestyle" | "professional" | "social";
+  weight: number;
+  quick_win: boolean;
+}
+
+export interface MilestoneStatus {
+  level: number;
+  name: string;
+  threshold: number;
+  reached: boolean;
+  badge_icon: "seedling" | "compass" | "star" | "trophy";
+}
+
+export interface FeatureUnlock {
+  threshold: number;
+  name: string;
+  description: string;
+  unlocked: boolean;
+}
+
+export interface ProfileCompletion {
+  percentage: number;
+  raw_percentage: number;
+  critical_filled: number;
+  critical_total: number;
+  important_filled: number;
+  important_total: number;
+  nice_to_have_filled: number;
+  nice_to_have_total: number;
+  suggestions: CompletionTip[];
+  milestones: MilestoneStatus[];
+  current_milestone: string;
+  next_milestone?: string;
+  status_label: string;
+  feature_unlocks: FeatureUnlock[];
+}
