@@ -65,6 +65,26 @@ Untracked tooling files also present and not investigated: `.agents/`, `backend/
 `backend/.mcp.json`, `backend/skills-lock.json`, `skills-lock.json` (Claude Code / plugin
 scaffolding, not gitignored but harmless).
 
+### Bridging Note — PRs #57-#82 (landed between last doc update and this session's PR, not individually detailed here)
+
+This session was diagnostic-only and did not review these changes in depth; listed here so the
+"Next Session Priorities" below isn't stale. See `git log --merges 97c8e05..origin/main` for the
+full list. Two items are flagged because their titles directly match previously-open priorities
+from the PR #55 session — **not independently verified by this session**:
+- **`fix(search): resolve dropdown bug where second Select wouldn't open (#57)`** — likely resolves
+  the `search-advanced.spec.ts` Ethnicity/Position dropdown bug listed as priority #1 below.
+- **`fix(api): add NUL-byte and surrogate validation to query params (#58)`** — likely resolves the
+  `chat.py`/`admin.py`/`groups.py`/`moderation.py` audit listed as priority #3 below.
+- Other merges in this range: #59 (WebKit/mobile-safari stability), #60 (CodeCov integration), #61
+  (recursive SafeBaseModel dict validation), #62 (Sentry Session Replay), #63 (search-advanced E2E
+  mocking), #67 (Redis cache-aside for profiles), #69 (GIN/BRIN search indexes), #73 (FRIENDS_ONLY
+  gallery privacy fix), gallery thumbnail cleanup, #74-#77 (migration/validation fixes), #78/#70
+  (profile completion strength meter), #79/#80 (Railway healthcheck endpoint + timeout), #81 (index
+  migration idempotency), #82 (Socket.io WebSocket credentials fix).
+
+**Next session should re-verify priorities #1 and #3 below against current `main` before assuming
+they're still open** — this session did not run the E2E suite or audit the query-param fix.
+
 ### Previous Session — E2E CSP, Rate Limits, CORS & Production DB Migration (PR #55)
 
 PR #55 (`b1a9e2e`, branch `fix/e2e-csp-and-rate-limits`) was a large E2E-reliability and
@@ -220,7 +240,8 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 - `frontend/tests/e2e/auth-google.spec.ts` — replaced 30s unbounded `waitForRequest` with 5s timeout + null-safe assertion branches
 
 ### Repository Health
-- **Branch**: `main`, local synced to `b1a9e2e` (merge commit for PR #55)
+- **Branch**: `main`, local synced to `b1a9e2e` (merge commit for PR #55) as of this content's
+  writing; `origin/main` has since advanced to `771ba2a` (PR #82) — see Bridging Note above
 - **CI Status**: All required checks green (`quality-check` × 3, `changes`, `codecov/patch`,
   `frontend-check`, `backend-check`, Vercel). E2E Tests (Playwright shards) is informational-only,
   not a required branch-protection check.
@@ -255,18 +276,20 @@ The single reliable interception point is the **Pydantic validation layer** (bef
       fastapi version pin) — see bridging note above
 
 ### Next Session Priorities
-1. **`search-advanced.spec.ts` "should apply filters and update results"**: the Ethnicity/Position
+1. **`search-advanced.spec.ts` "should apply filters and update results"** *(possibly already fixed
+   by PR #57 — verify against current `main` before spending time on this)*: the Ethnicity/Position
    dropdown's option list stops appearing after selecting the first filter
-   (`getByRole('option', {name: 'Black'})` times out). A separate, still-open bug — needs
-   Playwright UI mode or trace viewer to diagnose (curl can't drive client-rendered React).
+   (`getByRole('option', {name: 'Black'})` times out). Needs Playwright UI mode or trace viewer to
+   diagnose (curl can't drive client-rendered React).
 2. **Residual WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari went from
    100%-deterministic failure to intermittent after the DB migration fix, but aren't fully
    resolved. Likely Playwright-WebKit-on-Linux-CI environmental flakiness rather than an app bug.
-3. **NUL-byte/surrogate query-param validation audit**: the same class of bug fixed in `search.py`
-   this session (query params bypassing `SafeBaseModel`) likely exists in `chat.py`'s `category`
-   param, `admin.py`'s `query`/`action` params, `groups.py`'s `query` param, and `moderation.py`'s
-   `status_filter`/`content_type` params. Only `search.py` was fixed since Schemathesis's random
-   fuzzing happened to catch it there this run.
+   *(PR #59 in the interim claims to improve WebKit/mobile-safari stability — verify.)*
+3. **NUL-byte/surrogate query-param validation audit** *(possibly already fixed by PR #58 —
+   verify against current `main` before spending time on this)*: the same class of bug fixed in
+   `search.py` this session (query params bypassing `SafeBaseModel`) likely existed in `chat.py`'s
+   `category` param, `admin.py`'s `query`/`action` params, `groups.py`'s `query` param, and
+   `moderation.py`'s `status_filter`/`content_type` params.
 4. **Consider a dedicated non-production backend/database for E2E**: flagged in an earlier session
    too. The production-DB-never-migrated incident this session is a strong argument — E2E currently
    shares fate with production data/schema.
@@ -295,8 +318,10 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 
 ### Branch & Git State
 - Active branch: `main`
-- HEAD (last app-code merge): `b1a9e2e` — Merge pull request #55 fix/e2e-csp-and-rate-limits
-- This session (2026-07-12) added only a doc-close commit on top; no app code changed
+- Last app code this session's docs were written against: `b1a9e2e` (PR #55). `origin/main` has
+  since advanced 24 commits to `771ba2a` (PR #82) via other sessions not reflected in this file's
+  detailed narrative — see Bridging Note above.
+- This session (2026-07-12) added only a doc-close commit (PR #83) on top; no app code changed
 - Remote: https://github.com/z3r0fidev/bgc-replica
 
 ### Local Machine Notes (multi-machine setup)
