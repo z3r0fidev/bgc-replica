@@ -56,10 +56,22 @@ instance.`) — inaccurate since the migration to Railway. Worth a follow-up doc
 here since it's not one of the four session-context files and this session was Redis*-consumption*,
 not Redis *documentation*.
 
-**Pre-existing, not touched (out of scope)**: `frontend/src/app/(protected)/profile/edit/page.tsx`
-and `frontend/src/app/(protected)/users/page.tsx` have real uncommitted work in progress from a
-prior session (search filter active-count UI, toast notifications on search success/failure) —
-left as-is.
+**Pre-existing "in progress" files turned out to already be merged (discovered mechanically, not by
+inspection)**: `frontend/src/app/(protected)/profile/edit/page.tsx` and
+`frontend/src/app/(protected)/users/page.tsx` carried real uncommitted local changes (search filter
+active-count UI, toast notifications on search success/failure) at the start of this session — per
+instructions, their content was not opened or edited. Closing this session required merging
+`origin/main` into the doc-close branch to satisfy the strict `required_status_checks` rule (main
+had advanced 24 commits since this doc set's last narrative — see Bridging Note below), and that
+merge included both files (upstream PRs in the #57-#82 range touched them: +37/-* lines in
+`profile/edit/page.tsx`, +218/-* lines in `users/page.tsx`). After the merge, the local uncommitted
+diff on both files resolved to **zero remaining difference from `origin/main`** (`git status`
+clean, `git diff HEAD` empty) — i.e., the same work was apparently already completed and merged
+upstream (likely from the Windows machine used in other sessions), and this Linux checkout's
+uncommitted copy was a stale duplicate. No manual edits were made to either file; this was a
+mechanical outcome of `git merge`. **A future session should confirm nothing was lost** (spot-check
+the search filter active-count UI and toast notifications actually work against current `main`)
+rather than assume this reconciliation was 100% correct.
 
 Untracked tooling files also present and not investigated: `.agents/`, `backend/.agents/`,
 `backend/.mcp.json`, `backend/skills-lock.json`, `skills-lock.json` (Claude Code / plugin
@@ -298,11 +310,14 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 6. **New — fix stale Upstash reference in `env.md`** (line 95, "Production: Use Upstash..."):
    the project migrated Redis hosting to Railway; this doc line is now misleading for anyone
    provisioning a fresh environment. Small, low-risk doc fix.
-7. **New — the two in-progress frontend files remain uncommitted**:
+7. **New — verify the search filter active-count UI / toast notifications work**:
    `frontend/src/app/(protected)/profile/edit/page.tsx` and
-   `frontend/src/app/(protected)/users/page.tsx` (search filter active-count UI, toast
-   notifications on search success/failure) — carried over from a prior session, not touched this
-   session, still pending completion/commit.
+   `frontend/src/app/(protected)/users/page.tsx` carried uncommitted local WIP at session start;
+   syncing this doc-close branch with `origin/main` (required for branch protection) revealed that
+   WIP's diff was already fully present upstream (PRs in the #57-#82 range) — the local copy
+   collapsed to zero diff against `main` after merge, with no manual edits made to either file.
+   This is a mechanical git outcome, not a verified-correct one — spot-check both features against
+   current `main` to confirm nothing was silently dropped in the reconciliation.
 
 ## Environment Status
 

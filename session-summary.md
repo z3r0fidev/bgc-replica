@@ -48,19 +48,29 @@ None (application code). Local-only, gitignored/untracked paths touched: `backen
    traffic must go through the public proxy.
 3. **Do not touch the two pre-existing in-progress frontend files**
    (`profile/edit/page.tsx`, `users/page.tsx`) — real work from a prior session, out of scope for
-   an environment-repair session.
+   an environment-repair session. (Neither file was opened or edited during the fix work above.
+   They were later swept into the required `origin/main` merge for this doc-close PR — see below.)
 4. **Nothing to commit for the fixes themselves**: confirmed via `git ls-files` that every path
    touched is gitignored/untracked; discussed explicitly with the user, who agreed.
+5. **Merged `origin/main` into the doc-close branch** (24 commits, PRs #57-#82) purely to satisfy
+   the repo's strict `required_status_checks` branch-protection rule, which requires a PR branch to
+   be up to date with `main` before merge. This pulled in unrelated upstream work; not reviewed in
+   depth by this session (see Bridging Note in `session-context.md`).
 
 ### Outstanding Tasks / Follow-Up Items
 
 - [ ] `env.md` line 95 still recommends Upstash for production Redis — stale since the Railway
       migration; small follow-up doc fix, out of scope this session.
-- [ ] The two in-progress frontend files remain uncommitted (search filter active-count UI, toast
-      notifications) — carried over, not part of this session.
+- [ ] **Verify the two previously-"in-progress" frontend files are actually complete**: merging
+      `origin/main` into the doc-close branch required stashing their uncommitted local changes,
+      merging, then popping the stash — it applied with zero resulting diff against `main`,
+      meaning the same work (search filter active-count UI, toast notifications) appears to already
+      be merged upstream (likely from the Windows machine used in other sessions). This was a
+      mechanical git outcome, not independently verified — spot-check both features work correctly.
 - [ ] All items carried forward from the 2026-07-03 session below (search-advanced dropdown bug,
       residual WebKit flakiness, NUL-byte/surrogate audit, dedicated E2E DB, nightly stress tests)
-      remain open and untouched.
+      may already be resolved by PRs #57-#59 in the interim — verify against current `main` before
+      assuming still open (see Bridging Note in `session-context.md`).
 
 ### Blockers / Challenges
 

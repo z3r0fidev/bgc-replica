@@ -1680,14 +1680,34 @@ verification, not left running.
 **Nothing committed for the fixes themselves** — every file touched (`backend/.env`,
 `backend/venv/`, `frontend/node_modules/`, `frontend/.next/`) is gitignored/untracked, confirmed
 via `git ls-files` and `git status`. Explicitly discussed with the user, who agreed there was
-nothing to commit. Only this session-close docs update lands as a commit on `main`.
+nothing to commit. Only a session-close docs commit (PR #83, branch
+`docs/session-close-env-repair`) lands from this session — no application code changed by this
+session's own hand.
 
-### Pre-existing State Noticed but Not Touched
+**Branch-protection required an `origin/main` merge into the doc-close branch**: `main`'s
+`required_status_checks` is `strict`, meaning a PR branch must be up to date with `main` before its
+checks are considered satisfied. By the time this session opened its doc-close PR, `main` had
+advanced 24 commits (PRs #57-#82) past the `b1a9e2e` tip this doc set's detailed narrative was
+written against — merged by other sessions/machines, not reviewed in depth here. `git merge
+origin/main` was run on the doc-close branch to resolve this (see Pre-existing State note below for
+a complication this surfaced).
+
+### Pre-existing State Noticed, Not Manually Touched — but Reconciled by a Required Merge
 
 - `frontend/src/app/(protected)/profile/edit/page.tsx` and
-  `frontend/src/app/(protected)/users/page.tsx` have real uncommitted work in progress from a
-  prior session (search filter active-count UI, toast notifications on search success/failure) —
-  left as-is, out of scope for this session.
+  `frontend/src/app/(protected)/users/page.tsx` had real uncommitted local work in progress at
+  session start (search filter active-count UI, toast notifications on search success/failure).
+  Per instructions, neither file's content was opened or edited directly. However, merging
+  `origin/main` into the doc-close branch (required for branch protection, see above) touched both
+  files, and `git merge` reported they'd conflict with the stashed local changes. The local changes
+  were stashed, the merge completed, then the stash was popped — and it applied with **zero
+  resulting diff against the merged `origin/main`**, meaning the same work already exists upstream
+  (PRs in the #57-#82 range: +37/-* lines in `profile/edit/page.tsx`, +218/-* in `users/page.tsx`),
+  most likely already committed and merged from the Windows machine used in other sessions, with
+  this Linux checkout's copy being a stale uncommitted duplicate. This was a mechanical git outcome
+  (3-way merge + stash pop), not a manual edit — but it is unverified: a future session should
+  spot-check that both features (active-count UI, toast notifications) actually work against
+  current `main` before assuming the reconciliation was fully correct.
 - Untracked tooling files present: `.agents/`, `backend/.agents/`, `backend/.mcp.json`,
   `backend/skills-lock.json`, `skills-lock.json` — Claude Code / plugin scaffolding, not
   gitignored but harmless and not blocking anything, not investigated further.
@@ -1697,11 +1717,13 @@ nothing to commit. Only this session-close docs update lands as a commit on `mai
 
 ### Session Statistics
 
-- **Files Modified (app code)**: 0
+- **Files Modified (app code)**: 0 (by this session's own hand — see required-merge note above for
+  the mechanical reconciliation of two files already in progress before this session started)
 - **Files Created**: 0
 - **Local environment fixed**: `backend/venv` (recreated for Linux), `backend/.env` (`REDIS_URL`
   → Railway), `frontend/node_modules/.bin/*` (permissions), `frontend/.next/` (cache cleared)
-- **PRs Merged**: 0
+- **PR opened**: #83 (docs-only, `docs/session-close-env-repair`)
+- **Upstream commits pulled in via required merge, not authored by this session**: 24 (PRs #57-#82)
 - **Commits**: 1 (this session-close docs update)
 
 ---
