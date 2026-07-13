@@ -1,12 +1,120 @@
 # Session Context
 
-**Last Updated**: 2026-07-12 (Session Closing — local dev environment repair, no code changes)
+**Last Updated**: 2026-07-13 (Session Closing — Moderation Warning System merged (#65/PR #85), Celery worker production incident fixed (PR #86 + #87), DB partitioning (#66) investigated and deliberately paused)
 **Current Branch**: `main`
-**Session Status**: Closed — diagnostic/infrastructure session only. Repaired a broken local dev environment on a new Linux workstation (repo lives in a Synology Drive sync folder); no application source code touched. No PR — all fixes live in gitignored/untracked local state.
+**Session Status**: Closed. Three distinct pieces of work, not to be conflated: (1) Issue #65's full moderation warning system — planned, implemented, tested, merged (PR #85); (2) a production incident found while starting to plan #66 — Celery had never run in production, fixed in two follow-up PRs (#86, #87), higher priority than the feature work in progress; (3) Issue #66 (DB partitioning) investigated in depth but implementation was deliberately paused before any code was written — no plan file saved, resuming requires re-running the investigation or reviewing this session's transcript.
 
 ## Current State
 
-### Latest Session — Local Dev Environment Repair (Linux workstation, no app code changes)
+### Latest Session — Warning System (#65, PR #85), Celery Worker Production Incident (PR #86 + #87), DB Partitioning (#66) Investigation Paused
+
+#### 1. Issue #65 — Moderation Warning System (planned → implemented → merged, PR #85, merge `583d7e0`, feature commit `1f52f06`)
+
+Full plan-mode cycle (Explore agents + a Plan agent + premium-ux-designer/premium-ui-designer agents
+for the UI/UX pass — this was the only one of four open issues with a real UI surface).
+
+- **New `user_warnings` table** (dedicated, not folded into the generic `admin_action_logs` audit
+  table) so escalation-count queries stay fast. Configurable threshold
+  (`WARNING_ESCALATION_THRESHOLD`, default 3) auto-suspends via the same fields `suspend_user`
+  already sets; `WARNING_ESCALATION_SUSPEND_HOURS` (default 168h) controls duration.
+- Two issuance paths — report-resolution's previously-stubbed `warn_user` action, and a new direct
+  "Issue Warning" action on the admin user detail page — both funnel through one shared
+  `warning_service.issue_warning()`.
+- **Bug fix riding along**: `resolve_report`'s `warn_user`/`ban_user` had no way to resolve a target
+  user for non-`USER` report types (`THREAD`/`POST`/`STATUS`) — added
+  `_resolve_report_target_user_id()`.
+- Email notification via the existing Resend/Celery pattern (`send_warning_email_task`).
+- New frontend: `frontend/src/components/admin/WarningEscalationMeter.tsx` (sm/md/lg,
+  amber→orange→destructive ramp, deliberately reusing this app's existing Suspended/Banned status
+  colors) and `WarningHistoryList.tsx`. Verified visually in light/dark mode via a temporary
+  unauthenticated preview route — created, screenshotted, then deleted before commit, never shipped.
+- **Testing**: 22 backend tests in `backend/tests/test_warnings.py` (all passing against an isolated
+  Postgres/Redis container pair, never against the real Supabase DB for test runs), Playwright E2E
+  additions in `frontend/tests/e2e/admin.spec.ts`, migration upgrade/downgrade verified against a
+  throwaway Postgres 17 container before being applied to the real Supabase database (explicit user
+  sign-off, since that's a shared-database action).
+- Full plan/task breakdown preserved at `specs/014-moderation-warning-system/` (plan.md + tasks.md,
+  all 27 tasks marked complete) — this repo's existing spec-kit convention.
+- **Merge note**: non-required checks (2 pre-existing flaky Playwright specs unrelated to this work,
+  an advisory codecov threshold) were failing at merge time; only the required `quality-check` check
+  gates this repo's branch protection, and it passed — merged deliberately with user confirmation
+  after confirming the failures were pre-existing/unrelated (later independently reconfirmed: a
+  later rerun of the same Playwright shards against `main` passed cleanly).
+
+#### 2. Celery Worker Production Incident (discovered while starting to plan #66, fixed immediately as higher priority — PR #86 merge `6f2ff6e`/commit `5964c28`, PR #87 merge `5bcd5b9`/commit `f8f5c81`)
+
+**Celery has never actually run in production.** While researching #66, investigation surfaced that
+only one Railway service (`bgc-replica`, the web process) existed — the `Procfile`'s `worker:` line
+was never wired to a deployed service. Confirmed via `LLEN celery` on the Redis broker sitting stuck
+at a non-zero, non-draining count, and via `railway logs`/`railway status` showing no worker service.
+Every `.delay()`'d Celery task — verification emails, password-reset emails, feed fan-out, and the
+new warning emails from #65 — was queuing into Redis and never executing.
+
+- **PR #86** (`fix(deploy): route Celery worker start command via RAILWAY_SERVICE_NAME`): created a
+  new `celery-worker` Railway service (user explicitly confirmed each production-infra-touching
+  step given this is billed infrastructure — service creation, env var copying, Resend config
+  values, `APP_URL`), fixed its Root Directory (a fresh service defaults to the monorepo root and
+  fails to build), and added `backend/start.sh`, which branches on Railway's auto-injected
+  `RAILWAY_SERVICE_NAME` env var — because a dashboard-set Custom Start Command is silently
+  overridden by `railway.json`'s checked-in `startCommand`, which isn't documented anywhere obvious.
+  Removed the now-fully-dead `backend/Procfile` (confirmed unused by any CI workflow or local
+  tooling) and updated `DEPLOYMENT_GUIDE.md` to match reality.
+- **PR #87** (`fix(deploy): remove shared HTTP healthcheck blocking celery-worker deploys`):
+  `railway.json`'s `healthcheckPath: /healthz` was being applied to `celery-worker` too even though
+  it has no HTTP server, causing every deploy to fail after 11 failed healthcheck retries over 5
+  minutes — even though the worker process itself was running correctly and had already processed a
+  queued task during that window (confirmed via deploy logs, not just inferred). Removed
+  `healthcheckPath`/`healthcheckTimeout` from the shared config entirely (no per-service conditional
+  config exists in `railway.json`).
+- Also discovered and fixed: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `APP_URL` were never set in
+  Railway's production environment at all (only in local `backend/.env`) — set on both services via
+  `railway variable set`, piped directly between commands so secret values never appeared in any
+  tool output/transcript.
+- Fully verified end-to-end post-fix: `celery-worker` deploy status `SUCCESS`, worker logs show
+  correct startup banner and full task registry (`fan_out_post`, `send_verification_email_task`,
+  `send_password_reset_email_task`, `send_warning_email_task`), and `LLEN celery` confirmed drained
+  from 1 to 0.
+- **Known unresolved gap, not fixable from the codebase**: Resend reported "the bgclive.online domain
+  is not verified" when the worker attempted a real send. **This needs DNS verification in the
+  Resend dashboard** — a real open item, not something this session left broken in code.
+
+#### 3. Issue #66 (DB Partitioning) — investigated deeply, implementation deliberately paused
+
+Before the Celery incident took priority, extensive investigation (via a database-optimizer agent
+plus direct verification) found:
+- `messages` was already partitioned by `created_at` back in December 2025, but the automation to
+  create new monthly partitions was never built — every message since January 2026 has been
+  silently landing in a single `messages_default` catch-all partition, defeating the whole point.
+  This is itself an urgent pre-existing bug independent of whether #66's broader scope proceeds.
+- The same December 2025 migration also silently dropped FK constraints
+  (`room_id`/`conversation_id`/`sender_id` on `messages`) and an index (`ix_messages_sender_id`)
+  that were never restored — a second, independent data-integrity bug found riding along on the
+  same migration.
+- `status_updates` was never partitioned at all.
+- The app's actual hot-path queries (chat history filtered by `conversation_id`/`room_id`; feed reads
+  via Redis fan-out then a Postgres `id IN (...)` fetch) don't filter by date — so partitioning by
+  `created_at` won't speed up those queries. Value is in table maintenance/vacuum at scale, analytics
+  queries, and future data retention/archival, not per-query latency. User was informed of this
+  explicitly and chose to proceed with the full scope anyway (fix the messages bug + partition
+  status_updates too) once work resumes.
+- A full concrete implementation plan exists (migration sequencing, a generic
+  `create_monthly_partition()` PL/pgSQL function, Celery-Beat-based automation recommendation over
+  pg_cron, a backfill strategy for the `messages_default` catch-all, model reconciliation for the
+  composite `(id, created_at)` PK, two `db.get(StatusUpdate, ...)` call sites in
+  `backend/app/api/moderation.py` that would break and need fixing, a rollback runbook, and explicit
+  infra-decision flags for the user) — captured in the agent's plan output during this session but
+  **not written to a plan file or specs/ directory** since work was paused before reaching that
+  point. **This means resuming #66 should re-run the planning/investigation (or at least review this
+  session's transcript/summary) rather than assuming a saved artifact exists to pick up from.**
+
+### Bridging Note — PR #84 (env.md Redis doc fix, landed between last doc update and this session)
+
+`docs: update env.md Redis guidance from Upstash to Railway` (merge `89d8464`) — closed the stale
+Upstash reference flagged in the 2026-07-12 session below (`env.md` line 95). Docs-only, no code
+affected. This is the fix for the "New — fix stale Upstash reference in `env.md`" item that appears
+in this file's Next Session Priorities/Notes sections further down.
+
+### Previous Session — Local Dev Environment Repair (Linux workstation, no app code changes)
 
 Purely diagnostic session: get local dev working on a Linux machine after apparent breakage. No
 feature work, no bugfix to app code, nothing merged.
@@ -97,7 +205,7 @@ from the PR #55 session — **not independently verified by this session**:
 **Next session should re-verify priorities #1 and #3 below against current `main` before assuming
 they're still open** — this session did not run the E2E suite or audit the query-param fix.
 
-### Previous Session — E2E CSP, Rate Limits, CORS & Production DB Migration (PR #55)
+### Earlier Session — E2E CSP, Rate Limits, CORS & Production DB Migration (PR #55)
 
 PR #55 (`b1a9e2e`, branch `fix/e2e-csp-and-rate-limits`) was a large E2E-reliability and
 production-hardening session. Merged via standard merge commit (not squash, matching repo
@@ -252,22 +360,45 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 - `frontend/tests/e2e/auth-google.spec.ts` — replaced 30s unbounded `waitForRequest` with 5s timeout + null-safe assertion branches
 
 ### Repository Health
-- **Branch**: `main`, local synced to `b1a9e2e` (merge commit for PR #55) as of this content's
-  writing; `origin/main` has since advanced to `771ba2a` (PR #82) — see Bridging Note above
-- **CI Status**: All required checks green (`quality-check` × 3, `changes`, `codecov/patch`,
-  `frontend-check`, `backend-check`, Vercel). E2E Tests (Playwright shards) is informational-only,
-  not a required branch-protection check.
-- **Railway**: Merging to `main` triggers a REAL `deploy-backend.yml` `deploy` job (only runs on
-  `refs/heads/main`) — this fired as expected right after the PR #55 merge.
-- **Production DB**: Migrated for the first time this session (`alembic upgrade head` run directly
-  against production Supabase) — all 33 tables now exist. Previously the schema was completely
-  empty despite `/health` reporting OK.
+- **Branch**: `main`, local synced to `5bcd5b9` (merge commit for PR #87) as of this content's
+  writing — the most recent app-code change on `main`.
+- **CI Status**: `quality-check` is the only literal required branch-protection status check
+  (confirmed via `gh api .../branches/main/protection`) and was green on PRs #85, #86, #87. A known
+  non-blocking flake (`totp_secret`-related CI failure) was investigated this session — reproduced
+  CI's exact environment locally and everything passed, so it's likely a GitHub Actions
+  runner/pip-cache-specific quirk, not a real bug. See Notes for Next Session below.
+- **Railway**: now runs **two** services from this repo — `bgc-replica` (web, unchanged) and the
+  newly-created `celery-worker` (added this session, PR #86/#87). Both share `backend/railway.json`;
+  `backend/start.sh` branches on `RAILWAY_SERVICE_NAME` to pick the right start command per service.
+  `backend/Procfile` is deleted — no longer referenced anywhere.
+- **Celery**: confirmed actually processing tasks in production for the first time ever as of this
+  session (`LLEN celery` drained 1 → 0, worker logs show full task registry). **Resend email
+  sending itself is still blocked** — "bgclive.online domain is not verified" — needs DNS
+  verification in the Resend dashboard, not a code fix.
+- **Production DB**: still on the schema from the 2026-07-03 migration (33 tables) plus this
+  session's new `user_warnings` table (PR #85 migration, verified upgrade/downgrade against a
+  throwaway Postgres 17 container before applying to Supabase). The `messages` table's monthly
+  partition automation gap (see #66 investigation above) is **still unfixed** — every message since
+  January 2026 is landing in `messages_default`; this was investigated, not remediated.
 - **Working tree**: untracked `.agents/`, `.claude/skills/`, `backend/.agents/`, `backend/.mcp.json`,
-  `backend/skills-lock.json`, `skills-lock.json` (skill/MCP tooling artifacts, not app code)
-- **SafeBaseModel coverage**: Complete for `search.py`'s query params this session; `chat.py`,
-  `admin.py`, `groups.py`, `moderation.py` still need the same NUL-byte/surrogate audit (see below)
+  `backend/skills-lock.json`, `skills-lock.json` (skill/MCP tooling artifacts, not app code) — same
+  as prior sessions, still not investigated/committed.
+- **SafeBaseModel coverage**: still incomplete for `chat.py`, `admin.py`, `groups.py`,
+  `moderation.py` query params — carried forward again this session, not touched.
 
 ## Current Objectives
+
+### Completed (as of 2026-07-13)
+- [x] Issue #65 — full moderation warning system planned, implemented, tested, and merged (PR #85,
+      merge `583d7e0`). 27/27 spec tasks complete at `specs/014-moderation-warning-system/`.
+- [x] Celery worker production incident found and fully fixed (PR #86, PR #87) — a `celery-worker`
+      Railway service now exists, deploys successfully, and is confirmed draining the task queue.
+      Missing `RESEND_API_KEY`/`RESEND_FROM_EMAIL`/`APP_URL` production env vars also set.
+- [x] Issue #66 (DB partitioning) investigated in depth (two real pre-existing bugs found: the
+      `messages_default` catch-all and dropped FK/index) — implementation deliberately **not**
+      started; see paused-work note above before resuming.
+- [x] PR #84 merged in the interim (`env.md` Upstash → Railway doc fix) — closes an item that was
+      open in the previous session's Next Session Priorities.
 
 ### Completed (as of 2026-07-12)
 - [x] Local dev environment repaired on a new Linux workstation: Windows venv replaced with a
@@ -288,36 +419,52 @@ The single reliable interception point is the **Pydantic validation layer** (bef
       fastapi version pin) — see bridging note above
 
 ### Next Session Priorities
-1. **`search-advanced.spec.ts` "should apply filters and update results"** *(possibly already fixed
+1. **New, urgent — Resend domain verification**: `bgclive.online` is not verified in the Resend
+   dashboard, so even though the Celery worker is now correctly processing tasks in production,
+   actual email sends (verification, password reset, warnings) still fail at the Resend API level.
+   This is a dashboard/DNS action, not a code fix — flagged clearly so it isn't mistaken for
+   something this session left broken.
+2. **New — resume Issue #66 (DB partitioning) from scratch**: implementation was deliberately
+   paused before any plan file was written. Two real pre-existing bugs were found along the way and
+   are still unfixed: (a) `messages` has been silently landing in the `messages_default` catch-all
+   partition since January 2026 because monthly-partition-creation automation was never built, and
+   (b) the same December 2025 migration dropped FK constraints
+   (`room_id`/`conversation_id`/`sender_id`) and `ix_messages_sender_id` on `messages`, never
+   restored. A future session should re-run the investigation (a database-optimizer agent pass) or
+   review this session's transcript rather than assume a saved plan exists — nothing was written to
+   `specs/`. User has already agreed to the full scope (fix `messages` + partition `status_updates`)
+   once work resumes.
+3. **New, non-blocking — `totp_secret` CI flakiness**: investigated this session; root cause not
+   found. CI's exact environment was reproduced locally and everything passed, so it's likely a
+   GitHub Actions runner/pip-cache-specific quirk rather than an app bug. Not something this session
+   left broken — just unresolved.
+4. **`search-advanced.spec.ts` "should apply filters and update results"** *(possibly already fixed
    by PR #57 — verify against current `main` before spending time on this)*: the Ethnicity/Position
    dropdown's option list stops appearing after selecting the first filter
    (`getByRole('option', {name: 'Black'})` times out). Needs Playwright UI mode or trace viewer to
    diagnose (curl can't drive client-rendered React).
-2. **Residual WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari went from
+5. **Residual WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari went from
    100%-deterministic failure to intermittent after the DB migration fix, but aren't fully
    resolved. Likely Playwright-WebKit-on-Linux-CI environmental flakiness rather than an app bug.
    *(PR #59 in the interim claims to improve WebKit/mobile-safari stability — verify.)*
-3. **NUL-byte/surrogate query-param validation audit** *(possibly already fixed by PR #58 —
+6. **NUL-byte/surrogate query-param validation audit** *(possibly already fixed by PR #58 —
    verify against current `main` before spending time on this)*: the same class of bug fixed in
    `search.py` this session (query params bypassing `SafeBaseModel`) likely existed in `chat.py`'s
    `category` param, `admin.py`'s `query`/`action` params, `groups.py`'s `query` param, and
    `moderation.py`'s `status_filter`/`content_type` params.
-4. **Consider a dedicated non-production backend/database for E2E**: flagged in an earlier session
-   too. The production-DB-never-migrated incident this session is a strong argument — E2E currently
-   shares fate with production data/schema.
-5. Carried forward, still non-blocking: move CI-skipped E2E stress tests to a nightly workflow,
+7. **Consider a dedicated non-production backend/database for E2E**: flagged in an earlier session
+   too. The production-DB-never-migrated incident is a strong argument — E2E currently shares fate
+   with production data/schema.
+8. Carried forward, still non-blocking: move CI-skipped E2E stress tests to a nightly workflow,
    `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` secrets (may already be wired via PR #47 — verify).
-6. **New — fix stale Upstash reference in `env.md`** (line 95, "Production: Use Upstash..."):
-   the project migrated Redis hosting to Railway; this doc line is now misleading for anyone
-   provisioning a fresh environment. Small, low-risk doc fix.
-7. **New — verify the search filter active-count UI / toast notifications work**:
+9. **Verify the search filter active-count UI / toast notifications work**:
    `frontend/src/app/(protected)/profile/edit/page.tsx` and
-   `frontend/src/app/(protected)/users/page.tsx` carried uncommitted local WIP at session start;
-   syncing this doc-close branch with `origin/main` (required for branch protection) revealed that
-   WIP's diff was already fully present upstream (PRs in the #57-#82 range) — the local copy
-   collapsed to zero diff against `main` after merge, with no manual edits made to either file.
-   This is a mechanical git outcome, not a verified-correct one — spot-check both features against
-   current `main` to confirm nothing was silently dropped in the reconciliation.
+   `frontend/src/app/(protected)/users/page.tsx` carried uncommitted local WIP at a previous
+   session's start; a required `origin/main` merge revealed that WIP's diff was already fully
+   present upstream — the local copy collapsed to zero diff against `main`, with no manual edits
+   made to either file. This is a mechanical git outcome, not a verified-correct one — spot-check
+   both features against current `main` to confirm nothing was silently dropped in the
+   reconciliation. (Carried forward again — not touched this session.)
 
 ## Environment Status
 
@@ -325,18 +472,20 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 - Backend: FastAPI on http://localhost:8000
 - Frontend: Next.js on http://localhost:3000
 - Database: PostgreSQL (async via asyncpg, Supabase-hosted)
-- Redis: Railway-hosted (migrated off Upstash; see 2026-07-12 session note above). Local dev
+- Redis: Railway-hosted (migrated off Upstash; `env.md` corrected in PR #84). Local dev
   connects via Railway's public proxy URL (`redis://default:***@reseau.proxy.rlwy.net:31149`),
   not the internal `redis.railway.internal` hostname, which only resolves inside Railway's network.
 - Socket.io: Real-time chat, comments, presence
-- Celery: Async email delivery worker
+- Celery: Async email delivery worker — **now actually running in production** as of this session
+  (`celery-worker` Railway service, PR #86/#87). Real sends still blocked on Resend domain
+  verification (`bgclive.online`) — see Next Session Priorities above.
 
 ### Branch & Git State
 - Active branch: `main`
-- Last app code this session's docs were written against: `b1a9e2e` (PR #55). `origin/main` has
-  since advanced 24 commits to `771ba2a` (PR #82) via other sessions not reflected in this file's
-  detailed narrative — see Bridging Note above.
-- This session (2026-07-12) added only a doc-close commit (PR #83) on top; no app code changed
+- Local synced to `5bcd5b9` (merge commit for PR #87) as of this content's writing.
+- This session added: PR #84 (env.md doc fix, small, landed before this session's main work
+  started), PR #85 (moderation warning system, feature), PR #86 + PR #87 (Celery worker production
+  fix), plus this doc-close PR on top.
 - Remote: https://github.com/z3r0fidev/bgc-replica
 
 ### Local Machine Notes (multi-machine setup)
@@ -353,6 +502,51 @@ The single reliable interception point is the **Pydantic validation layer** (bef
   corruption.
 
 ## Key Decisions
+
+### Warning System Architecture (PR #85)
+1. **Dedicated `user_warnings` table over piggybacking `admin_action_logs`**: escalation-count
+   queries (how many active warnings does this user have) need to stay fast and simple; a
+   general-purpose audit table would require filtering by action type on every read.
+2. **Single shared `warning_service.issue_warning()` for both issuance paths**: report-resolution's
+   `warn_user` action and the admin user detail page's direct "Issue Warning" button both call the
+   same function — avoids duplicated escalation/email logic.
+3. **Reuse existing suspension fields for auto-escalation**: `WARNING_ESCALATION_THRESHOLD`
+   breaches call the same fields `suspend_user` already sets, rather than inventing a parallel
+   suspension mechanism.
+4. **Fix `_resolve_report_target_user_id()` as part of this work, not deferred**: without it,
+   warning/banning from a `THREAD`/`POST`/`STATUS` report would have silently no-op'd — a
+   pre-existing correctness gap directly blocking this feature's report-driven path.
+5. **Temporary unauthenticated preview route for visual QA, deleted before commit**: needed to see
+   `WarningEscalationMeter`/`WarningHistoryList` in light/dark mode without a full authenticated
+   flow; never shipped.
+
+### Celery Production Fix Architecture (PR #86 + #87)
+1. **`RAILWAY_SERVICE_NAME`-branching `start.sh` over per-service dashboard Custom Start Command**:
+   the dashboard setting is silently overridden by `railway.json`'s checked-in `startCommand` —
+   confirmed empirically, not documented by Railway anywhere obvious. A single script shared by both
+   services, branching on Railway's own auto-injected env var, is more robust than depending on a
+   dashboard field that can silently lose to config-as-code.
+2. **Delete `Procfile` rather than leave it as dead documentation**: confirmed unused by any CI
+   workflow or local tooling first; leaving a stale `worker:` line that nothing reads would mislead
+   the next person into thinking the worker was already wired up (as this session initially assumed
+   until proven otherwise).
+3. **Remove `healthcheckPath` from the shared `railway.json` entirely, not scope it**: Railway's
+   config format has no per-service conditional block, so a shared HTTP healthcheck can never
+   correctly apply only to `bgc-replica`. `bgc-replica` falls back to Railway's default TCP-level
+   check, which is sufficient.
+4. **Production secrets piped directly between commands, never printed**: `RESEND_API_KEY` etc. set
+   via `railway variable set` with values piped straight in — the permission classifier correctly
+   blocked a couple of attempts that would have exposed them (a truncated/redacted print, a
+   diagnostic probe write); each time the session either found a non-printing path or asked the user
+   to name the exact value/action before proceeding.
+
+### DB Partitioning (#66) — decision to pause, not a technical decision about the schema
+User was explicitly told partitioning `messages`/`status_updates` by `created_at` will **not**
+speed up the app's actual hot-path queries (chat history is filtered by `conversation_id`/`room_id`;
+feed reads don't filter by date at all) — the benefit is table maintenance/vacuum at scale and
+future analytics/retention, not per-query latency. User chose to proceed with the full scope anyway
+once work resumes; this session paused purely because the Celery incident took priority, not because
+of any doubt about the plan's soundness.
 
 ### SafeBaseModel Architecture (PR #42)
 1. **Pydantic layer as single guard**: Chosen over asyncpg-level patch because it catches all
@@ -376,6 +570,25 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 ## Notes for Next Session
 
 ### Important Context
+- **Resend domain verification is the one real open gap from this session**: `bgclive.online` is
+  not verified in the Resend dashboard, so emails still fail to actually send even though Celery is
+  now correctly processing the tasks that queue them. This is an external dashboard/DNS action, not
+  a code TODO — do not spend time debugging the Celery/worker code path for this.
+- **`totp_secret` CI flakiness is non-blocking and already investigated**: root cause not found;
+  reproducing CI's exact environment locally passed cleanly, pointing at a GitHub Actions
+  runner/pip-cache-specific quirk. Don't assume it's a real bug without new evidence.
+- **Issue #66 (DB partitioning) has no saved plan file** — the investigation this session (via a
+  database-optimizer agent) found two real, currently-unfixed bugs (`messages_default` catch-all
+  silently absorbing all messages since January 2026; dropped FK constraints/index on `messages`
+  from the December 2025 migration) plus confirmed `status_updates` was never partitioned. A future
+  session must re-investigate or read this session's transcript/summary before starting
+  implementation — nothing is saved under `specs/`.
+- **Railway now has two services sharing one config**: `bgc-replica` (web) and `celery-worker`
+  (added this session). Both read `backend/railway.json` and `backend/start.sh`; the start script
+  branches on `RAILWAY_SERVICE_NAME` to pick `uvicorn` vs. `celery worker`. Any future change to
+  `railway.json` needs to be sane for both services (this is exactly what broke `celery-worker`'s
+  healthcheck in PR #87 — a shared HTTP healthcheck path that only makes sense for the web service).
+  `backend/Procfile` no longer exists; do not recreate it as the source of truth for start commands.
 - `backend/app/schemas/base.py` holds `SafeBaseModel` and `_assert_safe_string`. ALL new write
   schemas must inherit `SafeBaseModel`. Dict-typed fields still require explicit inline validation
   in the endpoint (model_validator does not recurse into dict values).
@@ -407,7 +620,8 @@ The single reliable interception point is the **Pydantic validation layer** (bef
   means the schema exists; it only checks connectivity. If a fresh Railway/Supabase environment is
   ever provisioned again, run `alembic upgrade head` against it explicitly before assuming it works.
 - Railway CLI is authenticated as Z3r0fiDeV / viralkings215@gmail.com (project "BGCLive Backend",
-  workspace "Z3r0fiDeV's Projects", environment "production", services `bgc-replica` + `Redis`).
+  workspace "Z3r0fiDeV's Projects", environment "production", services `bgc-replica` + `Redis` +
+  `celery-worker` as of this session).
   This is a per-machine CLI login (`railway login`), re-authenticated on the Linux workstation this
   session via `railway link --project "BGCLive Backend"` — do not assume it's still linked on a
   machine where it hasn't been run.

@@ -187,8 +187,61 @@ bgc-replica/
     nightly stress-test workflow, E2E deployment targeting fix, community-feed/gallery-albums mock
     data shape fixes, admin route protection at the edge middleware layer, fastapi pinned <0.137.0
     to avoid an `_IncludedRouter` regression. See `git log --merges 9e6527e..656a523` for exact commits.
-16. **E2E CSP/Rate-Limit/CORS Hardening + Production DB Migration** (2026-07-03, PR #55, merge
-    commit b1a9e2e):
+**Bridging note — PR #84** (2026-07-12/13, merge `89d8464`): `docs: update env.md Redis guidance
+from Upstash to Railway` — closed the stale Upstash reference (line 95) flagged by the 2026-07-12
+local-dev-repair session below; docs now correctly point at Railway. Docs-only, no code affected.
+
+17. **Moderation Warning System** (2026-07-13, PR #85, merge `583d7e0`, feature commit `1f52f06`,
+    closes #65): full plan → implement → verify → merge cycle.
+    - New `user_warnings` table (dedicated, not folded into `admin_action_logs`) for fast
+      escalation-count queries. `WARNING_ESCALATION_THRESHOLD` (default 3) auto-suspends via the
+      same fields `suspend_user` sets; `WARNING_ESCALATION_SUSPEND_HOURS` (default 168h) controls
+      duration.
+    - Two issuance paths — report-resolution's `warn_user` action (previously a stub) and a new
+      direct "Issue Warning" admin action — both funnel through `warning_service.issue_warning()`.
+    - Fixed a related pre-existing bug: `resolve_report`'s `warn_user`/`ban_user` had no way to
+      resolve a target user for non-`USER` report types (`THREAD`/`POST`/`STATUS`); added
+      `_resolve_report_target_user_id()`.
+    - Email notification via the existing Resend/Celery pattern (`send_warning_email_task`).
+    - New frontend: `frontend/src/components/admin/WarningEscalationMeter.tsx` (amber→orange→
+      destructive ramp, reusing existing Suspended/Banned status colors) and
+      `WarningHistoryList.tsx`.
+    - 22 new backend tests (`backend/tests/test_warnings.py`), Playwright E2E additions in
+      `admin.spec.ts`, migration verified against a throwaway Postgres 17 container before applying
+      to production Supabase.
+    - Full spec at `specs/014-moderation-warning-system/` (27/27 tasks complete).
+18. **Celery Worker Production Incident Fix** (2026-07-13, PR #86 merge `6f2ff6e`/commit `5964c28`,
+    PR #87 merge `5bcd5b9`/commit `f8f5c81`): discovered while starting to plan #66 — Celery had
+    **never run in production**, only the web Railway service (`bgc-replica`) existed. Every
+    `.delay()`'d task (verification/reset/warning emails, feed fan-out) was queuing into Redis and
+    never executing (`LLEN celery` stuck non-zero, non-draining).
+    - Created a new `celery-worker` Railway service; added `backend/start.sh`, which branches on
+      Railway's auto-injected `RAILWAY_SERVICE_NAME` env var to run the correct process per service
+      (a dashboard Custom Start Command is silently overridden by `railway.json`'s checked-in
+      `startCommand`, undocumented behavior). Deleted the now-fully-dead `backend/Procfile`.
+    - `railway.json`'s `healthcheckPath: /healthz` was being applied to `celery-worker` too (no HTTP
+      server), failing every deploy after 11 failed retries over 5 minutes despite the worker
+      process itself running correctly. Removed `healthcheckPath`/`healthcheckTimeout` from the
+      shared config (no per-service conditional config exists in `railway.json`).
+    - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_URL` were never set in Railway production at all
+      (only in local `.env`) — set on both services via `railway variable set`.
+    - Verified end-to-end: `celery-worker` deploy `SUCCESS`, full task registry in logs, `LLEN
+      celery` drained 1 → 0.
+    - **Known open gap**: Resend reports `bgclive.online` domain not verified — real sends still
+      blocked pending DNS verification in the Resend dashboard (not a code issue).
+19. **Issue #66 (DB Partitioning) — investigated, implementation paused**: a database-optimizer
+    agent pass plus direct verification found `messages` was partitioned by `created_at` in December
+    2025 but monthly-partition-creation automation was never built — every message since January
+    2026 has landed in a single `messages_default` catch-all, defeating the point. The same
+    migration also silently dropped FK constraints (`room_id`/`conversation_id`/`sender_id`) and
+    `ix_messages_sender_id` on `messages`, never restored. `status_updates` was never partitioned.
+    Hot-path queries (chat by `conversation_id`/`room_id`; feed via Redis fan-out + `id IN (...)`)
+    don't filter by date, so partitioning won't speed up per-query latency — value is in
+    maintenance/vacuum at scale and future retention/archival. User informed and agreed to proceed
+    with full scope once resumed. **No plan file was written to `specs/`** — work paused when the
+    Celery incident took priority. Resuming requires re-investigation, not resuming a saved artifact.
+
+### Earlier — E2E CSP/Rate-Limit/CORS Hardening + Production DB Migration (2026-07-03, PR #55, merge commit b1a9e2e)
     - `frontend/next.config.ts` CSP `connect-src` allowlists `https://*.up.railway.app` /
       `wss://*.up.railway.app` — previously blocked Socket.io's `wss://` connection to the Railway
       backend in real deployments (confirmed via browser console CSP violations)
@@ -217,6 +270,10 @@ bgc-replica/
     - E2E health: ~384 tests near-total-failure → 60-73/65-76 passing per shard
 
 ### Recent Commits (chronological, newest first)
+- **5bcd5b9** (2026-07-13): Merge pull request #87 fix(deploy): remove shared HTTP healthcheck blocking celery-worker deploys
+- **6f2ff6e** (2026-07-13): Merge pull request #86 fix(deploy): route Celery worker start command via RAILWAY_SERVICE_NAME
+- **583d7e0** (2026-07-13): Merge pull request #85 feat(moderation): implement warning system with email notifications (closes #65)
+- **89d8464** (2026-07-12/13): Merge pull request #84 docs: update env.md Redis guidance from Upstash to Railway
 - **b1a9e2e** (2026-07-03): Merge pull request #55 fix(e2e): allow Railway origin in CSP, loosen rate limits for E2E load
 - **656a523** (2026-07-02): Merge pull request #53 fix(admin): protect /admin routes at the edge middleware layer
 - **ec8dde2** (2026-07-02): Merge pull request #54 fix: pin fastapi<0.137.0 to avoid the _IncludedRouter regression
@@ -243,24 +300,38 @@ bgc-replica/
 
 ### Active Branch
 - **Branch**: `main`
-- **HEAD**: `b1a9e2e` as of the detailed narrative above (PR #55); `origin/main` has since advanced
-  24 commits to `771ba2a` via PRs #57-#82, merged by other sessions not detailed here — see
-  `git log --merges 97c8e05..origin/main` and `session-context.md`'s Bridging Note for the list.
-- **Status**: 2026-07-12 session added only a doc-close commit (PR #83); no app code changed
+- **HEAD**: `5bcd5b9` (merge commit for PR #87) as of the detailed narrative above.
+- **Status**: This session shipped PR #85 (moderation warning system feature), PR #86 + #87 (Celery
+  worker production fix), plus PR #84 (small env.md doc fix) landed just before it. Issue #66 (DB
+  partitioning) was investigated but implementation was deliberately not started — no code changed
+  for #66 this session.
 
 ### Next Priorities
-1. **`search-advanced.spec.ts` dropdown bug**: Ethnicity/Position option list stops appearing after
+1. **New, urgent — verify the `bgclive.online` domain in the Resend dashboard.** Celery is now
+   correctly processing tasks in production for the first time, but Resend rejects real sends until
+   the domain is DNS-verified. This is the last step needed for verification/reset/warning emails to
+   actually reach users.
+2. **New — resume Issue #66 (DB partitioning)**: two real pre-existing bugs found but not fixed —
+   (a) `messages` has silently been landing in the `messages_default` catch-all partition since
+   January 2026 because monthly-partition automation was never built, (b) the December 2025
+   migration that partitioned `messages` also dropped FK constraints
+   (`room_id`/`conversation_id`/`sender_id`) and `ix_messages_sender_id`, never restored.
+   `status_updates` was never partitioned. No plan file exists yet — re-run the investigation
+   (database-optimizer agent) before implementing; see `session-context.md` for full detail.
+3. **New, non-blocking — `totp_secret` CI flakiness**: investigated, root cause not found (passes
+   locally in a reproduction of CI's exact environment); likely a GitHub Actions runner/pip-cache
+   quirk, not an app bug.
+4. **`search-advanced.spec.ts` dropdown bug**: Ethnicity/Position option list stops appearing after
    the first filter selection — needs Playwright UI mode/trace viewer, not curl, to diagnose.
-2. **WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari improved but not fully
+5. **WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari improved but not fully
    resolved after the production DB migration fix; may be Playwright-WebKit-on-Linux-CI flakiness.
-3. **NUL-byte/surrogate query-param audit**: extend the `search.py` fix to `chat.py`, `admin.py`,
+6. **NUL-byte/surrogate query-param audit**: extend the `search.py` fix to `chat.py`, `admin.py`,
    `groups.py`, `moderation.py` query params — same `SafeBaseModel`-bypass class of bug.
-4. **Consider a dedicated non-production backend/database for E2E** — this session's production-DB-
-   never-migrated incident is a strong argument; E2E currently shares fate with production data.
-5. **E2E stress tests**: Still CI-skipped — consider moving to a nightly scheduled workflow.
-6. Verify `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` are actually wired (PR #47 addressed this — confirm).
-7. **New (2026-07-12) — fix stale Upstash reference in `env.md`**: line 95 still recommends
-   Upstash for production Redis; the project has migrated to Railway. Small, low-risk doc fix.
+7. **Consider a dedicated non-production backend/database for E2E** — the production-DB-
+   never-migrated incident from an earlier session is a strong argument; E2E currently shares fate
+   with production data.
+8. **E2E stress tests**: Still CI-skipped — consider moving to a nightly scheduled workflow.
+9. Verify `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` are actually wired (PR #47 addressed this — confirm).
 
 ## Dependencies
 
@@ -389,9 +460,14 @@ bgc-replica/
 4. **Testing**:
    - E2E test coverage for personals posting incomplete (now in bgc-personals subproject)
    - E2E tests for 2FA login flow needed
-   - Email delivery testing in production environment
+   - Email delivery testing in production environment — **partially resolved 2026-07-13**: Celery
+     now actually runs in production and processes tasks correctly, but real Resend sends are still
+     blocked pending `bgclive.online` domain verification in the Resend dashboard
    - Admin dashboard load testing under concurrent access needed
    - Playwright E2E suite may contain flaky tests (excluded from merge requirements)
+   - `totp_secret`-related CI flakiness (non-blocking, investigated 2026-07-13, root cause not
+     found — reproduces CI's environment locally with no failure, likely a GitHub Actions
+     runner/pip-cache quirk)
 5. **Schema Coverage**:
    - Any new write schemas must inherit `SafeBaseModel` from `backend/app/schemas/base.py`
    - Any new endpoints writing `Dict` fields to JSONB must add inline key/value validation
@@ -412,8 +488,8 @@ bgc-replica/
    - Email delivery monitoring needed
    - 2FA adoption rate tracking needed
 8. **Local Environment / Multi-Machine Dev** (surfaced 2026-07-12):
-   - Redis hosting migrated from Upstash to Railway at some point, but `env.md` (line 95) still
-     recommends Upstash for production — stale, needs a doc fix
+   - ~~Redis hosting migrated from Upstash to Railway at some point, but `env.md` (line 95) still
+     recommends Upstash for production~~ — **fixed 2026-07-13, PR #84**
    - Development now happens from more than one machine (Windows + Linux); `backend/venv/` and
      `frontend/node_modules/` are gitignored/machine-specific, no repo conflict, but no Python
      version is pinned anywhere (no `.python-version`/`runtime.txt`/`python_requires`) — different
@@ -421,6 +497,18 @@ bgc-replica/
    - Repo is synced via Synology Drive on at least one machine; sync can transiently show large
      numbers of false "deleted" files in `git status` and can strip POSIX execute bits from
      `node_modules/.bin/*`, breaking `next dev` with "Permission denied" until `chmod +x`'d
+9. **Infrastructure / Deploy** (surfaced 2026-07-13):
+   - **Resend domain verification pending**: `bgclive.online` is not verified in the Resend
+     dashboard — real emails (verification, password reset, warnings) still fail to send even
+     though Celery now correctly processes the tasks that queue them. Needs action in the Resend
+     dashboard, not code.
+   - **`messages` table partition automation gap (found via #66 investigation, not yet fixed)**:
+     every message since January 2026 has landed in the `messages_default` catch-all partition
+     because monthly-partition-creation automation was never built after the December 2025
+     partitioning migration. The same migration also dropped FK constraints
+     (`room_id`/`conversation_id`/`sender_id`) and `ix_messages_sender_id` on `messages`, never
+     restored. `status_updates` was never partitioned at all. See `session-context.md` for the full
+     investigation writeup — no plan file exists yet in `specs/`.
 
 ## Subprojects
 

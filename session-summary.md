@@ -2,6 +2,173 @@
 
 ---
 
+## Session: 2026-07-13 — Moderation Warning System (#65, PR #85), Celery Worker Production Incident (PR #86 + #87), DB Partitioning (#66) Investigation Paused
+
+### Session Information
+- **Date**: 2026-07-13
+- **Duration**: Extended session (large scope — plan/implement/merge cycle + a production incident)
+- **Branch**: `main`
+- **PRs Merged**: #85 (`583d7e0`, branch `feat/65-moderation-warning-system`), #86 (`6f2ff6e`, branch
+  `fix/celery-worker-deploy`), #87 (`5bcd5b9`, branch `fix/celery-worker-healthcheck`). PR #84
+  (`89d8464`, small `env.md` doc fix) also landed just before this session's main work started and
+  is folded into this entry since the previous session's docs never captured it.
+- **HEAD after session**: `5bcd5b9`
+- **Focus**: Ship Issue #65 (moderation warnings) end-to-end; while researching Issue #66 (DB
+  partitioning), discover and fix a live production incident (Celery never running) as a
+  higher-priority interrupt; investigate #66 in depth but deliberately pause before implementing
+
+### High-Level Summary
+
+Three distinct pieces of work, kept clearly separate because they have different completion states.
+**(1) Issue #65 is done and shipped**: planned in plan-mode with Explore/Plan agents plus
+premium-ux-designer/premium-ui-designer for the UI pass (the only one of four open issues with a
+real UI surface), then implemented, tested, and merged as PR #85. A new `user_warnings` table backs
+two issuance paths (report-resolution's previously-stubbed `warn_user` action, and a new direct
+admin "Issue Warning" action) that both funnel through one shared `warning_service.issue_warning()`,
+with configurable auto-escalation to suspension. A related pre-existing bug
+(`resolve_report`'s `warn_user`/`ban_user` couldn't resolve a target user for non-`USER` report
+types) was fixed along the way. 22 new backend tests, new E2E coverage, and a migration verified
+against a throwaway Postgres container before touching production. **(2) A production incident is
+done and fixed**: while starting to research #66, investigation surfaced that Celery had never
+actually run in production — only the web Railway service existed, so every queued email/fan-out
+task was silently stuck in Redis forever. Fixed across PR #86 (new `celery-worker` Railway service,
+a `RAILWAY_SERVICE_NAME`-branching `start.sh`, dead `Procfile` removed) and PR #87 (a shared HTTP
+healthcheck in `railway.json` was failing every `celery-worker` deploy despite the worker itself
+running correctly). Verified end-to-end: `LLEN celery` drained from 1 to 0, deploy status
+`SUCCESS`. One real gap remains and is **not** a code problem: Resend rejects sends because
+`bgclive.online` isn't DNS-verified in the Resend dashboard. **(3) Issue #66 is investigated but
+not started**: a database-optimizer agent pass found `messages` was partitioned back in December
+2025 but the monthly-partition-creation automation was never built (every message since January
+2026 has landed in a single `messages_default` catch-all), plus the same migration silently dropped
+FK constraints and an index that were never restored. `status_updates` was never partitioned at
+all. The actual hot-path queries don't filter by date, so partitioning's value is
+maintenance/analytics/retention, not query latency — the user was told this explicitly and chose to
+proceed with the full scope once work resumes. No plan file was written; work paused when the
+Celery incident took priority, so resuming requires re-investigation.
+
+### Files Modified/Created
+
+**PR #85 — Moderation Warning System** (21 files, 1891 insertions, 10 deletions):
+
+| File | Change |
+|------|--------|
+| `backend/alembic/versions/h2i3j4k5l6m7_add_user_warnings.py` | New — `user_warnings` table migration |
+| `backend/app/models/moderation.py` | New — `UserWarning` model |
+| `backend/app/services/warning_service.py` | New — `issue_warning()`, escalation logic, shared by both issuance paths |
+| `backend/app/services/email_service.py` | New warning-email template/sender |
+| `backend/app/services/tasks.py` | New `send_warning_email_task` Celery task |
+| `backend/app/api/admin.py` | New direct "Issue Warning" endpoint |
+| `backend/app/api/moderation.py` | `resolve_report`'s `warn_user`/`ban_user` fixed via new `_resolve_report_target_user_id()` |
+| `backend/app/core/config.py` | `WARNING_ESCALATION_THRESHOLD`, `WARNING_ESCALATION_SUSPEND_HOURS` settings |
+| `backend/app/schemas/admin.py` | New warning request/response schemas |
+| `backend/tests/test_warnings.py` | New — 437 lines, 22 tests |
+| `frontend/src/components/admin/WarningEscalationMeter.tsx` | New — sm/md/lg, amber→orange→destructive |
+| `frontend/src/components/admin/WarningHistoryList.tsx` | New |
+| `frontend/src/app/(protected)/admin/users/[id]/page.tsx` | Wired warn dialog + escalation preview |
+| `frontend/src/services/adminService.ts` | New warning API client methods |
+| `frontend/src/types/admin.ts` | New warning types |
+| `frontend/tests/e2e/admin.spec.ts` | New E2E coverage |
+| `specs/014-moderation-warning-system/plan.md`, `tasks.md` | New — 27/27 tasks complete |
+
+**PR #86 — Celery Worker Deploy Fix** (4 files, 29 insertions, 15 deletions):
+
+| File | Change |
+|------|--------|
+| `backend/start.sh` | New — branches on `RAILWAY_SERVICE_NAME` to run `uvicorn` or `celery worker` |
+| `backend/Procfile` | Deleted — confirmed unused by CI/tooling |
+| `backend/railway.json` | `startCommand` now points at `start.sh` |
+| `DEPLOYMENT_GUIDE.md` | Updated to match the two-service reality |
+| Railway infra (not in diff) | New `celery-worker` service created; `RESEND_API_KEY`/`RESEND_FROM_EMAIL`/`APP_URL` set on both services via `railway variable set` |
+
+**PR #87 — Celery Worker Healthcheck Fix** (1 file, 2 deletions):
+
+| File | Change |
+|------|--------|
+| `backend/railway.json` | Removed `healthcheckPath`/`healthcheckTimeout` — no per-service conditional config exists, so a shared HTTP check can't work for a service with no HTTP server |
+
+**PR #84 — env.md doc fix** (folded into this entry, landed just before this session's main work):
+
+| File | Change |
+|------|--------|
+| `env.md` | Line 95 Upstash reference → Railway (closes an item open in the 2026-07-12 session's follow-ups) |
+
+**Issue #66**: zero files changed — investigation only, deliberately paused before implementation.
+
+### Key Decisions and Rationale
+
+1. **Dedicated `user_warnings` table over piggybacking `admin_action_logs`**: escalation-count reads
+   need to stay fast and simple; a general-purpose audit table would require type-filtering on
+   every read.
+2. **Single shared `issue_warning()` for both issuance paths**: avoids duplicating
+   escalation/email logic between the report-resolution flow and the direct admin action.
+3. **Fix `_resolve_report_target_user_id()` as part of this PR, not deferred**: without it,
+   warning/banning from a `THREAD`/`POST`/`STATUS` report would silently no-op — a correctness gap
+   directly blocking the feature's report-driven path.
+4. **`RAILWAY_SERVICE_NAME`-branching `start.sh` over a dashboard Custom Start Command**: the
+   dashboard setting is silently overridden by `railway.json`'s checked-in `startCommand` —
+   confirmed empirically. A single script keyed off Railway's own auto-injected env var is more
+   robust than a config field that can silently lose to config-as-code.
+5. **Remove `healthcheckPath` from the shared config entirely, not scope it per-service**:
+   `railway.json` has no per-service conditional block, so a shared HTTP healthcheck could never
+   correctly apply to only one of the two services.
+6. **Fix the Celery incident before continuing #66 planning**: a production-wide silent failure
+   (every queued email/task since deployment) is a higher-priority interrupt than continuing to
+   plan a performance-oriented feature with no user-facing urgency.
+7. **Pause #66 rather than rush implementation**: the investigation surfaced two independent
+   pre-existing bugs and confirmed partitioning won't help the app's actual hot-path queries — worth
+   getting the plan right (and written down) rather than implementing under time pressure after the
+   Celery fix consumed the session's remaining budget.
+8. **Secrets piped directly between commands, never printed**: `RESEND_API_KEY` etc. set via
+   `railway variable set` with values piped straight in; the permission classifier correctly
+   blocked a couple of attempts that would have exposed them, and each time the session found a
+   non-printing path or asked the user to name the exact value/action first.
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] **Urgent, external**: verify the `bgclive.online` domain in the Resend dashboard — Celery now
+      correctly processes email tasks, but Resend rejects the actual send until the domain is
+      DNS-verified. Not a code fix.
+- [ ] **Resume Issue #66 from scratch**: fix the `messages_default` catch-all bug (monthly-partition
+      automation), restore the dropped FK constraints/index on `messages`, partition
+      `status_updates`. No plan file exists — re-run the investigation or review this session's
+      transcript before implementing.
+- [ ] `totp_secret` CI flakiness — non-blocking, investigated this session, root cause not found
+      (reproduces CI's exact environment locally with no failure; likely a GitHub Actions
+      runner/pip-cache quirk).
+- [ ] All items carried forward from the 2026-07-03/07-12 sessions (search-advanced dropdown bug,
+      residual WebKit flakiness, NUL-byte/surrogate audit, dedicated E2E DB, nightly stress tests,
+      the profile/edit + users WIP-reconciliation spot-check) — not touched this session, still open.
+
+### Blockers / Challenges
+
+**Discovering the Celery incident mid-investigation of a different issue**: #66 research was
+underway when the non-draining Redis queue was noticed — required stopping #66 planning entirely
+and treating this as a higher-priority production interrupt, which is why #66 has a deep
+investigation but zero implementation this session.
+
+**Railway's silent Custom-Start-Command override**: took an empirical test (setting the dashboard
+field, watching `celery-worker` keep running `uvicorn` anyway) to conclusively prove `railway.json`'s
+checked-in `startCommand` wins — this behavior isn't documented anywhere obvious on Railway's side.
+
+**Resend domain verification is out of this session's control**: confirmed via real send attempts
+in worker logs that the code path is correct end-to-end; the failure is entirely on Resend's
+dashboard/DNS side and requires the user to act there directly.
+
+### Session Statistics
+
+- **Files Created**: 12 (7 backend, 5 frontend/spec — PR #85) + 1 (`backend/start.sh` — PR #86)
+- **Files Modified**: ~9 (PR #85) + 3 (PR #86: railway.json, DEPLOYMENT_GUIDE.md, + Procfile deletion) + 1 (PR #87: railway.json) + 1 (PR #84: env.md)
+- **Files Deleted**: 1 (`backend/Procfile`)
+- **PRs Merged**: #84, #85, #86, #87
+- **New backend tests**: 22 (`backend/tests/test_warnings.py`)
+- **New Railway services**: 1 (`celery-worker`)
+- **Production incidents fixed live**: 1 (Celery never running — every queued task since deployment
+  was stuck; confirmed drained via `LLEN celery` 1 → 0)
+- **Known open items**: 1 external (Resend domain verification), 1 paused feature (#66, zero code
+  changes), 1 non-blocking CI flake (totp_secret)
+
+---
+
 ## Session: 2026-07-12 — Local Dev Environment Repair (Linux Workstation, No Code Changes)
 
 ### Session Information
