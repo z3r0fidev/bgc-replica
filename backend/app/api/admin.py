@@ -7,10 +7,12 @@ from fastapi_limiter.depends import RateLimiter
 from pyrate_limiter import Duration, Limiter, Rate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, desc, asc
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.validation import validate_query_params
 from app.api import deps
 from app.models.user import User, Profile, AdminActionLog
+from app.models.moderation import Warning
 from app.schemas.admin import (
     AdminUserListItem,
     AdminUserDetail,
@@ -21,7 +23,13 @@ from app.schemas.admin import (
     AdminActionLogResponse,
     AdminStatsOverview,
     UpdateUserRequest,
+    IssueWarningRequest,
+    RevokeWarningRequest,
+    WarningItem,
+    WarningListResponse,
+    IssueWarningResponse,
 )
+from app.services.warning_service import warning_service
 
 router = APIRouter()
 
@@ -428,6 +436,162 @@ async def restore_user(
     await log_admin_action(db, admin.id, user_id, action)
 
     return {"message": "User restored"}
+
+
+@router.post(
+    "/users/{user_id}/warnings",
+    response_model=IssueWarningResponse,
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
+)
+async def issue_warning(
+    user_id: uuid.UUID,
+    request: IssueWarningRequest,
+    admin: Annotated[User, Depends(deps.get_admin_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Issue a moderation warning directly to a user."""
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot warn yourself")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    warning, escalated = await warning_service.issue_warning(
+        db,
+        user_id=user_id,
+        admin_id=admin.id,
+        reason=request.reason,
+        severity=request.severity,
+        notify=request.notify,
+    )
+
+    active_count_result = await db.execute(
+        select(func.count(Warning.id)).where(
+            Warning.user_id == user_id, Warning.status == "ACTIVE"
+        )
+    )
+    active_count = active_count_result.scalar_one()
+
+    return IssueWarningResponse(
+        warning=WarningItem(
+            id=warning.id,
+            user_id=warning.user_id,
+            admin_id=warning.admin_id,
+            admin_name=admin.name,
+            report_id=warning.report_id,
+            reason=warning.reason,
+            severity=warning.severity,
+            status=warning.status,
+            triggered_escalation=warning.triggered_escalation,
+            created_at=warning.created_at,
+        ),
+        escalated=escalated,
+        active_count=active_count,
+    )
+
+
+@router.get(
+    "/users/{user_id}/warnings",
+    response_model=WarningListResponse,
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(60, Duration.MINUTE))))],
+)
+async def get_user_warnings(
+    user_id: uuid.UUID,
+    admin: Annotated[User, Depends(deps.get_admin_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status: Optional[str] = Query(None, description="Filter by status"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Get paginated warning history for a user."""
+    stmt = select(Warning).where(Warning.user_id == user_id)
+    count_stmt = select(func.count(Warning.id)).where(Warning.user_id == user_id)
+    active_count_stmt = select(func.count(Warning.id)).where(
+        Warning.user_id == user_id, Warning.status == "ACTIVE"
+    )
+
+    if status:
+        stmt = stmt.where(Warning.status == status)
+        count_stmt = count_stmt.where(Warning.status == status)
+
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar() or 0
+
+    active_count_result = await db.execute(active_count_stmt)
+    active_count = active_count_result.scalar() or 0
+
+    stmt = stmt.order_by(desc(Warning.created_at)).offset(offset).limit(limit)
+    result = await db.execute(stmt)
+    warnings = result.scalars().all()
+
+    admin_ids = {w.admin_id for w in warnings if w.admin_id}
+    admin_names = {}
+    if admin_ids:
+        names_result = await db.execute(
+            select(User.id, User.name).where(User.id.in_(admin_ids))
+        )
+        for uid, name in names_result.all():
+            admin_names[uid] = name
+
+    items = [
+        WarningItem(
+            id=w.id,
+            user_id=w.user_id,
+            admin_id=w.admin_id,
+            admin_name=admin_names.get(w.admin_id) if w.admin_id else None,
+            report_id=w.report_id,
+            reason=w.reason,
+            severity=w.severity,
+            status=w.status,
+            triggered_escalation=w.triggered_escalation,
+            created_at=w.created_at,
+        )
+        for w in warnings
+    ]
+
+    return WarningListResponse(
+        items=items,
+        total=total,
+        active_count=active_count,
+        threshold=settings.WARNING_ESCALATION_THRESHOLD,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post(
+    "/users/{user_id}/warnings/{warning_id}/revoke",
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE))))],
+)
+async def revoke_warning(
+    user_id: uuid.UUID,
+    warning_id: uuid.UUID,
+    request: RevokeWarningRequest,
+    admin: Annotated[User, Depends(deps.get_admin_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Revoke a previously issued warning. Does not lift an already-triggered suspension."""
+    result = await db.execute(
+        select(Warning).where(Warning.id == warning_id, Warning.user_id == user_id)
+    )
+    warning = result.scalars().first()
+    if not warning:
+        raise HTTPException(status_code=404, detail="Warning not found")
+
+    if warning.status != "ACTIVE":
+        raise HTTPException(status_code=400, detail="Warning is not active")
+
+    warning.status = "REVOKED"
+    await db.commit()
+
+    await log_admin_action(
+        db, admin.id, user_id, "REVOKE_WARNING", reason=request.reason,
+        metadata={"warning_id": str(warning_id)},
+    )
+
+    return {"message": "Warning revoked"}
 
 
 @router.post(

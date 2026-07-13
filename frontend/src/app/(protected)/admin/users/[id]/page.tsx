@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  AlertOctagon,
+  AlertTriangle,
   RefreshCw,
   Shield,
   Ban,
@@ -42,10 +44,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { adminService } from "@/services/adminService";
-import { AdminUserDetail, AdminActionLogItem } from "@/types/admin";
+import { AdminUserDetail, AdminActionLogItem, WarningItem } from "@/types/admin";
+import { WarningEscalationMeter } from "@/components/admin/WarningEscalationMeter";
+import { WarningHistoryList } from "@/components/admin/WarningHistoryList";
 
-type ActionType = "suspend" | "ban" | "restore" | "make-admin" | "revoke-admin";
+type ActionType =
+  | "suspend"
+  | "ban"
+  | "restore"
+  | "make-admin"
+  | "revoke-admin"
+  | "warn";
 
 export default function AdminUserDetailPage() {
   const params = useParams();
@@ -54,6 +65,9 @@ export default function AdminUserDetailPage() {
 
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [actionLogs, setActionLogs] = useState<AdminActionLogItem[]>([]);
+  const [warnings, setWarnings] = useState<WarningItem[]>([]);
+  const [warningActiveCount, setWarningActiveCount] = useState(0);
+  const [warningThreshold, setWarningThreshold] = useState(3);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,12 +81,16 @@ export default function AdminUserDetailPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [userData, logsData] = await Promise.all([
+      const [userData, logsData, warningsData] = await Promise.all([
         adminService.getUser(userId),
         adminService.getActionLogs({ target_user_id: userId, limit: 20 }),
+        adminService.getUserWarnings(userId, { limit: 20 }),
       ]);
       setUser(userData);
       setActionLogs(logsData.items);
+      setWarnings(warningsData.items);
+      setWarningActiveCount(warningsData.active_count);
+      setWarningThreshold(warningsData.threshold);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load user");
     } finally {
@@ -124,6 +142,24 @@ export default function AdminUserDetailPage() {
           await adminService.revokeAdmin(user.id);
           toast.success("Admin privileges revoked");
           break;
+        case "warn": {
+          const result = await adminService.issueWarning(user.id, {
+            reason: actionReason,
+          });
+          if (result.escalated) {
+            toast.success(
+              `Warning sent. ${user.name || "User"} has reached ${
+                result.active_count
+              }/${warningThreshold} warnings and has been automatically suspended.`,
+              { duration: 8000 }
+            );
+          } else {
+            toast.success(
+              `Warning sent to ${user.name || "user"} (${result.active_count}/${warningThreshold}).`
+            );
+          }
+          break;
+        }
       }
       closeActionDialog();
       fetchData();
@@ -191,6 +227,8 @@ export default function AdminUserDetailPage() {
   }
 
   const status = getUserStatus();
+  const wouldEscalate =
+    actionType === "warn" && warningActiveCount + 1 >= warningThreshold;
 
   return (
     <div className="p-8 space-y-6">
@@ -244,6 +282,12 @@ export default function AdminUserDetailPage() {
                 {user.is_superuser && (
                   <Badge className="bg-yellow-500">Admin</Badge>
                 )}
+
+                <WarningEscalationMeter
+                  activeCount={warningActiveCount}
+                  threshold={warningThreshold}
+                  size="md"
+                />
               </div>
 
               {user.profile_display_name && (
@@ -331,6 +375,14 @@ export default function AdminUserDetailPage() {
             <div className="space-y-2">
               {status === "active" && (
                 <>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-yellow-600"
+                    onClick={() => openActionDialog("warn")}
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Issue Warning
+                  </Button>
                   <Button
                     variant="outline"
                     className="w-full justify-start text-orange-600"
@@ -438,6 +490,24 @@ export default function AdminUserDetailPage() {
             </Card>
           )}
 
+          {/* Warning History */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Warnings</CardTitle>
+              {warningActiveCount > 0 && (
+                <WarningEscalationMeter
+                  activeCount={warningActiveCount}
+                  threshold={warningThreshold}
+                  size="lg"
+                  className="pt-2"
+                />
+              )}
+            </CardHeader>
+            <CardContent>
+              <WarningHistoryList warnings={warnings} threshold={warningThreshold} />
+            </CardContent>
+          </Card>
+
           {/* Action History */}
           <Card>
             <CardHeader>
@@ -490,6 +560,8 @@ export default function AdminUserDetailPage() {
               {actionType === "restore" && "Restore User"}
               {actionType === "make-admin" && "Grant Admin Privileges"}
               {actionType === "revoke-admin" && "Revoke Admin Privileges"}
+              {actionType === "warn" &&
+                (wouldEscalate ? "Warn & Suspend User" : "Issue Warning")}
             </DialogTitle>
             <DialogDescription>
               {actionType === "suspend" &&
@@ -498,10 +570,12 @@ export default function AdminUserDetailPage() {
               {actionType === "restore" && "Restore this user's access."}
               {actionType === "make-admin" && "Grant full admin privileges."}
               {actionType === "revoke-admin" && "Remove admin privileges."}
+              {actionType === "warn" &&
+                "Notify this user of a policy violation by email."}
             </DialogDescription>
           </DialogHeader>
 
-          {(actionType === "suspend" || actionType === "ban") && (
+          {(actionType === "suspend" || actionType === "ban" || actionType === "warn") && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="reason">Reason</Label>
@@ -513,6 +587,42 @@ export default function AdminUserDetailPage() {
                   rows={3}
                 />
               </div>
+
+              {actionType === "warn" && (
+                <div
+                  className={cn(
+                    "rounded-lg border p-3 text-sm animate-in fade-in-0 slide-in-from-top-1 duration-200",
+                    wouldEscalate
+                      ? "border-destructive/40 bg-destructive/10"
+                      : "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900"
+                  )}
+                >
+                  {wouldEscalate ? (
+                    <div className="flex gap-2">
+                      <AlertOctagon className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                      <div>
+                        <p className="font-medium text-destructive">
+                          This warning will trigger automatic suspension.
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This will be warning {warningActiveCount + 1} of{" "}
+                          {warningThreshold}, reaching the escalation threshold.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-orange-600 mt-0.5" />
+                      <p className="text-orange-800 dark:text-orange-400">
+                        This will be warning {warningActiveCount + 1} of{" "}
+                        {warningThreshold}.{" "}
+                        {warningActiveCount + 2 >= warningThreshold &&
+                          "One more after this will trigger automatic suspension."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {actionType === "suspend" && (
                 <div className="space-y-2">
@@ -544,12 +654,19 @@ export default function AdminUserDetailPage() {
               disabled={
                 isSubmitting ||
                 ((actionType === "suspend" || actionType === "ban") &&
-                  actionReason.length < 5)
+                  actionReason.length < 5) ||
+                (actionType === "warn" && actionReason.length < 10)
               }
-              variant={actionType === "ban" ? "destructive" : "default"}
+              variant={
+                actionType === "ban" || wouldEscalate ? "destructive" : "default"
+              }
             >
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Confirm
+              {actionType === "warn"
+                ? wouldEscalate
+                  ? "Issue Warning & Suspend"
+                  : "Send Warning"
+                : "Confirm"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,6 +9,10 @@ import {
   AdminStatsOverview,
   AnalyticsOverview,
   SystemHealth,
+  WarningListResponse,
+  IssueWarningRequest,
+  IssueWarningResponse,
+  RevokeWarningRequest,
 } from "@/types/admin";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -177,6 +181,72 @@ export const adminService = {
           {
             method: "POST",
             headers: getAuthHeaders(),
+          }
+        );
+        return handleResponse(response);
+      }
+    );
+  },
+
+  // Warnings
+  async getUserWarnings(
+    userId: string,
+    params: { status?: string; limit?: number; offset?: number } = {}
+  ): Promise<WarningListResponse> {
+    return Sentry.startSpan(
+      { name: `GET /api/admin/users/${userId}/warnings`, op: "http.client" },
+      async () => {
+        const searchParams = new URLSearchParams();
+        if (params.status) searchParams.set("status", params.status);
+        if (params.limit) searchParams.set("limit", String(params.limit));
+        if (params.offset) searchParams.set("offset", String(params.offset));
+
+        const url = `${API_URL}/api/admin/users/${userId}/warnings?${searchParams.toString()}`;
+        const response = await fetch(url, {
+          headers: getAuthHeaders(),
+        });
+        return handleResponse<WarningListResponse>(response);
+      }
+    );
+  },
+
+  async issueWarning(
+    userId: string,
+    data: IssueWarningRequest
+  ): Promise<IssueWarningResponse> {
+    return Sentry.startSpan(
+      { name: `POST /api/admin/users/${userId}/warnings`, op: "http.client" },
+      async () => {
+        const response = await fetch(
+          `${API_URL}/api/admin/users/${userId}/warnings`,
+          {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
+          }
+        );
+        return handleResponse<IssueWarningResponse>(response);
+      }
+    );
+  },
+
+  async revokeWarning(
+    userId: string,
+    warningId: string,
+    data: RevokeWarningRequest
+  ): Promise<{ message: string }> {
+    return Sentry.startSpan(
+      {
+        name: `POST /api/admin/users/${userId}/warnings/${warningId}/revoke`,
+        op: "http.client",
+      },
+      async () => {
+        const response = await fetch(
+          `${API_URL}/api/admin/users/${userId}/warnings/${warningId}/revoke`,
+          {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
           }
         );
         return handleResponse(response);

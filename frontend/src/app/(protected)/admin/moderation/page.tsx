@@ -108,7 +108,11 @@ export default function ModerationPage() {
     setIsResolving(true);
     try {
       await moderationService.resolveReport(selectedReport.id, action);
-      toast.success(`Report ${action === "dismiss" ? "dismissed" : "resolved"}`);
+      if (action === "warn_user") {
+        toast.success("Warning issued and emailed to user");
+      } else {
+        toast.success(`Report ${action === "dismiss" ? "dismissed" : "resolved"}`);
+      }
       setShowActionDialog(false);
       setSelectedReport(null);
       fetchData();

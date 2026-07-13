@@ -72,6 +72,44 @@ export interface AdminActionLogResponse {
   offset: number;
 }
 
+export interface WarningItem {
+  id: string;
+  user_id: string;
+  admin_id: string | null;
+  admin_name: string | null;
+  report_id: string | null;
+  reason: string;
+  severity: string;
+  status: string;
+  triggered_escalation: boolean;
+  created_at: string;
+}
+
+export interface WarningListResponse {
+  items: WarningItem[];
+  total: number;
+  active_count: number;
+  threshold: number;
+  limit: number;
+  offset: number;
+}
+
+export interface IssueWarningRequest {
+  reason: string;
+  severity?: string;
+  notify?: boolean;
+}
+
+export interface RevokeWarningRequest {
+  reason: string;
+}
+
+export interface IssueWarningResponse {
+  warning: WarningItem;
+  escalated: boolean;
+  active_count: number;
+}
+
 export interface AdminStatsOverview {
   total_users: number;
   active_users: number;

@@ -80,3 +80,39 @@ def send_password_reset_email_task(
         )
 
     return run_async(_send_email())
+
+
+@celery_app.task(name="app.services.tasks.send_warning_email_task")
+def send_warning_email_task(
+    to_email: str,
+    reason: str,
+    warning_count: int,
+    threshold: int,
+    escalated: bool,
+    user_name: Optional[str] = None,
+):
+    """
+    Celery task to send a moderation warning email asynchronously.
+
+    Args:
+        to_email: Recipient email address
+        reason: Reason the warning was issued
+        warning_count: Recipient's current active warning count (including this one)
+        threshold: Number of active warnings that triggers automatic suspension
+        escalated: Whether this warning pushed the user over the threshold
+        user_name: Optional user name for personalization
+    """
+
+    async def _send_email():
+        from app.services.email_service import email_service
+
+        return await email_service.send_warning_email(
+            to_email=to_email,
+            reason=reason,
+            warning_count=warning_count,
+            threshold=threshold,
+            escalated=escalated,
+            user_name=user_name,
+        )
+
+    return run_async(_send_email())
