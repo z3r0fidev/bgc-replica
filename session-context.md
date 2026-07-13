@@ -1,12 +1,71 @@
 # Session Context
 
-**Last Updated**: 2026-07-03 (Session Closing — PR #55 merged)
+**Last Updated**: 2026-07-12 (Session Closing — local dev environment repair, no code changes)
 **Current Branch**: `main`
-**Session Status**: Closed — E2E CSP/rate-limit/CORS hardening merged (PR #55); production DB migration incident found and fixed live; E2E health went from near-total failure to 60-73/65-76 passing per shard
+**Session Status**: Closed — diagnostic/infrastructure session only. Repaired a broken local dev environment on a new Linux workstation (repo lives in a Synology Drive sync folder); no application source code touched. No PR — all fixes live in gitignored/untracked local state.
 
 ## Current State
 
-### Latest Merged Work — E2E CSP, Rate Limits, CORS & Production DB Migration (PR #55)
+### Latest Session — Local Dev Environment Repair (Linux workstation, no app code changes)
+
+Purely diagnostic session: get local dev working on a Linux machine after apparent breakage. No
+feature work, no bugfix to app code, nothing merged.
+
+1. **False alarm — 114 "deleted" tracked files**: `git status` showed 114 tracked files (frontend
+   pages under `frontend/src/app/`, `bgc-personals` components/assets) as unstaged deletions
+   (pure `-N/+0` diffs). Root cause: repo is under active Synology Drive sync; once sync finished,
+   all 114 files reappeared and `git status` came back clean except for 2 pre-existing
+   in-progress files. No git action taken — this was environmental, not a real deletion.
+2. **`backend/venv` was a Windows-created venv**, unusable on Linux (`pyvenv.cfg` showed
+   `home = C:\Python314`, originally created at `C:\Users\isaiah.muhammad\bgc-replica\backend\venv`
+   on the Windows machine used in prior sessions). Deleted and recreated with
+   `python3.12 -m venv venv` + `pip install -r requirements.txt` (installed cleanly). No version
+   pin exists anywhere in the repo (no `.python-version`/`runtime.txt`/`python_requires`), so 3.12
+   was chosen as what's available locally rather than matching the old venv's 3.14.
+3. **Stale Redis credentials**: `backend/.env`'s `REDIS_URL` pointed at Upstash
+   (`big-jennet-37167.upstash.io`), which no longer resolves via DNS — **the project has migrated
+   off Upstash to Railway** for backend + Redis hosting (confirmed with the user; this is a real
+   infra fact, not specific to this machine — see note below about `env.md` now being stale).
+   Installed the Railway CLI, linked the repo to the existing Railway project
+   ("BGCLive Backend", workspace Z3r0fiDeV's Projects, environment production, services
+   `bgc-replica` + `Redis`), pulled Redis vars, and updated `backend/.env`'s `REDIS_URL` to the
+   **public proxy** address (`redis://default:***@reseau.proxy.rlwy.net:31149`) rather than the
+   internal `redis.railway.internal` hostname, which only resolves inside Railway's private
+   network. Verified live with `PING`.
+4. **`frontend/node_modules/.bin/*` had lost their execute bit** (all 120 bin scripts) — another
+   apparent Synology Drive sync side effect stripping POSIX permission bits, causing `next dev` to
+   fail with "Permission denied". Fixed with `chmod +x node_modules/.bin/*`.
+5. **Stale Turbopack build cache**: after the permission fix, `next dev` still failed —
+   `TurbopackInternalError: create symlink to ../../../node_modules/import-in-the-middle ...
+   File exists (os error 17)`. Root cause: stale leftover directories under `.next/node_modules/`
+   and `.next/dev/node_modules/` conflicting with a symlink Turbopack wanted to create fresh.
+   `.next/` is gitignored build output; `rm -rf .next` resolved it.
+
+**Verification**: backend booted via `uvicorn app.main:app`, `/health` returned 200 (live DB
+connectivity to Supabase Postgres + Redis connectivity to Railway confirmed); frontend booted via
+`npm run dev` (Turbopack), served HTTP 200 on `http://localhost:3000/`. Both dev servers killed
+after verification, not left running.
+
+**Nothing committed**: every file touched (`backend/.env`, `backend/venv/`, `frontend/node_modules/`,
+`frontend/.next/`) is gitignored/untracked — confirmed via `git ls-files` and `git status`. Only
+this doc-close commit lands from this session.
+
+**Stale doc noticed, not fixed this session**: `env.md` line 95 still recommends Upstash for
+production Redis (`2. **Production**: Use [Upstash](https://upstash.com) or a managed Redis
+instance.`) — inaccurate since the migration to Railway. Worth a follow-up doc fix; out of scope
+here since it's not one of the four session-context files and this session was Redis*-consumption*,
+not Redis *documentation*.
+
+**Pre-existing, not touched (out of scope)**: `frontend/src/app/(protected)/profile/edit/page.tsx`
+and `frontend/src/app/(protected)/users/page.tsx` have real uncommitted work in progress from a
+prior session (search filter active-count UI, toast notifications on search success/failure) —
+left as-is.
+
+Untracked tooling files also present and not investigated: `.agents/`, `backend/.agents/`,
+`backend/.mcp.json`, `backend/skills-lock.json`, `skills-lock.json` (Claude Code / plugin
+scaffolding, not gitignored but harmless).
+
+### Previous Session — E2E CSP, Rate Limits, CORS & Production DB Migration (PR #55)
 
 PR #55 (`b1a9e2e`, branch `fix/e2e-csp-and-rate-limits`) was a large E2E-reliability and
 production-hardening session. Merged via standard merge commit (not squash, matching repo
@@ -177,6 +236,13 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 
 ## Current Objectives
 
+### Completed (as of 2026-07-12)
+- [x] Local dev environment repaired on a new Linux workstation: Windows venv replaced with a
+      Linux `python3.12` venv, `REDIS_URL` updated from a dead Upstash host to the live Railway
+      Redis public-proxy URL, `frontend/node_modules/.bin/*` execute bits restored, stale
+      Turbopack `.next/` cache cleared. Both dev servers verified booting (backend `/health` 200,
+      frontend `/` 200) then stopped. No app code changed; nothing to commit except these docs.
+
 ### Completed (as of 2026-07-03)
 - [x] PR #55 merged — CSP Railway allowlist, rate-limit loosening, cookie-domain fix, Socket.io
       CORS regex, mobile tab a11y, forums author_id bug, 2FA input a11y, `/share-target` route,
@@ -206,22 +272,45 @@ The single reliable interception point is the **Pydantic validation layer** (bef
    shares fate with production data/schema.
 5. Carried forward, still non-blocking: move CI-skipped E2E stress tests to a nightly workflow,
    `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` secrets (may already be wired via PR #47 — verify).
+6. **New — fix stale Upstash reference in `env.md`** (line 95, "Production: Use Upstash..."):
+   the project migrated Redis hosting to Railway; this doc line is now misleading for anyone
+   provisioning a fresh environment. Small, low-risk doc fix.
+7. **New — the two in-progress frontend files remain uncommitted**:
+   `frontend/src/app/(protected)/profile/edit/page.tsx` and
+   `frontend/src/app/(protected)/users/page.tsx` (search filter active-count UI, toast
+   notifications on search success/failure) — carried over from a prior session, not touched this
+   session, still pending completion/commit.
 
 ## Environment Status
 
 ### Development Services
 - Backend: FastAPI on http://localhost:8000
 - Frontend: Next.js on http://localhost:3000
-- Database: PostgreSQL (async via asyncpg)
-- Redis: Sessions, rate limiting, Celery broker, caches
+- Database: PostgreSQL (async via asyncpg, Supabase-hosted)
+- Redis: Railway-hosted (migrated off Upstash; see 2026-07-12 session note above). Local dev
+  connects via Railway's public proxy URL (`redis://default:***@reseau.proxy.rlwy.net:31149`),
+  not the internal `redis.railway.internal` hostname, which only resolves inside Railway's network.
 - Socket.io: Real-time chat, comments, presence
 - Celery: Async email delivery worker
 
 ### Branch & Git State
 - Active branch: `main`
-- HEAD: `b1a9e2e` — Merge pull request #55 fix/e2e-csp-and-rate-limits
-- All changes pushed; only session-doc/tooling files pending commit
+- HEAD (last app-code merge): `b1a9e2e` — Merge pull request #55 fix/e2e-csp-and-rate-limits
+- This session (2026-07-12) added only a doc-close commit on top; no app code changed
 - Remote: https://github.com/z3r0fidev/bgc-replica
+
+### Local Machine Notes (multi-machine setup)
+- This project is now actively developed from at least two machines: a Windows machine (prior
+  sessions) and this Linux workstation (2026-07-12 session). `backend/venv/` and
+  `frontend/node_modules/` are both gitignored and machine-specific — each machine maintains its
+  own, no repo conflict. On Linux, `backend/venv` uses `python3.12` (`bin/` layout); do not assume
+  the `Scripts/`-layout Windows venv paths referenced in older notes below apply here.
+- The repo directory lives inside a Synology Drive sync folder on this Linux machine. Sync can
+  transiently show large numbers of false "deleted" files in `git status` (mid-sync snapshot) and
+  can strip POSIX execute bits from files it re-syncs (hit `frontend/node_modules/.bin/*` this
+  session). If `git status` ever again shows a large wave of unexplained deletions or an installed
+  binary suddenly gets "Permission denied", suspect Synology sync first before assuming repo
+  corruption.
 
 ## Key Decisions
 
@@ -277,9 +366,15 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 - The production Supabase DB is migrated as of this session — do not assume `/health` returning OK
   means the schema exists; it only checks connectivity. If a fresh Railway/Supabase environment is
   ever provisioned again, run `alembic upgrade head` against it explicitly before assuming it works.
-- Railway CLI is authenticated locally as Z3r0fiDeV (project "BGCLive Backend", service
-  "bgc-replica", env "production"). Direct DB access works via `backend/venv/Scripts/python.exe`
-  (has `asyncpg`+`alembic`) run through WSL interop with `-X utf8` (avoids a cp1252 console crash
-  on an emoji arrow in `database.py`'s IPv4-resolution log line).
+- Railway CLI is authenticated as Z3r0fiDeV / viralkings215@gmail.com (project "BGCLive Backend",
+  workspace "Z3r0fiDeV's Projects", environment "production", services `bgc-replica` + `Redis`).
+  This is a per-machine CLI login (`railway login`), re-authenticated on the Linux workstation this
+  session via `railway link --project "BGCLive Backend"` — do not assume it's still linked on a
+  machine where it hasn't been run.
+  - *Windows-machine-specific* (from an earlier session, may be stale): direct DB access worked via
+    `backend/venv/Scripts/python.exe` (has `asyncpg`+`alembic`) run through WSL interop with
+    `-X utf8` (avoids a cp1252 console crash on an emoji arrow in `database.py`'s IPv4-resolution
+    log line). On the Linux workstation the equivalent is simply `backend/venv/bin/python` — no
+    WSL/encoding workaround needed.
 - Supabase MCP server was added to `backend/.mcp.json` and authenticated mid-session-before-last,
   but requires a fresh Claude Code session to actually connect.

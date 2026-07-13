@@ -257,6 +257,8 @@ bgc-replica/
    never-migrated incident is a strong argument; E2E currently shares fate with production data.
 5. **E2E stress tests**: Still CI-skipped — consider moving to a nightly scheduled workflow.
 6. Verify `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` are actually wired (PR #47 addressed this — confirm).
+7. **New (2026-07-12) — fix stale Upstash reference in `env.md`**: line 95 still recommends
+   Upstash for production Redis; the project has migrated to Railway. Small, low-risk doc fix.
 
 ## Dependencies
 
@@ -407,6 +409,16 @@ bgc-replica/
    - Production alerting and dashboards not configured
    - Email delivery monitoring needed
    - 2FA adoption rate tracking needed
+8. **Local Environment / Multi-Machine Dev** (surfaced 2026-07-12):
+   - Redis hosting migrated from Upstash to Railway at some point, but `env.md` (line 95) still
+     recommends Upstash for production — stale, needs a doc fix
+   - Development now happens from more than one machine (Windows + Linux); `backend/venv/` and
+     `frontend/node_modules/` are gitignored/machine-specific, no repo conflict, but no Python
+     version is pinned anywhere (no `.python-version`/`runtime.txt`/`python_requires`) — different
+     machines may end up on different Python minor versions
+   - Repo is synced via Synology Drive on at least one machine; sync can transiently show large
+     numbers of false "deleted" files in `git status` and can strip POSIX execute bits from
+     `node_modules/.bin/*`, breaking `next dev` with "Permission denied" until `chmod +x`'d
 
 ## Subprojects
 
