@@ -155,18 +155,17 @@ The application manages access control at the API layer. Ensure the service_role
    - **Source**: Connect to your GitHub repository (`bgc-replica`).
    - **Root Directory**: Set to `backend`.
    - **Watch Paths**: Set to `backend/**` so only backend changes trigger deploys.
-   - **Start Command**: Leave empty — Railway will use the `Procfile` automatically.
+   - **Start Command**: Leave empty — `backend/railway.json`'s `deploy.startCommand` runs `backend/start.sh` automatically.
 
-**Add the Celery worker service (optional but recommended for production):**
+**Add the Celery worker service (required — emails and feed fan-out silently no-op without it):**
 
-The `Procfile` defines a `worker` process. Railway supports multiple process types:
+> **Important:** `backend/railway.json`'s checked-in `startCommand` takes precedence over any Custom Start Command set in the Railway dashboard, even per-service — the dashboard override is silently ignored. Do not rely on setting a dashboard Start Command to differentiate this service from the web service. `backend/start.sh` branches on the auto-injected `RAILWAY_SERVICE_NAME` env var instead, so this only works if the new service is named exactly `celery-worker`.
 
-1. Add another **Empty Service**, name it `worker`.
-2. Connect it to the same GitHub repo with root directory `backend`.
-3. Set the **Start Command** to:
-   ```
-   celery -A app.services.tasks worker --loglevel=info --concurrency=2
-   ```
+1. Add another **Empty Service**, name it exactly `celery-worker`.
+2. Connect it to the same GitHub repo, **Root Directory** set to `backend` (this must be set explicitly — a fresh service defaults to the repo root and fails to build with "Railpack could not determine how to build the app" since it sees the whole monorepo).
+3. Copy over the same environment variables the `backend` service uses (`DATABASE_URL`, `REDIS_URL`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_URL`, `SECRET_KEY`, `NEXTAUTH_SECRET`, `SUPABASE_URL`, `SUPABASE_KEY`, `MEDIA_BUCKET_NAME`) — Celery tasks import the same `app.core.config.settings`/`app.core.database` modules as the web app.
+4. Leave **Start Command** empty (per the note above, it wouldn't take effect anyway) — deploying with `RAILWAY_SERVICE_NAME=celery-worker` set (Railway sets this automatically from the service name) is what makes `start.sh` run `celery -A app.services.tasks worker --loglevel=info --concurrency=2` instead of `uvicorn`.
+5. Verify it's actually consuming tasks: check the service logs for the Celery worker startup banner (not a `uvicorn running on...` line — if you see that, the service picked up the wrong branch, usually because it isn't named exactly `celery-worker`).
 
 **Collect your Railway project details:**
 
@@ -466,11 +465,14 @@ gh workflow run deploy-frontend.yml --ref main
 
 ### 5.1 Run Alembic Migrations Against Production
 
-The `Procfile` is configured to run `alembic upgrade head` automatically on every deploy:
+`backend/start.sh` (invoked via `railway.json`'s `deploy.startCommand`) runs `alembic upgrade head` automatically on every deploy of the web service, before starting `uvicorn`:
 
+```sh
+alembic upgrade head
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
 ```
-web: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4
-```
+
+(The `celery-worker` service, running the same script, skips this and runs the Celery worker command instead — see 2.3 above.)
 
 This means migrations run automatically when Railway deploys the backend. However, for manual migration runs or troubleshooting:
 
