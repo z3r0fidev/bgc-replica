@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.core.database import get_db
+from app.core.validation import validate_query_params, escape_like
 from app.api import deps
 from app.models.user import User
 from app.models.community import CommunityGroup, GroupMembership
@@ -16,9 +17,11 @@ router = APIRouter()
 async def list_groups(
     db: Annotated[AsyncSession, Depends(get_db)], query: Optional[str] = Query(None)
 ):
+    validate_query_params(query=query)
     stmt = select(CommunityGroup)
     if query:
-        stmt = stmt.where(CommunityGroup.name.ilike(f"%{query}%"))
+        escaped_query = escape_like(query)
+        stmt = stmt.where(CommunityGroup.name.ilike(f"%{escaped_query}%", escape="\\"))
     result = await db.execute(stmt)
     return result.scalars().all()
 

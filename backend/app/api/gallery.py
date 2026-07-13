@@ -33,6 +33,7 @@ from app.schemas.gallery import (
 )
 from app.services.storage import storage_service
 from app.services.media_processor import media_processor
+from app.services.profile_service import profile_service
 from fastapi_limiter.depends import RateLimiter
 from pyrate_limiter import Duration, Limiter, Rate
 from datetime import datetime, timedelta
@@ -104,13 +105,14 @@ async def upload_media(
 
         # Generate and upload thumbnail (works for both images and videos)
         thumbnail_url = None
+        thumbnail_storage_path = None
         thumb_bytes = media_processor.generate_thumbnail(content, content_type)
         if thumb_bytes:
-            _thumb_path = f"{current_user.id}/gallery/thumbs/{media_id}.webp"  # noqa: F841
             thumb_result = await storage_service.upload_file(
                 thumb_bytes, f"{media_id}.webp", "image/webp"
             )
             thumbnail_url = thumb_result["url"]
+            thumbnail_storage_path = thumb_result["storage_path"]
 
         # Create database record
         new_media = GalleryMedia(
@@ -119,6 +121,7 @@ async def upload_media(
             type=media_processor.get_media_type(content_type),
             url=upload_result["url"],
             thumbnail_url=thumbnail_url,
+            thumbnail_storage_path=thumbnail_storage_path,
             storage_path=upload_result["storage_path"],
             filename=file.filename,
             mime_type=content_type,
@@ -208,7 +211,9 @@ async def list_my_albums_route(
     current_user: Annotated[User, Depends(deps.get_current_user)] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
-    return await list_my_albums(limit=limit, cursor=cursor, current_user=current_user, db=db)
+    return await list_my_albums(
+        limit=limit, cursor=cursor, current_user=current_user, db=db
+    )
 
 
 @router.get("/{media_id}", response_model=GalleryMediaSchema)
@@ -230,7 +235,12 @@ async def get_media(
     if media.user_id != current_user.id:
         if media.privacy == "PRIVATE":
             raise HTTPException(status_code=404, detail="Media not found")
-        # TODO: Check FRIENDS_ONLY against friendship status
+        if media.privacy == "FRIENDS_ONLY":
+            is_friend = await profile_service.get_friendship_status(
+                db, current_user.id, media.user_id
+            )
+            if not is_friend:
+                raise HTTPException(status_code=404, detail="Media not found")
 
     # Increment view count if not owner
     if media.user_id != current_user.id:
@@ -288,12 +298,18 @@ async def delete_media(
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    # Delete from storage
+    # Delete main file from storage
     try:
         await storage_service.delete_file(media.storage_path)
-        # TODO: Delete thumbnail as well
     except Exception:
         pass  # Continue even if storage delete fails
+
+    # Delete thumbnail from storage if exists
+    if media.thumbnail_storage_path:
+        try:
+            await storage_service.delete_file(media.thumbnail_storage_path)
+        except Exception:
+            pass  # Continue even if thumbnail delete fails
 
     await db.delete(media)
     await db.commit()
@@ -326,9 +342,9 @@ async def get_user_gallery(
         # Check if current user is a friend
         is_friend = False
         if current_user:
-            # TODO: Implement friendship check
-            # For now, non-owners only see PUBLIC
-            pass
+            is_friend = await profile_service.get_friendship_status(
+                db, current_user.id, user_id
+            )
 
         if is_friend:
             privacy_filter = GalleryMedia.privacy.in_(["PUBLIC", "FRIENDS_ONLY"])
@@ -508,7 +524,12 @@ async def get_album(
     if album.user_id != current_user.id:
         if album.privacy == "PRIVATE":
             raise HTTPException(status_code=404, detail="Album not found")
-        # TODO: Check FRIENDS_ONLY
+        if album.privacy == "FRIENDS_ONLY":
+            is_friend = await profile_service.get_friendship_status(
+                db, current_user.id, album.user_id
+            )
+            if not is_friend:
+                raise HTTPException(status_code=404, detail="Album not found")
 
     # Build media list with positions
     media_list = []

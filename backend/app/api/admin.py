@@ -8,6 +8,7 @@ from pyrate_limiter import Duration, Limiter, Rate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, desc, asc
 from app.core.database import get_db
+from app.core.validation import validate_query_params
 from app.api import deps
 from app.models.user import User, Profile, AdminActionLog
 from app.schemas.admin import (
@@ -152,6 +153,7 @@ async def list_users(
     offset: int = Query(0, ge=0, le=10000),
 ):
     """List users with search and filtering."""
+    validate_query_params(query=query, sort_by=sort_by, sort_order=sort_order)
     now = datetime.utcnow()
 
     # Build base query
@@ -497,6 +499,7 @@ async def get_action_logs(
     offset: int = Query(0, ge=0, le=10000),
 ):
     """Get admin action logs with filtering."""
+    validate_query_params(action=action)
     stmt = select(AdminActionLog)
     count_stmt = select(func.count(AdminActionLog.id))
 

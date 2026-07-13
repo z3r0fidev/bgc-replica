@@ -154,6 +154,16 @@ async def root():
     return {"message": "Welcome to BGCLive Replica API"}
 
 
+@app.get("/healthz")
+async def liveness():
+    """Simple liveness check - returns immediately without checking dependencies.
+
+    Used by Railway healthcheck to verify the app process is running.
+    For full dependency health, use /health instead.
+    """
+    return {"status": "ok"}
+
+
 @app.get("/health")
 async def health_check():
     health = {"status": "ok", "checks": {}}

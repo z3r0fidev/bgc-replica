@@ -27,6 +27,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,
       timeout: 10000,
+      withCredentials: true, // Send cookies for authentication
     });
 
     socketInstance.on("connect", () => {

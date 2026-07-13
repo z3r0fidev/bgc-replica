@@ -7,11 +7,10 @@ from sqlalchemy import select, func, and_
 from app.core.database import get_db
 from app.api import deps
 from app.models.user import User, Profile as ProfileModel, Media, ProfileRating
-from app.schemas.profile import Profile, ProfileUpdate
+from app.schemas.profile import Profile, ProfileUpdate, ProfileCompletionResponse
 from app.schemas.media import Media as MediaSchema
 from app.schemas.social import ProfileRatingCreate
 from app.services.storage import storage_service
-from app.services.cache import profile_cache
 from app.services.profile_service import profile_service
 from app.services.media_processor import media_processor
 import uuid
@@ -25,19 +24,37 @@ async def get_my_profile(
     current_user: Annotated[User, Depends(deps.get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(
-        select(ProfileModel)
-        .where(ProfileModel.id == current_user.id)
-        .options(selectinload(ProfileModel.user))
-    )
-    profile = result.scalars().first()
+    # Try to get from cache first
+    profile = await profile_service.get_profile_cached(db, current_user.id)
+
     if not profile:
         # Create default profile if not exists
-        profile = ProfileModel(id=current_user.id)
-        db.add(profile)
+        new_profile = ProfileModel(id=current_user.id)
+        db.add(new_profile)
         await db.commit()
-        await db.refresh(profile)
+
+        # Fetch with user relationship and cache it
+        profile = await profile_service.get_profile_cached(db, current_user.id)
+
     return profile
+
+
+@router.get("/me/completion", response_model=ProfileCompletionResponse)
+async def get_my_profile_completion(
+    current_user: Annotated[User, Depends(deps.get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Get profile completion status with weighted scoring and gamification.
+
+    Returns:
+    - percentage: Inflated score (20% base + earned)
+    - raw_percentage: Actual field completion
+    - suggestions: Top 5 fields to complete for quick wins
+    - milestones: Gamification badges and progress
+    - feature_unlocks: Features unlocked at completion thresholds
+    """
+    return await profile_service.get_completion_cached(db, current_user.id)
 
 
 @router.put("/me", response_model=Profile)
@@ -61,8 +78,9 @@ async def update_my_profile(
     await db.commit()
     await db.refresh(profile)
 
-    # Invalidate cache
-    await profile_cache.invalidate(str(current_user.id))
+    # Invalidate caches
+    await profile_service.invalidate_profile_cache(current_user.id)
+    await profile_service.invalidate_completion_cache(current_user.id)
 
     return profile
 
@@ -96,8 +114,9 @@ async def patch_my_profile(
     await db.commit()
     await db.refresh(profile)
 
-    # Invalidate cache
-    await profile_cache.invalidate(str(current_user.id))
+    # Invalidate caches
+    await profile_service.invalidate_profile_cache(current_user.id)
+    await profile_service.invalidate_completion_cache(current_user.id)
 
     # Load author relationship for the response
     # (Actually we return Profile which has user via relationship)
@@ -131,12 +150,16 @@ async def update_privacy_settings(
     # the global UnicodeError/InterfaceError handlers can catch.
     for key, value in privacy_settings.items():
         for s in (key, value):
-            if '\x00' in s:
-                raise HTTPException(status_code=422, detail="Invalid character in input")
+            if "\x00" in s:
+                raise HTTPException(
+                    status_code=422, detail="Invalid character in input"
+                )
             try:
-                s.encode('utf-8')
+                s.encode("utf-8")
             except UnicodeEncodeError:
-                raise HTTPException(status_code=422, detail="Invalid character in input")
+                raise HTTPException(
+                    status_code=422, detail="Invalid character in input"
+                )
 
     # Merge or replace privacy settings
     current_settings = profile.privacy_settings or {}
@@ -146,12 +169,11 @@ async def update_privacy_settings(
     db.add(profile)
     await db.commit()
 
-    # Invalidate cache
-    await profile_cache.invalidate(str(current_user.id))
+    # Invalidate caches
+    await profile_service.invalidate_profile_cache(current_user.id)
+    await profile_service.invalidate_completion_cache(current_user.id)
 
     return {"status": "ok", "privacy_settings": new_settings}
-
-
 
 
 @router.get("/{user_id}", response_model=Profile)
@@ -162,21 +184,8 @@ async def get_user_profile(
         Optional[User], Depends(deps.get_current_user_optional)
     ] = None,
 ):
-    async def fetch_from_db():
-        result = await db.execute(
-            select(ProfileModel)
-            .where(ProfileModel.id == user_id)
-            .options(selectinload(ProfileModel.user))
-        )
-        profile_obj = result.scalars().first()
-        if profile_obj:
-            # Return as Pydantic for caching
-            return Profile.model_validate(profile_obj)
-        return None
-
-    unmasked_profile = await profile_cache.get_or_set(
-        str(user_id), Profile, fetch_from_db
-    )
+    # Use cache-aside pattern via profile_service
+    unmasked_profile = await profile_service.get_profile_cached(db, user_id)
 
     if not unmasked_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -223,7 +232,9 @@ async def upload_gallery_media(
         content = media_processor.strip_exif(content, file.content_type)
 
     # Use safe filename derived from content type
-    safe_filename = f"{uuid.uuid4()}.{media_processor.get_safe_extension(file.content_type)}"
+    safe_filename = (
+        f"{uuid.uuid4()}.{media_processor.get_safe_extension(file.content_type)}"
+    )
 
     upload_result = await storage_service.upload_file(
         content, safe_filename, file.content_type

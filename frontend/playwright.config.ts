@@ -21,6 +21,8 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    actionTimeout: 15000, // 15s for all actions
+    navigationTimeout: 30000, // 30s for navigation
     // Vercel Deployment Protection (SSO) intercepts every request to preview/prod
     // alias URLs otherwise; this header + cookie exempt automated test traffic.
     ...(bypassSecret && {
@@ -41,7 +43,13 @@ export default defineConfig({
     },
     {
       name: 'mobile-safari',
-      use: { ...devices['iPhone 12'] },
+      use: {
+        ...devices['iPhone 12'],
+        // WebKit needs slower interactions for stability
+        launchOptions: {
+          slowMo: 50, // 50ms delay between actions
+        },
+      },
     },
   ],
 });

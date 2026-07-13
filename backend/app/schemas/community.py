@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 from datetime import datetime
 from app.schemas.user import UserBase
@@ -108,7 +108,7 @@ class GroupSchema(BaseModel):
 
 
 class GroupCreate(SafeBaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=255)
     description: Optional[str] = None
     is_private: bool = False
 
