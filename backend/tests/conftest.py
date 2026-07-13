@@ -149,6 +149,24 @@ async def test_target_user(test_engine) -> User:
         return user
 
 
+@pytest.fixture(scope="session")
+async def test_admin_user(test_engine) -> User:
+    """Creates a superuser for testing admin/moderation endpoints."""
+    async with async_sessionmaker(test_engine, class_=AsyncSession)() as session:
+        user = User(
+            id=uuid.uuid4(),
+            email=f"admin-{uuid.uuid4()}@example.com",
+            name="Test Admin",
+            hashed_password="hashed_password",
+            is_active=True,
+            is_superuser=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
 @pytest.fixture(scope="session", autouse=True)
 async def test_profile(test_engine, test_user: User) -> Profile:
     """Creates a profile for test_user so endpoints requiring a profile work."""
@@ -173,6 +191,24 @@ def auth_headers(test_user: User) -> dict:
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     to_encode = {"exp": expire, "sub": str(test_user.id)}
+    token = jwt.encode(to_encode, secret, algorithm=settings.ALGORITHM)
+
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="session")
+def admin_auth_headers(test_admin_user: User) -> dict:
+    """Returns auth headers for the test admin user."""
+    from jose import jwt
+    from datetime import datetime, timedelta, timezone
+
+    secret = (
+        settings.NEXTAUTH_SECRET if settings.NEXTAUTH_SECRET else settings.SECRET_KEY
+    )
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    to_encode = {"exp": expire, "sub": str(test_admin_user.id)}
     token = jwt.encode(to_encode, secret, algorithm=settings.ALGORITHM)
 
     return {"Authorization": f"Bearer {token}"}

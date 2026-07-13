@@ -19,9 +19,31 @@ from app.schemas.community import (
     ModerationStatsSchema,
 )
 from app.services.moderation_service import moderation_service
+from app.services.warning_service import warning_service
 import uuid
 
 router = APIRouter()
+
+
+async def _resolve_report_target_user_id(
+    db: AsyncSession, report: ContentReport
+) -> Optional[uuid.UUID]:
+    """Resolve who should be warned/actioned for a report: the reported user
+    directly for USER reports, or the author of the reported content otherwise."""
+    if report.content_type == "USER":
+        return report.content_id
+
+    model_map = {
+        "THREAD": ForumThread,
+        "POST": ForumPost,
+        "STATUS": StatusUpdate,
+    }
+    model = model_map.get(report.content_type)
+    if not model:
+        return None
+
+    content = await db.get(model, report.content_id)
+    return content.author_id if content else None
 
 
 def require_admin(user: User) -> User:
@@ -342,7 +364,15 @@ async def resolve_report(
         report.status = "DISMISSED"
     elif action == "warn_user":
         report.status = "RESOLVED"
-        # TODO: Implement warning system (email notification, etc.)
+        target_user_id = await _resolve_report_target_user_id(db, report)
+        if target_user_id:
+            await warning_service.issue_warning(
+                db,
+                user_id=target_user_id,
+                admin_id=current_user.id,
+                reason=report.reason,
+                report_id=report.id,
+            )
     elif action == "delete_content":
         report.status = "RESOLVED"
         # Delete the content based on type

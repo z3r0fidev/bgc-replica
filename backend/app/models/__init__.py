@@ -11,6 +11,7 @@ from app.models.community import (
 )
 from app.models.chat import ChatRoom, Conversation, Message
 from app.models.gallery import GalleryMedia, Album, AlbumMedia
+from app.models.moderation import Warning
 
 __all__ = [
     "User",
@@ -32,4 +33,5 @@ __all__ = [
     "GalleryMedia",
     "Album",
     "AlbumMedia",
+    "Warning",
 ]

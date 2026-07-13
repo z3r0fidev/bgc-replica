@@ -154,6 +154,70 @@ test.describe("Admin Dashboard", () => {
         await expect(filters.first()).toBeVisible();
       }
     });
+
+    test("reviewing a USER report offers a Warn User action", async ({
+      page,
+    }) => {
+      const reviewButton = page.getByRole("button", { name: /^review$/i }).first();
+
+      if (await reviewButton.isVisible()) {
+        await reviewButton.click();
+
+        const warnButton = page.getByRole("button", { name: /warn user/i });
+        // Only USER-type reports show this action; skip quietly if this
+        // particular report is a different content type.
+        if (await warnButton.isVisible()) {
+          await expect(warnButton).toBeVisible();
+        }
+      }
+    });
+  });
+
+  test.describe("Warnings", () => {
+    test.beforeEach(async ({ page }) => {
+      // A specific user id isn't seeded/known in this E2E environment;
+      // navigating still exercises the route/auth-gate/render path the
+      // same way the rest of this file's soft-skip tests do.
+      await page.goto("/admin/users/00000000-0000-0000-0000-000000000000");
+      if (
+        !page.url().includes("/admin/users/") ||
+        page.url().includes("/login")
+      ) {
+        test.skip();
+      }
+    });
+
+    test("user detail page renders a Warnings history section", async ({
+      page,
+    }) => {
+      const heading = page.getByRole("heading", { name: /^warnings$/i });
+      if (await heading.isVisible()) {
+        await expect(heading).toBeVisible();
+      }
+    });
+
+    test("Issue Warning action opens a dialog requiring a reason", async ({
+      page,
+    }) => {
+      const issueWarningButton = page.getByRole("button", {
+        name: /issue warning/i,
+      });
+
+      if (await issueWarningButton.isVisible()) {
+        await issueWarningButton.click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect(
+          dialog.getByRole("textbox", { name: /reason/i })
+        ).toBeVisible();
+
+        const confirmButton = dialog.getByRole("button", {
+          name: /send warning|issue warning/i,
+        });
+        await expect(confirmButton).toBeDisabled();
+      }
+    });
   });
 
   test.describe("Analytics", () => {

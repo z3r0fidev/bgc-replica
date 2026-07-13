@@ -127,3 +127,54 @@ class UpdateUserRequest(SafeBaseModel):
     name: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
+
+
+class IssueWarningRequest(SafeBaseModel):
+    """Request to issue a moderation warning to a user."""
+
+    reason: str = Field(..., min_length=10, max_length=500)
+    severity: str = Field("STANDARD", description="LOW, STANDARD, or SEVERE")
+    notify: bool = Field(True, description="Whether to email the warned user")
+
+
+class RevokeWarningRequest(SafeBaseModel):
+    """Request to revoke a previously issued warning."""
+
+    reason: str = Field(..., min_length=5, max_length=500)
+
+
+class WarningItem(BaseModel):
+    """A single moderation warning."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    admin_id: Optional[uuid.UUID] = None
+    admin_name: Optional[str] = None
+    report_id: Optional[uuid.UUID] = None
+    reason: str
+    severity: str
+    status: str
+    triggered_escalation: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WarningListResponse(BaseModel):
+    """Paginated warning history for a user."""
+
+    items: List[WarningItem]
+    total: int
+    active_count: int
+    threshold: int
+    limit: int
+    offset: int
+
+
+class IssueWarningResponse(BaseModel):
+    """Result of issuing a warning."""
+
+    warning: WarningItem
+    escalated: bool
+    active_count: int

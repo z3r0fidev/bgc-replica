@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     FRIENDSHIP_CACHE_TTL: int = 600  # 10 minutes
     BLOCK_IDS_CACHE_TTL: int = 300  # 5 minutes
 
+    # Moderation: warning escalation
+    WARNING_ESCALATION_THRESHOLD: int = 3
+    WARNING_ESCALATION_SUSPEND_HOURS: int = 168  # 7 days
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
