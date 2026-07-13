@@ -92,8 +92,9 @@ Since the frontend uses Prisma for the adapter, it needs direct DB access.
 
 #### B. Redis (Local or Managed)
 1.  **Local**: Use `redis://localhost:6379/0`.
-2.  **Production**: Use [Upstash](https://upstash.com) or a managed Redis instance.
-3.  Copy the URL which usually looks like `redis://default:password@host:port`.
+2.  **Production**: Hosted on [Railway](https://railway.app) as a `Redis` service in the `BGCLive Backend` project.
+3.  For local dev against the Railway instance, use the **public proxy URL** (`REDIS_PUBLIC_URL` / `RAILWAY_TCP_PROXY_DOMAIN`), not the internal `redis.railway.internal` host — the internal hostname only resolves inside Railway's private network. Pull it with `railway variables --service Redis` after `railway link`.
+4.  Copy the URL which usually looks like `redis://default:password@host:port`.
 
 ---
 
