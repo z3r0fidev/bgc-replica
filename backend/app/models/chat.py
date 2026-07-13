@@ -45,6 +45,13 @@ class Conversation(Base):
 
 class Message(Base):
     __tablename__ = "messages"
+    # Partitioned by RANGE (created_at) since 20251220_partition_messages;
+    # created_at must be part of the primary key below to match. This
+    # table_args entry is documentation/DDL-generation parity only - it
+    # does not create child partitions if something calls
+    # Base.metadata.create_all() (see backend/tests/conftest.py, which
+    # applies app.core.partitioning's real DDL separately for this reason).
+    __table_args__ = {"postgresql_partition_by": "RANGE (created_at)"}
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -63,7 +70,7 @@ class Message(Base):
         String(50), default="TEXT"
     )  # TEXT, IMAGE, VIDEO, SYSTEM
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, index=True
+        DateTime, primary_key=True, default=datetime.utcnow, index=True
     )
 
     room: Mapped[Optional["ChatRoom"]] = relationship(back_populates="messages")

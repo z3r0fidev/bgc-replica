@@ -42,7 +42,12 @@ async def _resolve_report_target_user_id(
     if not model:
         return None
 
-    content = await db.get(model, report.content_id)
+    # select().where() rather than db.get() - StatusUpdate has a composite
+    # (id, created_at) primary key since it was partitioned, and db.get()
+    # requires the full PK tuple for a single scalar id.
+    content = (
+        await db.execute(select(model).where(model.id == report.content_id))
+    ).scalar_one_or_none()
     return content.author_id if content else None
 
 
@@ -187,7 +192,14 @@ async def get_moderation_queue(
             if post:
                 detail.content_preview = post.content[:200]
         elif report.content_type == "STATUS":
-            status_update = await db.get(StatusUpdate, report.content_id)
+            # StatusUpdate has a composite (id, created_at) primary key
+            # since it was partitioned - db.get() needs the full PK tuple
+            # and raises InvalidRequestError with a single scalar id.
+            status_update = (
+                await db.execute(
+                    select(StatusUpdate).where(StatusUpdate.id == report.content_id)
+                )
+            ).scalar_one_or_none()
             if status_update:
                 detail.content_preview = status_update.content[:200]
 
@@ -385,7 +397,13 @@ async def resolve_report(
             if post:
                 await db.delete(post)
         elif report.content_type == "STATUS":
-            status_update = await db.get(StatusUpdate, report.content_id)
+            # See the report-detail endpoint above for why db.get() can't
+            # be used here now that StatusUpdate has a composite PK.
+            status_update = (
+                await db.execute(
+                    select(StatusUpdate).where(StatusUpdate.id == report.content_id)
+                )
+            ).scalar_one_or_none()
             if status_update:
                 await db.delete(status_update)
     elif action == "ban_user":

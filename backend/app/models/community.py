@@ -90,6 +90,13 @@ class ForumPost(Base):
 
 class StatusUpdate(Base):
     __tablename__ = "status_updates"
+    # Partitioned by RANGE (created_at) since j4k5l6m7n8o9_partition_status_updates;
+    # created_at must be part of the primary key below to match. Note:
+    # post_comments.post_id no longer has a DB-level FK to this table's id -
+    # Postgres forbids a standalone UNIQUE(id) on a partitioned table, so
+    # PostComment.post cascade relies on ORM-level cascade only (see the
+    # partition migration's docstring for the full explanation).
+    __table_args__ = {"postgresql_partition_by": "RANGE (created_at)"}
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -104,12 +111,14 @@ class StatusUpdate(Base):
     image_url: Mapped[Optional[str]] = mapped_column(String(1024))
     report_count: Mapped[int] = mapped_column(Integer, default=0, index=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, index=True
+        DateTime, primary_key=True, default=datetime.utcnow, index=True
     )
 
     author: Mapped["User"] = relationship("User")
     comments: Mapped[List["PostComment"]] = relationship(
-        back_populates="post", cascade="all, delete-orphan"
+        back_populates="post",
+        cascade="all, delete-orphan",
+        primaryjoin="foreign(PostComment.post_id) == StatusUpdate.id",
     )
 
 
@@ -119,16 +128,21 @@ class PostComment(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    post_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("status_updates.id", ondelete="CASCADE"), index=True
-    )
+    # No DB-level ForeignKey to status_updates.id - Postgres forbids a
+    # standalone UNIQUE(id) on a partitioned table, so this can't be
+    # enforced at the DB level (see the partition migration's docstring).
+    # An explicit primaryjoin keeps the ORM relationship working without one.
+    post_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
     author_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    post: Mapped["StatusUpdate"] = relationship(back_populates="comments")
+    post: Mapped["StatusUpdate"] = relationship(
+        back_populates="comments",
+        primaryjoin="foreign(PostComment.post_id) == StatusUpdate.id",
+    )
     author: Mapped["User"] = relationship("User")
 
 
