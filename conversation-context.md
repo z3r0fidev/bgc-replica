@@ -1619,6 +1619,115 @@ storms). Ended: 60-73 passing per shard out of ~65-76, with only 1-2 known remai
 
 ---
 
+## Session: 2026-07-12 — Local Dev Environment Repair (Linux Workstation, No Code Changes)
+
+**Duration**: Short diagnostic session
+**Branch**: `main`
+**Participants**: Developer + Claude Code
+
+### Session Summary
+
+Purely diagnostic session with no application source changes: get the local dev environment
+working on a new Linux machine (repo lives in a Synology Drive sync folder) after apparent
+breakage. Five issues found and fixed, in order.
+
+### Findings and Fixes
+
+1. **False alarm — 114 "deleted" tracked files**: `git status` initially showed 114 tracked files
+   (frontend pages under `frontend/src/app/`, `bgc-personals` components/assets) as unstaged
+   deletions — pure `-N/+0` diffs, nothing else modified. Traced to the repo being under active
+   Synology Drive sync; once sync finished, all 114 files reappeared and `git status` came back
+   clean except for the 2 legitimately in-progress files. No git action needed or taken.
+2. **`backend/venv` was a Windows-created venv**, unusable on this Linux machine —
+   `pyvenv.cfg` showed `home = C:\Python314`, `executable = C:\Python314\python.exe`, originally
+   created at `C:\Users\isaiah.muhammad\bgc-replica\backend\venv`. Directory had `Scripts/`/`Lib`/
+   `Include` (Windows layout) instead of `bin/`. Fixed by deleting it and recreating with
+   `python3.12 -m venv venv` (the Python available on this machine; no version pin exists anywhere
+   in the repo — no `.python-version`, `runtime.txt`, or `python_requires`), then
+   `pip install -r requirements.txt`, which installed cleanly. Decided to stick with 3.12 rather
+   than installing 3.14 to match the old Windows venv — nothing in the repo requires 3.14.
+3. **Stale Redis credentials**: `backend/.env` had a `REDIS_URL` pointing at Upstash
+   (`big-jennet-37167.upstash.io`), which no longer resolved via DNS. Confirmed with the user that
+   the project migrated off Upstash to **Railway** for backend + Redis hosting. Installed the
+   Railway CLI (`npm i -g @railway/cli`), the user ran `railway login` interactively (account:
+   Z3r0fiDeV / viralkings215@gmail.com), then linked the repo via
+   `railway link --project "BGCLive Backend"` (workspace: Z3r0fiDeV's Projects, environment:
+   production, services: `bgc-replica` and `Redis`). Pulled Redis service vars with
+   `railway variables --service Redis` and updated `REDIS_URL` to the **public proxy** URL
+   (`redis://default:***@reseau.proxy.rlwy.net:31149`) rather than the internal
+   `redis.railway.internal` one, which only resolves inside Railway's private network. Verified
+   with a live `PING` — success.
+4. **`frontend/node_modules/.bin/*` had lost their execute bit** (all 120 bin scripts, e.g.
+   `next`) — another apparent Synology Drive sync side effect stripping POSIX permission bits.
+   `next dev` failed with "Permission denied". Fixed with `chmod +x node_modules/.bin/*`.
+5. **Stale Turbopack build cache**: after fixing permissions, `next dev` still failed —
+   `TurbopackInternalError: create symlink to ../../../node_modules/import-in-the-middle ...
+   File exists (os error 17)`. Root cause: `.next/node_modules/import-in-the-middle-ac114f323ad7e863`
+   and `.next/dev/node_modules/import-in-the-middle-ac114f323ad7e863` were stale leftover
+   directories conflicting with a symlink Turbopack wanted to create fresh. `.next/` is gitignored
+   build output, so `rm -rf .next` was safe. Confirmed fixed — `next dev` now boots and serves
+   HTTP 200 on `/`.
+
+### Verification
+
+Backend booted via `uvicorn app.main:app`; `/health` returned 200, confirming live DB connectivity
+to Supabase Postgres and Redis connectivity to Railway. Frontend booted via `npm run dev`
+(Turbopack) and served HTTP 200 on `http://localhost:3000/`. Both dev servers were killed after
+verification, not left running.
+
+### Git Activity
+
+**Nothing committed for the fixes themselves** — every file touched (`backend/.env`,
+`backend/venv/`, `frontend/node_modules/`, `frontend/.next/`) is gitignored/untracked, confirmed
+via `git ls-files` and `git status`. Explicitly discussed with the user, who agreed there was
+nothing to commit. Only a session-close docs commit (PR #83, branch
+`docs/session-close-env-repair`) lands from this session — no application code changed by this
+session's own hand.
+
+**Branch-protection required an `origin/main` merge into the doc-close branch**: `main`'s
+`required_status_checks` is `strict`, meaning a PR branch must be up to date with `main` before its
+checks are considered satisfied. By the time this session opened its doc-close PR, `main` had
+advanced 24 commits (PRs #57-#82) past the `b1a9e2e` tip this doc set's detailed narrative was
+written against — merged by other sessions/machines, not reviewed in depth here. `git merge
+origin/main` was run on the doc-close branch to resolve this (see Pre-existing State note below for
+a complication this surfaced).
+
+### Pre-existing State Noticed, Not Manually Touched — but Reconciled by a Required Merge
+
+- `frontend/src/app/(protected)/profile/edit/page.tsx` and
+  `frontend/src/app/(protected)/users/page.tsx` had real uncommitted local work in progress at
+  session start (search filter active-count UI, toast notifications on search success/failure).
+  Per instructions, neither file's content was opened or edited directly. However, merging
+  `origin/main` into the doc-close branch (required for branch protection, see above) touched both
+  files, and `git merge` reported they'd conflict with the stashed local changes. The local changes
+  were stashed, the merge completed, then the stash was popped — and it applied with **zero
+  resulting diff against the merged `origin/main`**, meaning the same work already exists upstream
+  (PRs in the #57-#82 range: +37/-* lines in `profile/edit/page.tsx`, +218/-* in `users/page.tsx`),
+  most likely already committed and merged from the Windows machine used in other sessions, with
+  this Linux checkout's copy being a stale uncommitted duplicate. This was a mechanical git outcome
+  (3-way merge + stash pop), not a manual edit — but it is unverified: a future session should
+  spot-check that both features (active-count UI, toast notifications) actually work against
+  current `main` before assuming the reconciliation was fully correct.
+- Untracked tooling files present: `.agents/`, `backend/.agents/`, `backend/.mcp.json`,
+  `backend/skills-lock.json`, `skills-lock.json` — Claude Code / plugin scaffolding, not
+  gitignored but harmless and not blocking anything, not investigated further.
+- `env.md` line 95 still recommends Upstash for production Redis — now stale given the Railway
+  migration confirmed this session. Not fixed here (out of scope: this session consumed the
+  Railway Redis credential, it didn't audit documentation for Redis-hosting references).
+
+### Session Statistics
+
+- **Files Modified (app code)**: 0 (by this session's own hand — see required-merge note above for
+  the mechanical reconciliation of two files already in progress before this session started)
+- **Files Created**: 0
+- **Local environment fixed**: `backend/venv` (recreated for Linux), `backend/.env` (`REDIS_URL`
+  → Railway), `frontend/node_modules/.bin/*` (permissions), `frontend/.next/` (cache cleared)
+- **PR opened**: #83 (docs-only, `docs/session-close-env-repair`)
+- **Upstream commits pulled in via required merge, not authored by this session**: 24 (PRs #57-#82)
+- **Commits**: 1 (this session-close docs update)
+
+---
+
 ## Appendix: Session Patterns
 
 ### Successful Patterns This Session

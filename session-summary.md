@@ -2,6 +2,93 @@
 
 ---
 
+## Session: 2026-07-12 — Local Dev Environment Repair (Linux Workstation, No Code Changes)
+
+### Session Information
+- **Date**: 2026-07-12
+- **Duration**: Short diagnostic session
+- **Branch**: `main`
+- **PR Merged**: None — no application code changed
+- **HEAD after session**: doc-close commit only, on top of `b1a9e2e`
+- **Focus**: Get the local dev environment working on a new Linux machine after apparent breakage (repo lives in a Synology Drive sync folder)
+
+### High-Level Summary
+
+Purely diagnostic/environment-repair session, no application source touched. Five issues found and
+fixed, in order: (1) a false alarm where 114 tracked files briefly showed as deleted in `git
+status` — traced to the repo being mid-Synology-sync, resolved itself once sync completed, no git
+action needed; (2) `backend/venv` was a Windows-created venv (`pyvenv.cfg` pointed at
+`C:\Python314`) unusable on Linux — deleted and recreated with `python3.12 -m venv venv` (no
+Python version pin exists anywhere in the repo); (3) `backend/.env`'s `REDIS_URL` pointed at a
+dead Upstash host — confirmed with the user that the project migrated Redis hosting to Railway,
+installed the Railway CLI, linked the existing "BGCLive Backend" project, and updated `REDIS_URL`
+to Railway's public-proxy address (not the internal `redis.railway.internal` host, which only
+resolves inside Railway's network); (4) `frontend/node_modules/.bin/*` had lost execute
+permissions (another apparent Synology sync side effect), fixed with `chmod +x`; (5) a stale
+Turbopack `.next/` build cache was conflicting with a fresh symlink Turbopack wanted to create,
+fixed by `rm -rf .next` (gitignored build output, safe to delete). Verified both dev servers boot
+cleanly (backend `/health` → 200 with live Supabase + Railway Redis connectivity; frontend `/` →
+200 via Turbopack), then stopped both. Nothing was committed to git for the fixes themselves —
+every file touched (`backend/.env`, `backend/venv/`, `frontend/node_modules/`, `frontend/.next/`)
+is gitignored or untracked; only this session-close doc commit lands on `main`.
+
+### Files Modified
+
+None (application code). Local-only, gitignored/untracked paths touched: `backend/.env`
+(REDIS_URL), `backend/venv/` (recreated), `frontend/node_modules/.bin/*` (permissions),
+`frontend/.next/` (deleted/regenerated).
+
+### Key Decisions and Rationale
+
+1. **Recreate the venv with `python3.12` rather than installing `python3.14`** to match the old
+   Windows venv: nothing in the repo pins a Python version, and 3.12 is what's available on this
+   machine — no reason to chase parity with an unpinned, machine-specific artifact.
+2. **Use Railway's public-proxy Redis URL locally, not the internal hostname**: the internal
+   `redis.railway.internal` address only resolves inside Railway's own private network; local dev
+   traffic must go through the public proxy.
+3. **Do not touch the two pre-existing in-progress frontend files**
+   (`profile/edit/page.tsx`, `users/page.tsx`) — real work from a prior session, out of scope for
+   an environment-repair session. (Neither file was opened or edited during the fix work above.
+   They were later swept into the required `origin/main` merge for this doc-close PR — see below.)
+4. **Nothing to commit for the fixes themselves**: confirmed via `git ls-files` that every path
+   touched is gitignored/untracked; discussed explicitly with the user, who agreed.
+5. **Merged `origin/main` into the doc-close branch** (24 commits, PRs #57-#82) purely to satisfy
+   the repo's strict `required_status_checks` branch-protection rule, which requires a PR branch to
+   be up to date with `main` before merge. This pulled in unrelated upstream work; not reviewed in
+   depth by this session (see Bridging Note in `session-context.md`).
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] `env.md` line 95 still recommends Upstash for production Redis — stale since the Railway
+      migration; small follow-up doc fix, out of scope this session.
+- [ ] **Verify the two previously-"in-progress" frontend files are actually complete**: merging
+      `origin/main` into the doc-close branch required stashing their uncommitted local changes,
+      merging, then popping the stash — it applied with zero resulting diff against `main`,
+      meaning the same work (search filter active-count UI, toast notifications) appears to already
+      be merged upstream (likely from the Windows machine used in other sessions). This was a
+      mechanical git outcome, not independently verified — spot-check both features work correctly.
+- [ ] All items carried forward from the 2026-07-03 session below (search-advanced dropdown bug,
+      residual WebKit flakiness, NUL-byte/surrogate audit, dedicated E2E DB, nightly stress tests)
+      may already be resolved by PRs #57-#59 in the interim — verify against current `main` before
+      assuming still open (see Bridging Note in `session-context.md`).
+
+### Blockers / Challenges
+
+None blocking — all five issues were diagnosed and resolved within the session. The Synology Drive
+sync interactions (transient "deleted" files, stripped execute bits) were the most time-consuming
+to correctly attribute, since they initially looked like repo corruption rather than an
+environmental side effect of active file sync.
+
+### Session Statistics
+
+- **Files Created**: 0
+- **Files Modified (app code)**: 0
+- **Local environment files fixed**: 4 (`backend/.env`, `backend/venv/`, `node_modules/.bin/*` perms, `.next/` cache)
+- **PRs Merged**: 0
+- **Verification**: backend `/health` 200, frontend `/` 200, both dev servers stopped after check
+
+---
+
 ## Session: 2026-07-03 — E2E CSP, Rate Limits, CORS Hardening + Production DB Migration (PR #55)
 
 ### Session Information
