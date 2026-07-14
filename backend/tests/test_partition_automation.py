@@ -129,9 +129,12 @@ class TestPartitionRouting:
 
 class TestEnsureFuturePartitions:
     @pytest.mark.asyncio
-    async def test_creates_next_month_for_both_tables(self, db_session: AsyncSession):
-        # Call the underlying async logic directly rather than through
-        # Celery's task-dispatch machinery.
+    async def test_underlying_sql_creates_next_month_for_both_tables(
+        self, db_session: AsyncSession
+    ):
+        # Exercises the same create_monthly_partition() call the task makes,
+        # via the test's own async session - see test_task_creates_partitions
+        # below for a call through the real task function end-to-end.
         from datetime import timedelta
 
         target_date = (datetime.utcnow() + timedelta(days=31)).date()
@@ -146,6 +149,29 @@ class TestEnsureFuturePartitions:
             ).scalar_one()
             assert name == f"{table}{expected_suffix}"
         await db_session.commit()
+
+    def test_task_creates_partitions_end_to_end(self):
+        """Calls the real Celery task function directly (sync, matching how
+        a worker invokes it) rather than only its underlying SQL, so the
+        task body itself - not just create_monthly_partition() - is covered.
+        Runs against the module-level SessionLocal (bound to whatever
+        DATABASE_URL the test process has, i.e. the isolated test DB, not
+        test_engine/db_session's per-test transaction), so it commits for
+        real; asserts against that same real state afterward and cleans up.
+        """
+        from datetime import timedelta
+
+        created = ensure_future_partitions()
+
+        target_date = (datetime.utcnow() + timedelta(days=31)).date()
+        expected = [
+            f"{table}_y{target_date.strftime('%Y')}m{target_date.strftime('%m')}"
+            for table in ("messages", "status_updates")
+        ]
+        assert created == expected
+
+        # Idempotent re-run should return the same partition names, not error.
+        assert ensure_future_partitions() == expected
 
     def test_beat_schedule_contains_expected_entry(self):
         assert "ensure-future-partitions" in celery_app.conf.beat_schedule

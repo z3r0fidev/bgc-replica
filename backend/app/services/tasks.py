@@ -72,18 +72,31 @@ def ensure_future_partitions():
     async def _ensure():
         from sqlalchemy import text
 
-        from app.core.database import SessionLocal
+        from app.core.database import create_scoped_engine
 
+        # A scoped engine, not the shared app.core.database.engine/
+        # SessionLocal singleton - run_async() gives this call its own
+        # event loop and closes it on return, but the shared engine's
+        # pooled connections persist across calls for the worker process's
+        # whole lifetime. A second call reusing a pooled connection tied to
+        # a now-closed loop fails ("Event loop is closed" or "attached to
+        # a different loop" once other code has touched the shared engine
+        # under yet another loop in between). See create_scoped_engine's
+        # docstring.
+        scoped_engine, scoped_session_factory = create_scoped_engine()
         target_date = (datetime.utcnow() + timedelta(days=31)).date()
         created = []
-        async with SessionLocal() as db:
-            for table in PARTITIONED_TABLES:
-                result = await db.execute(
-                    text("SELECT create_monthly_partition(:table, :target_date)"),
-                    {"table": table, "target_date": target_date},
-                )
-                created.append(result.scalar_one())
-            await db.commit()
+        try:
+            async with scoped_session_factory() as db:
+                for table in PARTITIONED_TABLES:
+                    result = await db.execute(
+                        text("SELECT create_monthly_partition(:table, :target_date)"),
+                        {"table": table, "target_date": target_date},
+                    )
+                    created.append(result.scalar_one())
+                await db.commit()
+        finally:
+            await scoped_engine.dispose()
         return created
 
     try:
