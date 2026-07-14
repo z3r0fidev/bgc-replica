@@ -14,6 +14,7 @@ from app.api.search import router as search_router
 from app.api.forums import router as forums_router
 from app.api.feed import router as feed_router
 from app.api.groups import router as groups_router
+from app.api.chat import router as chat_router
 from app.api.group_chats import router as group_chats_router
 from app.api.moderation import router as moderation_router
 from app.api.media import router as media_router
@@ -196,6 +197,7 @@ app.include_router(search_router, prefix="/api/search", tags=["search"])
 app.include_router(forums_router, prefix="/api/forums", tags=["forums"])
 app.include_router(feed_router, prefix="/api/feed", tags=["feed"])
 app.include_router(groups_router, prefix="/api/groups", tags=["groups"])
+app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
 app.include_router(group_chats_router, prefix="/api/group-chats", tags=["group-chats"])
 app.include_router(moderation_router, prefix="/api/moderation", tags=["moderation"])
 app.include_router(media_router, prefix="/api/media", tags=["media"])
