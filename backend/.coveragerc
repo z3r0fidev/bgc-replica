@@ -1,0 +1,8 @@
+[run]
+# coverage.py's default trace-function tracer loses coverage on lines that
+# run after a real async suspension (e.g. a second sequential
+# `await db.execute(...)` in the same endpoint) under SQLAlchemy async +
+# asyncpg, systematically under-reporting async route handlers - one file
+# measured 43% with the legacy tracer and 100% with sysmon against the
+# identical test run. sysmon (PEP 669, Python 3.12+) tracks these correctly.
+core = sysmon
