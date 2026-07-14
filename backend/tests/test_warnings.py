@@ -560,3 +560,82 @@ class TestMessageForeignKeyCascade:
             )
         ).scalar_one()
         assert remaining == 0
+
+
+class TestModerationMissingContentEdgeCases:
+    """Covers the 'reported content no longer exists' branch at each of the
+    three fixed call sites - a report whose target was already deleted
+    (e.g. by another moderation action) shouldn't 500."""
+
+    @pytest.mark.asyncio
+    async def test_warn_user_on_status_report_with_deleted_content_is_a_noop(
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession
+    ):
+        reporter = await _make_user(db_session)
+        report = ContentReport(
+            id=uuid.uuid4(),
+            reporter_id=reporter.id,
+            content_type="STATUS",
+            content_id=uuid.uuid4(),  # never created
+            reason="Spam",
+        )
+        db_session.add(report)
+        await db_session.commit()
+
+        response = await client.post(
+            f"/api/moderation/resolve/{report.id}",
+            json={"action": "warn_user"},
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["new_status"] == "RESOLVED"
+
+    @pytest.mark.asyncio
+    async def test_queue_listing_with_deleted_status_content_has_no_preview(
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession
+    ):
+        reporter = await _make_user(db_session)
+        report = ContentReport(
+            id=uuid.uuid4(),
+            reporter_id=reporter.id,
+            content_type="STATUS",
+            content_id=uuid.uuid4(),  # never created
+            reason="Spam",
+        )
+        db_session.add(report)
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/moderation/queue?content_type=STATUS",
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 200
+        items = [r for r in response.json() if r["id"] == str(report.id)]
+        assert len(items) == 1
+        assert items[0]["content_preview"] is None
+
+    @pytest.mark.asyncio
+    async def test_delete_content_on_already_missing_status_is_a_noop(
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession
+    ):
+        reporter = await _make_user(db_session)
+        report = ContentReport(
+            id=uuid.uuid4(),
+            reporter_id=reporter.id,
+            content_type="STATUS",
+            content_id=uuid.uuid4(),  # never created
+            reason="Spam",
+        )
+        db_session.add(report)
+        await db_session.commit()
+
+        response = await client.post(
+            f"/api/moderation/resolve/{report.id}",
+            json={"action": "delete_content"},
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["new_status"] == "RESOLVED"

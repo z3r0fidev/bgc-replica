@@ -92,6 +92,34 @@ SessionLocal = async_sessionmaker(
 )
 
 
+def create_scoped_engine():
+    """A fresh engine + sessionmaker pair, independent of the module-level
+    `engine`/`SessionLocal` singleton above.
+
+    For code that spins up its own event loop and tears it down when done -
+    e.g. Celery tasks wrapped in app.services.tasks.run_async(), which each
+    get a brand new loop per call. Reusing the shared `engine`'s connection
+    pool across calls like that fails with "Task ... attached to a
+    different loop" (or "Event loop is closed") once a second call happens
+    in the same worker process, since pooled connections are tied to
+    whichever loop created them. Callers must dispose() the returned
+    engine when done - see app.services.tasks.ensure_future_partitions.
+    """
+    scoped_engine = create_async_engine(
+        database_url,
+        pool_pre_ping=True,
+        connect_args=_connect_args,
+    )
+    scoped_session_factory = async_sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=scoped_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    return scoped_engine, scoped_session_factory
+
+
 class Base(DeclarativeBase):
     pass
 
