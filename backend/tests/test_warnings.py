@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -435,3 +436,127 @@ class TestResolveReportWarnUser:
         )
         assert warnings_response.json()["total"] == 1
         assert warnings_response.json()["items"][0]["report_id"] == str(report.id)
+
+
+class TestModerationStatusReportPartitionRegression:
+    """Regression coverage for the three db.get(StatusUpdate, ...) call sites
+    fixed when StatusUpdate gained a composite (id, created_at) primary key
+    (issue #66 partitioning). Each of these would hard-fail with
+    sqlalchemy.exc.InvalidRequestError pre-fix."""
+
+    @pytest.mark.asyncio
+    async def test_queue_listing_includes_status_content_preview(
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession
+    ):
+        author = await _make_user(db_session)
+        reporter = await _make_user(db_session)
+
+        status_update = StatusUpdate(
+            id=uuid.uuid4(), author_id=author.id, content="Reported status content"
+        )
+        db_session.add(status_update)
+        await db_session.commit()
+
+        report = ContentReport(
+            id=uuid.uuid4(),
+            reporter_id=reporter.id,
+            content_type="STATUS",
+            content_id=status_update.id,
+            reason="Spam",
+        )
+        db_session.add(report)
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/moderation/queue?content_type=STATUS",
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 200
+        items = [r for r in response.json() if r["id"] == str(report.id)]
+        assert len(items) == 1
+        assert items[0]["content_preview"] == "Reported status content"
+
+    @pytest.mark.asyncio
+    async def test_delete_content_removes_status_update(
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession
+    ):
+        author = await _make_user(db_session)
+        reporter = await _make_user(db_session)
+
+        status_update = StatusUpdate(
+            id=uuid.uuid4(), author_id=author.id, content="To be deleted"
+        )
+        db_session.add(status_update)
+        await db_session.commit()
+
+        report = ContentReport(
+            id=uuid.uuid4(),
+            reporter_id=reporter.id,
+            content_type="STATUS",
+            content_id=status_update.id,
+            reason="Inappropriate",
+        )
+        db_session.add(report)
+        await db_session.commit()
+        await db_session.refresh(report)
+
+        response = await client.post(
+            f"/api/moderation/resolve/{report.id}",
+            json={"action": "delete_content"},
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 200
+        remaining = (
+            await db_session.execute(
+                text("SELECT count(*) FROM status_updates WHERE id = :id"),
+                {"id": status_update.id},
+            )
+        ).scalar_one()
+        assert remaining == 0
+
+
+class TestMessageForeignKeyCascade:
+    """DB-level ON DELETE CASCADE coverage for messages, exercised via raw
+    SQL so it's independent of ORM session-level cascade (which only fires
+    when children are already loaded)."""
+
+    @pytest.mark.asyncio
+    async def test_raw_sql_room_delete_cascades_to_messages(
+        self, db_session: AsyncSession
+    ):
+        user = await _make_user(db_session)
+        room_id = uuid.uuid4()
+        message_id = uuid.uuid4()
+
+        await db_session.execute(
+            text(
+                "INSERT INTO chat_rooms (id, name, category, is_public, created_at) "
+                "VALUES (:id, :name, 'general', true, now())"
+            ),
+            {"id": room_id, "name": f"room-{room_id}"},
+        )
+        await db_session.execute(
+            text(
+                "INSERT INTO messages (id, room_id, sender_id, content, type, created_at) "
+                "VALUES (:id, :room_id, :sender_id, 'hi', 'TEXT', now())"
+            ),
+            {"id": message_id, "room_id": room_id, "sender_id": user.id},
+        )
+        await db_session.commit()
+
+        # Raw SQL delete, never loaded into the ORM session - proves the
+        # DB-level FK constraint fires the cascade on its own.
+        await db_session.execute(
+            text("DELETE FROM chat_rooms WHERE id = :id"), {"id": room_id}
+        )
+        await db_session.commit()
+
+        remaining = (
+            await db_session.execute(
+                text("SELECT count(*) FROM messages WHERE id = :id"),
+                {"id": message_id},
+            )
+        ).scalar_one()
+        assert remaining == 0

@@ -6,6 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from app.main import app
 from app.core.database import Base, get_db
 from app.core.config import settings
+from app.core.partitioning import (
+    CREATE_MONTHLY_PARTITION_FUNCTION_SQL,
+    PARTITIONED_TABLES,
+)
 
 # Use a test-specific database URL if provided, otherwise fallback to a default test DB name
 TEST_DATABASE_URL = settings.DATABASE_URL.replace("/bgc_replica", "/bgc_test_db")
@@ -74,6 +78,22 @@ async def test_engine():
     engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # messages/status_updates are declared with postgresql_partition_by
+        # (see app/models/chat.py, app/models/community.py), so create_all
+        # emits them as partitioned parents with zero child partitions -
+        # every insert would fail with "no partition of relation found for
+        # row" without this. Uses the same create_monthly_partition()
+        # function the real migrations define (app.core.partitioning is the
+        # shared source of truth) so this isn't a parallel reimplementation
+        # that could drift from what actually runs in production.
+        await conn.execute(text(CREATE_MONTHLY_PARTITION_FUNCTION_SQL))
+        for table in PARTITIONED_TABLES:
+            await conn.execute(text(f"CREATE TABLE {table}_default PARTITION OF {table} DEFAULT"))
+            await conn.execute(
+                text("SELECT create_monthly_partition(:table, CURRENT_DATE)"),
+                {"table": table},
+            )
 
     yield engine
 

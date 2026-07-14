@@ -1,7 +1,9 @@
 from app.core.celery_config import celery_app
 from app.core.redis_config import get_redis
+from app.core.partitioning import PARTITIONED_TABLES
 import asyncio
 import time
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 
@@ -55,6 +57,40 @@ def send_verification_email_task(
         )
 
     return run_async(_send_email())
+
+
+@celery_app.task(name="app.services.tasks.ensure_future_partitions")
+def ensure_future_partitions():
+    """
+    Create next month's partition for messages and status_updates, ahead of
+    need. Idempotent (create_monthly_partition uses CREATE TABLE IF NOT
+    EXISTS). Re-raises on failure so Celery marks the task failed and it's
+    visible in worker logs/monitoring - this exact silent-failure mode is
+    what let the Dec 2025 messages partitioning go unmaintained for months.
+    """
+
+    async def _ensure():
+        from sqlalchemy import text
+
+        from app.core.database import SessionLocal
+
+        target_date = (datetime.utcnow() + timedelta(days=31)).date()
+        created = []
+        async with SessionLocal() as db:
+            for table in PARTITIONED_TABLES:
+                result = await db.execute(
+                    text("SELECT create_monthly_partition(:table, :target_date)"),
+                    {"table": table, "target_date": target_date},
+                )
+                created.append(result.scalar_one())
+            await db.commit()
+        return created
+
+    try:
+        return run_async(_ensure())
+    except Exception as e:
+        print(f"Failed to ensure future partitions: {e}")
+        raise
 
 
 @celery_app.task(name="app.services.tasks.send_password_reset_email_task")
