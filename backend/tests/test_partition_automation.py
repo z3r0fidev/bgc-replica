@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.celery_config import celery_app
 from app.models.chat import Message
-from app.models.community import StatusUpdate
 from app.models.user import User
 from app.services.tasks import ensure_future_partitions
 
