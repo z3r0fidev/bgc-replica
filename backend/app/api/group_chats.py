@@ -110,11 +110,7 @@ def member_to_response(
         last_read_at=member.last_read_at,
         joined_at=member.joined_at,
         user_name=user.name if user else None,
-        user_avatar=(
-            user.profile.avatar_url
-            if user and hasattr(user, "profile") and user.profile
-            else None
-        ),
+        user_avatar=user.image if user else None,
     )
 
 
@@ -502,7 +498,7 @@ async def send_message(
                 and_(
                     GroupMessage.id == message_in.reply_to_id,
                     GroupMessage.group_id == group_id,
-                    not GroupMessage.is_deleted,
+                    GroupMessage.is_deleted.is_(False),
                 )
             )
         )
@@ -541,11 +537,7 @@ async def send_message(
         is_deleted=message.is_deleted,
         created_at=message.created_at,
         sender_name=current_user.name,
-        sender_avatar=(
-            current_user.profile.avatar_url
-            if hasattr(current_user, "profile") and current_user.profile
-            else None
-        ),
+        sender_avatar=current_user.image,
     )
 
 
@@ -564,7 +556,7 @@ async def get_messages(
     # Build query
     conditions = [
         GroupMessage.group_id == group_id,
-        not GroupMessage.is_deleted,
+        GroupMessage.is_deleted.is_(False),
     ]
     if before:
         conditions.append(GroupMessage.created_at < before)
@@ -574,7 +566,7 @@ async def get_messages(
         select(func.count(GroupMessage.id)).where(
             and_(
                 GroupMessage.group_id == group_id,
-                not GroupMessage.is_deleted,
+                GroupMessage.is_deleted.is_(False),
             )
         )
     )
@@ -605,11 +597,7 @@ async def get_messages(
             is_deleted=msg.is_deleted,
             created_at=msg.created_at,
             sender_name=user.name,
-            sender_avatar=(
-                user.profile.avatar_url
-                if hasattr(user, "profile") and user.profile
-                else None
-            ),
+            sender_avatar=user.image,
         )
         for msg, user in rows
     ]
@@ -681,11 +669,7 @@ async def edit_message(
         is_deleted=message.is_deleted,
         created_at=message.created_at,
         sender_name=current_user.name,
-        sender_avatar=(
-            current_user.profile.avatar_url
-            if hasattr(current_user, "profile") and current_user.profile
-            else None
-        ),
+        sender_avatar=current_user.image,
     )
 
 
