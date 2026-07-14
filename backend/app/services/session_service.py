@@ -51,12 +51,16 @@ class SessionService:
                 device_info["browser_version"] = match.group(1)
                 break
 
-        # Detect OS
+        # Detect OS. Android checked before the bare "Linux" pattern - real
+        # Android UAs always include "Linux;" as part of the platform tag
+        # (e.g. "Linux; Android 13; Pixel 7"), so Linux would otherwise
+        # match first and every Android device would be misreported as OS
+        # "Linux" instead of "Android".
         os_patterns = [
             (r"Windows NT (\d+\.\d+)", "Windows"),
             (r"Mac OS X (\d+[._]\d+)", "macOS"),
-            (r"Linux", "Linux"),
             (r"Android (\d+)", "Android"),
+            (r"Linux", "Linux"),
             (r"iPhone OS (\d+)", "iOS"),
             (r"iPad.*OS (\d+)", "iPadOS"),
         ]
