@@ -41,10 +41,12 @@ async def search_users_nearby(lat: float, lng: float, radius_km: float = 50):
     """
     Search for users within a radius in Redis.
     """
-    redis = await get_redis()
     # GEORADIUS is deprecated in some versions, but supported in many.
-    # Use GEOSEARCH for modern Redis.
+    # Use GEOSEARCH for modern Redis. get_redis() is inside the try (like
+    # presence_service's methods) so a Redis outage degrades to an empty
+    # result instead of propagating.
     try:
+        redis = await get_redis()
         results = await redis.geosearch(
             "geo:users",
             longitude=lng,
