@@ -34,7 +34,6 @@ beforeAll(() => {
     unobserve() {}
     disconnect() {}
   }
-  // @ts-expect-error test stub
   global.ResizeObserver = ResizeObserverStub;
 });
 

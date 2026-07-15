@@ -67,7 +67,7 @@ function mockUseFeed(initialPosts: FeedPost[] = []) {
   let posts = initialPosts;
   const setPosts = vi.fn((next: FeedPost[]) => {
     posts = next;
-  });
+  }) as unknown as React.Dispatch<React.SetStateAction<FeedPost[]>>;
   const addPosts = vi.fn();
   vi.mocked(useFeed).mockReturnValue({ posts, setPosts, addPosts });
   return { setPosts, addPosts };

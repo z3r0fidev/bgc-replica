@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import AdminUserDetailPage from "../../src/app/(protected)/admin/users/[id]/page";
 import { adminService } from "../../src/services/adminService";
+import type { AdminUserDetail } from "../../src/types/admin";
 
 const pushMock = vi.fn();
 const backMock = vi.fn();
@@ -31,7 +32,7 @@ vi.mock("sonner", () => ({
 
 import { toast } from "sonner";
 
-const baseUser = {
+const baseUser: AdminUserDetail = {
   id: "user-1",
   name: "Active User",
   email: "active@example.com",
