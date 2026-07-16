@@ -28,8 +28,18 @@ async def get_forum_tree(db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(select(ForumCategory))
     categories = result.scalars().all()
 
-    # Build tree in memory (suitable for small/medium number of categories)
-    category_map = {cat.id: ForumCategoryTree.model_validate(cat) for cat in categories}
+    # Build tree in memory (suitable for small/medium number of categories).
+    # Must validate against ForumCategorySchema (not ForumCategoryTree directly) -
+    # ForumCategory.children is a lazy-loaded ORM relationship (via the `parent`
+    # backref), and touching it here from a from_attributes conversion outside
+    # an awaited context raises MissingGreenlet. The tree is rebuilt manually
+    # below anyway, so the ORM relationship's value was never needed.
+    category_map = {
+        cat.id: ForumCategoryTree(
+            **ForumCategorySchema.model_validate(cat).model_dump(), children=[]
+        )
+        for cat in categories
+    }
     tree = []
 
     for cat_id, cat_obj in category_map.items():
