@@ -229,17 +229,91 @@ local-dev-repair session below; docs now correctly point at Railway. Docs-only, 
       celery` drained 1 → 0.
     - **Known open gap**: Resend reports `bgclive.online` domain not verified — real sends still
       blocked pending DNS verification in the Resend dashboard (not a code issue).
-19. **Issue #66 (DB Partitioning) — investigated, implementation paused**: a database-optimizer
-    agent pass plus direct verification found `messages` was partitioned by `created_at` in December
-    2025 but monthly-partition-creation automation was never built — every message since January
-    2026 has landed in a single `messages_default` catch-all, defeating the point. The same
-    migration also silently dropped FK constraints (`room_id`/`conversation_id`/`sender_id`) and
-    `ix_messages_sender_id` on `messages`, never restored. `status_updates` was never partitioned.
-    Hot-path queries (chat by `conversation_id`/`room_id`; feed via Redis fan-out + `id IN (...)`)
-    don't filter by date, so partitioning won't speed up per-query latency — value is in
-    maintenance/vacuum at scale and future retention/archival. User informed and agreed to proceed
-    with full scope once resumed. **No plan file was written to `specs/`** — work paused when the
-    Celery incident took priority. Resuming requires re-investigation, not resuming a saved artifact.
+19. **Issue #66 (DB Partitioning) — investigated, implementation paused** *(status as recorded on
+    2026-07-13; superseded the very next day — see item 20 below, backfilled 2026-07-15)*: a
+    database-optimizer agent pass plus direct verification found `messages` was partitioned by
+    `created_at` in December 2025 but monthly-partition-creation automation was never built — every
+    message since January 2026 has landed in a single `messages_default` catch-all, defeating the
+    point. The same migration also silently dropped FK constraints
+    (`room_id`/`conversation_id`/`sender_id`) and `ix_messages_sender_id` on `messages`, never
+    restored *(PR #89's commit message states this specific FK/index concern was re-investigated
+    during implementation and found already fixed by an unrelated earlier migration by that point;
+    this session's own `git log --follow` on the migration file could not independently confirm a
+    point where the FK/index lines were absent, so the discrepancy is noted rather than resolved)*.
+    `status_updates` was never partitioned. Hot-path queries (chat by `conversation_id`/`room_id`;
+    feed via Redis fan-out + `id IN (...)`) don't filter by date, so partitioning won't speed up
+    per-query latency — value is in maintenance/vacuum at scale and future retention/archival. User
+    informed and agreed to proceed with full scope once resumed. **No plan file was written to
+    `specs/`** — work paused when the Celery incident took priority. Resuming requires
+    re-investigation, not resuming a saved artifact.
+
+### Bridging — PRs #89-#109 (2026-07-13/14, backfilled 2026-07-15 — see `session-context.md` for full detail)
+
+**A large body of work landed on `main` across these two days without ever being written into this
+file until this 2026-07-15 close-out.** Discovered via `git log 5bcd5b9..3a3ef47` while closing the
+2026-07-15 session; reconstructed from commit messages/diffs, not a live transcript.
+
+20. **Issue #66 (DB Partitioning) — completed** (PR #89 `8784fbe`/commit `c7000ec`, closes #66; PR
+    #90 `1b2a025`/commit `c148a52`, follow-up bug fix). Directly supersedes item 19 above: fixed the
+    `messages_default` catch-all via a generic `create_monthly_partition()` Postgres function shared
+    by the migration and test fixtures (`app/core/partitioning.py`), a weekly Celery Beat task
+    keeping both tables' partitions ahead of need, and a manual/supervised
+    `backend/scripts/backfill_messages_partitions.py` for redistributing already-mis-routed rows
+    (not confirmed run against production as of 2026-07-15). `status_updates` is now partitioned too.
+    PR #90 fixed a real follow-up bug: the new weekly task reused the app's shared DB engine
+    singleton from inside its own event loop, breaking on a worker's second invocation — fixed via a
+    new `create_scoped_engine()` helper. New spec: `specs/015-postgres-partitioning/`.
+21. **Three real production bugs found via test-coverage work, fixed in place**:
+    - **Chat router never mounted** (PR #91 `5face22`/commit `0191bb5`): `app/api/chat.py` was
+      defined but never registered in `main.py` — every chat endpoint the frontend calls had been
+      404ing in production. Fixed with a 2-line `main.py` change; `chat.py` coverage 0% → 91%.
+    - **Group chats broken** (PR #94 `99843ba`/commit `cd9e94a`): `not GroupMessage.is_deleted`
+      compiled to a literal SQL `WHERE false` (Python `not` on a SQLAlchemy column, not a query
+      predicate), so message history/replies always returned empty/404; and
+      `user.profile.avatar_url` crashed with `MissingGreenlet` (unloaded relationship) and was wrong
+      anyway (`Profile` has no `avatar_url` — real avatar is `User.image`).
+    - **Android sessions misreported as OS "Linux"** (PR #95 `2e3dfe7`/commit `79d79b9`):
+      `session_service.py`'s OS-detection pattern list checked `"Linux"` before `"Android (\d+)"`,
+      and real Android UAs always contain `"Linux;"`.
+22. **Coverage-measurement bug fixed** (PR #93 `552e22d`/commit `6417b3f`, found while adding
+    `admin.py` tests): `coverage.py`'s default tracer under-reports lines that run after a real
+    `await` suspension later in the same async function. Added `backend/.coveragerc` (`core =
+    sysmon`, Python 3.12's PEP 669 tracer) — no code change, but real backend coverage jumped from a
+    previously-assumed 63% to **71%**, already above `codecov.yml`'s 60% project gate. Any coverage
+    percentage cited elsewhere in this file from before 2026-07-14 may understate real coverage for
+    files with sequential `await`s.
+23. **Backend service test coverage added** (PR #92, #96-#102, each a dedicated new test file for a
+    previously-untested/under-tested module): `socket_config.py` (43 tests), `totp_service.py` +
+    2FA API (45 tests), `location.py` (11 tests), `password_reset_service.py` (23 tests),
+    `verification_service.py` (22 tests), `moderation_service.py` (12 tests), `storage.py` (9 tests),
+    `media_processor.py` (59 tests).
+24. **Frontend unit test coverage initiative began** (frontend was ~5% overall per PR #103's
+    description): PR #103 `src/services/` (11 API client files — also where a stale duplicate
+    `forums.test.ts` was superseded by `forums-service.test.ts`; a leftover untracked copy of the
+    old file was found and deleted during the 2026-07-15 session close-out, see below), PR #104
+    `src/store/` (33 tests), PR #105 `src/hooks/` (86 tests, 9 files), PR #106 chat/forums/feed/auth
+    components (66 tests), PR #107 `src/components/ui/` primitives (155 tests, 22 components), PR
+    #108 gallery/admin/moderation/pwa/layout components (14 new test files), PR #109
+    `src/components/profile/` (126 tests, 13 components).
+
+### 2026-07-15 — `src/app/` Page-Level Test Coverage Initiative Complete (PRs #110-#113, #114)
+
+25. **Frontend page-level coverage, in 4 PRs**: #110 (`5e23772`, auth pages + infra routes), #111
+    (`3bf6fc6`, chat/forums/media pages), #112 (`b84f460`, admin/settings/profile pages), #113
+    (`3a3ef47`, squash-merged, gallery/groups/social pages — closes out essentially all remaining
+    `src/app/` page coverage). #114 (`bf61571`) was a small standalone tsc fixture-typing fix that
+    landed between #112 and #113. Two gaps left intentionally uncovered per #113's own description
+    (not TODOs): `feed/page.tsx` (90.9%, virtualizer internals mocked per repo convention) and
+    `topical/[slug]/page.tsx` (82.4%, data-fetch is a hardcoded-empty-array stub pending a real
+    endpoint).
+26. **Session close-out cleanup**: found and deleted a stale untracked
+    `frontend/tests/unit/forums.test.ts` — byte-identical to the version deliberately deleted in PR
+    #103's commit `4bb8dde` (it tested a locally-reimplemented `buildTree()` instead of the real
+    module). Never tracked in git; plain `rm`, nothing to stage.
+27. **Documentation gap discovered and backfilled**: this file, `session-context.md`,
+    `conversation-context.md`, and `session-summary.md` had not been updated since the 2026-07-13
+    doc-close (PR #88) despite 24 more PRs (#89-#112) landing in the interim — see items 20-24 above,
+    reconstructed from `git log`/`git show` during this close-out rather than a live transcript.
 
 ### Earlier — E2E CSP/Rate-Limit/CORS Hardening + Production DB Migration (2026-07-03, PR #55, merge commit b1a9e2e)
     - `frontend/next.config.ts` CSP `connect-src` allowlists `https://*.up.railway.app` /
@@ -270,6 +344,33 @@ local-dev-repair session below; docs now correctly point at Railway. Docs-only, 
     - E2E health: ~384 tests near-total-failure → 60-73/65-76 passing per shard
 
 ### Recent Commits (chronological, newest first)
+- **3a3ef47** (2026-07-15): test: add coverage for gallery, groups, and social pages (#113, squash-merged)
+- **bf61571** (2026-07-15): fix: annotate baseUser fixture with AdminUserDetail type (#114)
+- **b84f460** (2026-07-15): test: add coverage for admin, settings, and profile pages (#112)
+- **3bf6fc6** (2026-07-15): test: add coverage for chat, forums, and media pages (#111)
+- **5e23772** (2026-07-15): test: add coverage for auth pages and infra routes (#110)
+- **5b9b7c8** (2026-07-14): Merge pull request #108 test(components): gallery/admin/moderation/pwa/layout coverage
+- **8a2bda6** (2026-07-14): Merge pull request #109 test(components): src/components/profile/ coverage
+- **997962f** (2026-07-14): Merge pull request #107 test(components): src/components/ui/ primitives coverage
+- **29d0ac2** (2026-07-14): Merge pull request #106 test(components): chat/forums/feed/auth components coverage
+- **b3bd880** (2026-07-14): Merge pull request #105 test: src/hooks/ coverage
+- **4ea8f69** (2026-07-14): Merge pull request #104 test: src/store/ Zustand coverage
+- **7c89233** (2026-07-14): Merge pull request #103 test: src/services/ frontend API client coverage
+- **f424849** (2026-07-14): Merge pull request #102 test: media_processor.py coverage
+- **f495d32** (2026-07-14): Merge pull request #101 test: storage.py coverage
+- **a8eb5fe** (2026-07-14): Merge pull request #100 test: moderation_service.py coverage
+- **195e798** (2026-07-14): Merge pull request #99 test: verification_service.py coverage
+- **c500a17** (2026-07-14): Merge pull request #98 test: password_reset_service.py coverage
+- **76a4d87** (2026-07-14): Merge pull request #97 test: location.py coverage, harden search_users_nearby
+- **668c6ea** (2026-07-14): Merge pull request #96 test: totp_service.py + 2FA API coverage
+- **2e3dfe7** (2026-07-14): Merge pull request #95 fix: Android devices misreported as OS "Linux" in session device info
+- **99843ba** (2026-07-14): Merge pull request #94 fix: group chat message history, replies, and member avatars were broken
+- **552e22d** (2026-07-14): Merge pull request #93 test: admin.py coverage + fix systematic async coverage under-reporting (`.coveragerc` sysmon)
+- **46947ae** (2026-07-14): Merge pull request #92 test: socket_config.py Socket.io handler coverage
+- **5face22** (2026-07-14): Merge pull request #91 fix: mount chat router (was never registered, chat API 404ing in production)
+- **1b2a025** (2026-07-14): Merge pull request #90 fix(tasks): ensure_future_partitions event-loop/shared-engine bug
+- **8784fbe** (2026-07-14): Merge pull request #89 feat(db): fix broken messages partitioning, add automation, partition status_updates (closes #66)
+- **c35d899** (2026-07-13): Merge pull request #88 docs: close session — warning system (#65), Celery production fix, DB partitioning (#66) paused
 - **5bcd5b9** (2026-07-13): Merge pull request #87 fix(deploy): remove shared HTTP healthcheck blocking celery-worker deploys
 - **6f2ff6e** (2026-07-13): Merge pull request #86 fix(deploy): route Celery worker start command via RAILWAY_SERVICE_NAME
 - **583d7e0** (2026-07-13): Merge pull request #85 feat(moderation): implement warning system with email notifications (closes #65)
@@ -299,39 +400,54 @@ local-dev-repair session below; docs now correctly point at Railway. Docs-only, 
   - Ports: 3001 (frontend), 8001 (backend)
 
 ### Active Branch
-- **Branch**: `main`
-- **HEAD**: `5bcd5b9` (merge commit for PR #87) as of the detailed narrative above.
-- **Status**: This session shipped PR #85 (moderation warning system feature), PR #86 + #87 (Celery
-  worker production fix), plus PR #84 (small env.md doc fix) landed just before it. Issue #66 (DB
-  partitioning) was investigated but implementation was deliberately not started — no code changed
-  for #66 this session.
+- **Branch**: `main`, local in sync with `origin/main`.
+- **HEAD**: `3a3ef47` (squash-merge commit for PR #113) as of the detailed narrative above.
+- **Status**: The 2026-07-15 session merged PR #113 (last of the `src/app/` page-coverage PRs) and
+  deleted its branch (local + origin). While closing that session, a documentation audit found 24
+  PRs (#89-#112) had landed on 2026-07-13/14 without ever being written into this file — backfilled
+  as items 20-24 above. Issue #66 (DB partitioning), recorded through PR #87/#88 as "investigated but
+  paused," was actually completed the next day (PR #89/#90) — do not trust any older "still open"
+  language about #66 anywhere in this file without checking the date of the surrounding text.
 
 ### Next Priorities
-1. **New, urgent — verify the `bgclive.online` domain in the Resend dashboard.** Celery is now
-   correctly processing tasks in production for the first time, but Resend rejects real sends until
-   the domain is DNS-verified. This is the last step needed for verification/reset/warning emails to
-   actually reach users.
-2. **New — resume Issue #66 (DB partitioning)**: two real pre-existing bugs found but not fixed —
-   (a) `messages` has silently been landing in the `messages_default` catch-all partition since
-   January 2026 because monthly-partition automation was never built, (b) the December 2025
-   migration that partitioned `messages` also dropped FK constraints
-   (`room_id`/`conversation_id`/`sender_id`) and `ix_messages_sender_id`, never restored.
-   `status_updates` was never partitioned. No plan file exists yet — re-run the investigation
-   (database-optimizer agent) before implementing; see `session-context.md` for full detail.
-3. **New, non-blocking — `totp_secret` CI flakiness**: investigated, root cause not found (passes
-   locally in a reproduction of CI's exact environment); likely a GitHub Actions runner/pip-cache
-   quirk, not an app bug.
-4. **`search-advanced.spec.ts` dropdown bug**: Ethnicity/Position option list stops appearing after
+1. **New, urgent — verify the `bgclive.online` domain in the Resend dashboard.** Celery has been
+   correctly processing tasks in production since PR #86/#87 (2026-07-13), but Resend rejects real
+   sends until the domain is DNS-verified. Not confirmed done as of 2026-07-15 — still the last step
+   needed for verification/reset/warning emails to actually reach users.
+2. ~~**resume Issue #66 (DB partitioning)**~~ — **done, PR #89/#90 (2026-07-14)**. One follow-up
+   worth checking: `backend/scripts/backfill_messages_partitions.py` (redistributes rows that landed
+   in `messages_default` between January and mid-July 2026) is described in PR #89 as
+   manual/supervised, not automatic — this session did not confirm whether it has actually been run
+   against production.
+3. **New — audit remaining `backend/app/api/` route modules for test coverage**: PRs #91-#93 and
+   #96-#102 added dedicated coverage for `chat.py`, `admin.py`, `socket_config.py`, and most
+   `app/services/` modules, fixing three real production bugs along the way (chat router never
+   mounted, group chat message-history/avatar bugs, Android session misdetection — see item 21
+   above). Not yet confirmed whether `profiles.py`, `search.py`, `forums.py`, `group_chats.py`,
+   `gallery.py`, `moderation.py`, etc. have equivalent dedicated test files, or whether the backend
+   coverage push stopped after `admin.py`. A `pytest --cov` run against current `main` would answer
+   this directly.
+4. **New, non-blocking — `totp_secret` CI flakiness**: investigated (2026-07-13), root cause not
+   found (passes locally in a reproduction of CI's exact environment); likely a GitHub Actions
+   runner/pip-cache quirk, not an app bug.
+5. **`search-advanced.spec.ts` dropdown bug**: Ethnicity/Position option list stops appearing after
    the first filter selection — needs Playwright UI mode/trace viewer, not curl, to diagnose.
-5. **WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari improved but not fully
+6. **WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari improved but not fully
    resolved after the production DB migration fix; may be Playwright-WebKit-on-Linux-CI flakiness.
-6. **NUL-byte/surrogate query-param audit**: extend the `search.py` fix to `chat.py`, `admin.py`,
-   `groups.py`, `moderation.py` query params — same `SafeBaseModel`-bypass class of bug.
-7. **Consider a dedicated non-production backend/database for E2E** — the production-DB-
+7. **NUL-byte/surrogate query-param audit**: extend the `search.py` fix to `chat.py`, `admin.py`,
+   `groups.py`, `moderation.py` query params — same `SafeBaseModel`-bypass class of bug. Not
+   addressed by the 2026-07-13/14 coverage work (that work added tests for existing behavior; it did
+   not audit query-param validation).
+8. **Consider a dedicated non-production backend/database for E2E** — the production-DB-
    never-migrated incident from an earlier session is a strong argument; E2E currently shares fate
    with production data.
-8. **E2E stress tests**: Still CI-skipped — consider moving to a nightly scheduled workflow.
-9. Verify `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` are actually wired (PR #47 addressed this — confirm).
+9. **E2E stress tests**: Still CI-skipped — consider moving to a nightly scheduled workflow.
+10. Verify `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` are actually wired (PR #47 addressed this — confirm).
+11. **New — untracked local tooling files**: `.agents/`, `.claude/skills/`, `backend/.agents/`,
+    `backend/.mcp.json`, `backend/Procfile` (untracked, recreated locally after PR #86 deleted it
+    from git), `backend/skills-lock.json`, `skills-lock.json`, plus a modified-but-unstaged
+    `.claude/settings.local.json` — none are application code, none committed as of 2026-07-15;
+    should be gitignored or committed intentionally so `git status` stays clean.
 
 ## Dependencies
 
@@ -462,19 +578,30 @@ local-dev-repair session below; docs now correctly point at Railway. Docs-only, 
    - E2E tests for 2FA login flow needed
    - Email delivery testing in production environment — **partially resolved 2026-07-13**: Celery
      now actually runs in production and processes tasks correctly, but real Resend sends are still
-     blocked pending `bgclive.online` domain verification in the Resend dashboard
+     blocked pending `bgclive.online` domain verification in the Resend dashboard (not confirmed
+     resolved as of 2026-07-15)
    - Admin dashboard load testing under concurrent access needed
    - Playwright E2E suite may contain flaky tests (excluded from merge requirements)
    - `totp_secret`-related CI flakiness (non-blocking, investigated 2026-07-13, root cause not
      found — reproduces CI's environment locally with no failure, likely a GitHub Actions
      runner/pip-cache quirk)
+   - **Largely addressed 2026-07-13/14/15 (backfilled 2026-07-15, see items 20-25 above)**: backend
+     `app/services/` + `chat.py`/`admin.py`/`socket_config.py` real test coverage added (PRs
+     #91-#93, #96-#102); frontend `src/services/`, `src/store/`, `src/hooks/`, `src/components/`
+     coverage added (PRs #103-#109); `src/app/` page-level coverage added (PRs #110-#113). A
+     `coverage.py` async-tracer under-reporting bug was also fixed (`backend/.coveragerc`, `core =
+     sysmon`) — real backend coverage is 71%, not the previously-assumed 63%. **Still open**:
+     whether `backend/app/api/` route modules beyond `chat.py`/`admin.py`/`socket_config.py` have
+     equivalent coverage is unconfirmed (see Next Priorities item 3).
 5. **Schema Coverage**:
    - Any new write schemas must inherit `SafeBaseModel` from `backend/app/schemas/base.py`
    - Any new endpoints writing `Dict` fields to JSONB must add inline key/value validation
    - NUL-byte/surrogate query-param validation gap: `chat.py` (`category`), `admin.py`
      (`query`/`action`), `groups.py` (`query`), `moderation.py` (`status_filter`/`content_type`)
      likely have the same bug fixed in `search.py` this session — query params bypass
-     `SafeBaseModel` unless explicitly validated. Needs a dedicated audit pass.
+     `SafeBaseModel` unless explicitly validated. Needs a dedicated audit pass. **Not addressed by
+     the 2026-07-13/14 coverage initiative** — that work added tests for existing behavior, not a
+     validation audit; still open as of 2026-07-15.
    - E2E tests run against the same production Railway/Supabase backend real users hit — flagged
      twice now (this session's production-DB-never-migrated incident is the strongest argument yet
      for a dedicated non-production E2E environment)
@@ -502,13 +629,13 @@ local-dev-repair session below; docs now correctly point at Railway. Docs-only, 
      dashboard — real emails (verification, password reset, warnings) still fail to send even
      though Celery now correctly processes the tasks that queue them. Needs action in the Resend
      dashboard, not code.
-   - **`messages` table partition automation gap (found via #66 investigation, not yet fixed)**:
-     every message since January 2026 has landed in the `messages_default` catch-all partition
-     because monthly-partition-creation automation was never built after the December 2025
-     partitioning migration. The same migration also dropped FK constraints
-     (`room_id`/`conversation_id`/`sender_id`) and `ix_messages_sender_id` on `messages`, never
-     restored. `status_updates` was never partitioned at all. See `session-context.md` for the full
-     investigation writeup — no plan file exists yet in `specs/`.
+   - ~~**`messages` table partition automation gap (found via #66 investigation, not yet fixed)**~~
+     — **fixed 2026-07-14, PR #89/#90** (backfilled into this file 2026-07-15). Monthly partition
+     automation now runs weekly via Celery Beat; `status_updates` is now partitioned too. One item
+     not independently verified this session: whether
+     `backend/scripts/backfill_messages_partitions.py` has actually been run against production to
+     redistribute the rows that accumulated in `messages_default` between January and July 2026 —
+     see `session-context.md`'s "Bridging Session — 2026-07-13/14" entry for full detail.
 
 ## Subprojects
 
