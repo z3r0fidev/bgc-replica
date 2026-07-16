@@ -2030,6 +2030,206 @@ runner/pip-cache-specific quirk, root cause not found).
 
 ---
 
+## Session: 2026-07-13/14 — Issue #66 (DB Partitioning) Completed, 3 Production Bug Fixes, Backend/Frontend Unit Coverage Initiative (PRs #89-#109)
+
+**Backfilled 2026-07-15** — this entire session's work was never written into these context files
+when it happened. Reconstructed from `git log`/`git show` (`5bcd5b9..3a3ef47` range) during the
+2026-07-15 session close-out, not from a live transcript. Commit messages are detailed enough to
+reconstruct file-level facts reliably; any framing/rationale not present in a commit message is
+noted as inferred rather than stated as fact.
+
+### Session Information
+- **Date**: 2026-07-13 (from 18:49) through 2026-07-14 (to 21:17)
+- **Branch**: `main`
+- **PRs Merged**: #89, #90, #91, #92, #93, #94, #95, #96, #97, #98, #99, #100, #101, #102, #103,
+  #104, #105, #106, #107, #108, #109 (21 PRs)
+- **HEAD after session**: `5b9b7c8` (merge for PR #108)
+- **Focus**: Resume and complete Issue #66 (DB partitioning), then pivot into a systematic
+  backend-then-frontend unit test coverage initiative, fixing real bugs found incidentally along
+  the way
+
+### High-Level Summary
+
+The previous session (2026-07-13, doc-close PR #88) had left Issue #66 investigated but paused.
+This session picked it back up immediately and shipped it in full (PR #89 closes #66, PR #90 a
+same-day follow-up bug fix), then pivoted into a long, methodical push to add real test coverage
+across the codebase — one PR per untested/under-tested module, backend services first, then
+frontend services/store/hooks/components. Three real production bugs were found and fixed
+incidentally because writing genuine tests against 0%-or-near-0%-coverage modules meant exercising
+code paths nobody had exercised before: the chat API router was never mounted (every chat endpoint
+had been 404ing), group chat message history/replies/avatars were silently broken by a
+Python-`not`-on-a-SQLAlchemy-column bug and an unloaded-relationship crash, and Android sessions
+were misreported as OS "Linux" due to a pattern-match ordering bug. A fourth, more subtle bug was
+also found and fixed: `coverage.py`'s default tracer under-reports async functions with sequential
+`await`s, meaning the project's *actual* backend coverage (71%) had been under-measured (63%) the
+whole time — fixed with a one-line `.coveragerc` change, no application code involved.
+
+### Files Modified/Created (representative — see `project-context.md` items 20-24 for the full PR list)
+
+| PR | Area | Key files |
+|----|------|-----------|
+| #89 | DB partitioning | `app/core/partitioning.py` (new), 2 new Alembic migrations, `backend/scripts/backfill_messages_partitions.py` (new), `specs/015-postgres-partitioning/` (new) |
+| #90 | Partitioning bug fix | `app/core/database.py` (`create_scoped_engine()`), `app/services/tasks.py` |
+| #91 | Chat router bug fix + coverage | `app/main.py` (2 lines), `backend/tests/test_chat.py` (rewritten, 415 lines) |
+| #92 | Coverage | `backend/tests/test_socket_config.py` (new, 43 tests) |
+| #93 | Coverage + tooling fix | `backend/tests/test_admin.py` (new, 60 tests), `backend/.coveragerc` (new) |
+| #94 | Group chat bug fixes | `app/api/group_chats.py` (query predicate + avatar field fixes) |
+| #95 | Session service bug fix | `app/services/session_service.py` (OS pattern order) |
+| #96-#102 | Backend service coverage | New test files for `totp_service.py`, `location.py`, `password_reset_service.py`, `verification_service.py`, `moderation_service.py`, `storage.py`, `media_processor.py` |
+| #103-#109 | Frontend coverage | New test files across `src/services/`, `src/store/`, `src/hooks/`, `src/components/` (chat/forums/feed/auth, ui, gallery/admin/moderation/pwa/layout, profile) |
+
+### Key Decisions and Rationale
+
+1. **Resume #66 before starting the coverage initiative, not after**: the previous session had
+   explicitly paused it only because the Celery incident took priority, not due to any doubt about
+   the plan — resuming it first cleared the one open feature-scope item before pivoting to
+   pure-testing work.
+2. **One PR per module, in dependency-agnostic order**: each backend/frontend coverage PR targeted
+   exactly one previously-uncovered module, making each PR small, reviewable, and independently
+   revertible if a coverage PR's incidental bug fix turned out to be wrong.
+3. **Fix bugs found during coverage work in the same PR, not deferred**: each of the three
+   production bugs (chat router, group chats, Android detection) was a direct, confirmable
+   correctness issue discovered by writing a real test against real behavior — fixing them
+   immediately, in the PR that found them, kept the fix tied to its regression test.
+4. **`core = sysmon` over accepting the under-reported number**: rather than treating `admin.py`'s
+   43%-with-full-manual-verification result as "coverage tooling is just imprecise," the discrepancy
+   between manual verification and the reported number was treated as a real bug in the
+   measurement tool itself, worth fixing project-wide via one `.coveragerc` line.
+5. **`create_scoped_engine()` over reusing the shared engine inside a per-call event loop**: the
+   existing `SessionLocal`/engine singleton is designed for FastAPI's single-event-loop request
+   lifecycle; a Celery Beat task that creates its own event loop per invocation needed an
+   independent engine it can dispose of itself.
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] Confirm `backend/scripts/backfill_messages_partitions.py` has actually been run against
+      production Supabase (described as manual/supervised, not automatic, in PR #89).
+- [ ] Audit whether `backend/app/api/` route modules beyond `chat.py`/`admin.py`/`socket_config.py`
+      (`profiles.py`, `search.py`, `forums.py`, `group_chats.py`, `gallery.py`, `moderation.py`)
+      have equivalent dedicated test coverage, or whether the backend coverage push stopped here.
+- [ ] NUL-byte/surrogate query-param validation audit (`chat.py`, `admin.py`, `groups.py`,
+      `moderation.py`) — not addressed by this session's coverage work.
+- [ ] Resend domain verification (`bgclive.online`) — carried forward from the 2026-07-13 session,
+      not addressed here.
+- [ ] All items carried forward from the 2026-07-03/07-12/07-13 sessions not touched by this
+      session's coverage-focused scope.
+
+### Blockers / Challenges
+
+**This session's work was itself never documented** — the single biggest process gap surfaced by
+this backfill. 21 PRs merged across roughly 27 hours of commit timestamps without a single context
+file update, discovered only when the 2026-07-15 session ran a routine `git log` audit while
+closing out. No indication in the commit history of why the doc-close habit lapsed here specifically
+after being consistently followed in every prior session back to 2026-02-04.
+
+### Session Statistics
+
+- **PRs merged**: 21 (#89-#109)
+- **Production bugs fixed**: 3 (chat router unmounted, group chat query/avatar bugs, Android OS
+  misdetection) + 1 coverage-tooling bug (`coverage.py` async under-reporting)
+- **New backend test files**: 9 (chat rewrite, socket_config, admin, totp_service, location,
+  password_reset_service, verification_service, moderation_service, storage, media_processor —
+  actually 10 counting the chat.py rewrite)
+- **New frontend test files**: dozens across services/store/hooks/components (exact count not
+  re-derived from this backfill; see individual PR diffstats)
+- **Backend coverage measured**: 71% (previously reported as 63% due to the tracer bug)
+- **New spec directory**: `specs/015-postgres-partitioning/`
+
+---
+
+## Session: 2026-07-15 — PR #113 Merged (`src/app/` Page Coverage Initiative Complete), Stale Test File Cleanup, Documentation Gap Backfilled
+
+### Session Information
+- **Date**: 2026-07-15
+- **Branch**: `main` (reviewed from `test/app-gallery-groups-social-coverage`)
+- **PRs Merged**: #113 (`3a3ef47`, squash). #110 (`5e23772`), #111 (`3bf6fc6`), #112 (`b84f460`),
+  and #114 (`bf61571`) landed on `main` earlier the same day, before this session began, and are
+  documented here alongside #113 since they were likewise undocumented until now.
+- **HEAD after session**: `3a3ef47`
+- **Focus**: Review and merge the final PR in the `src/app/` page-level test-coverage initiative;
+  discover and backfill a large documentation gap (PRs #89-#112) found while closing the session
+
+### High-Level Summary
+
+Reviewed PR #113 ("test: add coverage for gallery, groups, and social pages"), the last of a 4-PR
+wave (#110-#113) adding unit test coverage to essentially every remaining `src/app/` page. The
+branch was one commit behind `main` (which had picked up PR #114, a small standalone tsc fixture-fix
+that PR #113's own last commit had already independently fixed); merging `origin/main` in produced a
+clean zero-diff no-op, confirming PR #113's own description. Squash-merged after CI re-passed;
+branch deleted locally and on origin. While closing the session, found a stale untracked
+`frontend/tests/unit/forums.test.ts` — byte-identical to a version deliberately deleted in an
+earlier commit (PR #103, `4bb8dde`) for testing a locally-reimplemented function instead of the real
+module — and removed it. **Most significantly**: a routine `git log 5bcd5b9..3a3ef47` audit during
+close-out revealed that PRs #89 through #112 (21+ PRs, spanning a full implementation of Issue #66
+and a systematic backend/frontend coverage initiative — see the 2026-07-13/14 entry immediately
+above) had landed on `main` without ever being written into `session-context.md`,
+`project-context.md`, `conversation-context.md`, or `session-summary.md`. That gap was backfilled
+into all four files as part of this session's close-out.
+
+### Files Modified/Created
+
+| File | Change |
+|------|--------|
+| `frontend/tests/unit/feed-*`, `gallery-*`, `groups-*`, `stories-*`, `topical-*`, `users-*` (PR #113) | New unit tests — see PR #113 description for the full list |
+| `frontend/tests/unit/forums.test.ts` | Deleted (stale untracked duplicate, never tracked in git) |
+| `session-context.md`, `project-context.md`, `conversation-context.md`, `session-summary.md` | This session's doc-close backfill — see each file's own updated content |
+
+### Key Decisions and Rationale
+
+1. **Merge `origin/main` before merging the PR, rather than merge PR #113 first and resolve
+   conflicts after**: the branch was known to be one commit behind; merging first surfaced that the
+   diff was already a clean no-op, confirming the PR description's own prediction rather than
+   discovering it after the fact.
+2. **Squash-merge, matching this initiative's established convention**: PRs #110-#112 in the same
+   series were also squash-merged (each produces one commit on `main` rather than a merge commit +
+   feature commits).
+3. **Delete the stale `forums.test.ts` rather than leave it**: confirmed via `git log` that it was
+   byte-identical to a version already deliberately removed for testing fake behavior instead of the
+   real module — leaving it would reintroduce zero-value dead test code with no tracking benefit
+   (it was never even committed on this machine).
+4. **Backfill the documentation gap into all four files rather than just note it and move on**:
+   given how much real work (a completed feature, three production bug fixes) was undocumented,
+   silently accepting the gap risked a future session re-investigating #66 from scratch or missing
+   that the chat API had been broken until PR #91.
+5. **Do not auto-commit the untracked local tooling files** (`.agents/`, `.claude/skills/`,
+   `backend/.agents/`, `backend/.mcp.json`, `backend/Procfile`, `backend/skills-lock.json`,
+   `skills-lock.json`, plus modified `.claude/settings.local.json`): none are application code or
+   within PR #113's scope; surfaced for the user to decide rather than assumed committable.
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] Audit remaining `backend/app/api/` route modules for test coverage (carried forward from the
+      2026-07-13/14 entry above).
+- [ ] Confirm the `messages_default` backfill script has been run against production.
+- [ ] Resend domain verification (`bgclive.online`) — long-carried-forward, still unconfirmed.
+- [ ] `topical/[slug]/page.tsx` coverage (82.4%, intentional) — revisit once its real data-fetch
+      endpoint exists.
+- [ ] Decide on the untracked local tooling files: gitignore or commit intentionally.
+- [ ] **Obsidian vault update requested by standard session-closing process but not performed** — no
+      `obsidian_*` MCP tool/server is connected in this environment. A future session with that
+      server connected should backfill this session's summary (and ideally the 2026-07-13/14
+      session's, given its scope) into the vault.
+
+### Blockers / Challenges
+
+**Discovering an entire undocumented session while trying to close a much smaller one**: the
+session's actual assigned scope (review/merge PR #113, clean up one stale file) was straightforward;
+the bulk of this entry's length comes from reconstructing 2026-07-13/14's work after the fact via
+`git log`/`git show` rather than from a transcript, which necessarily means some rationale is
+inferred from commit messages rather than confirmed from a live decision-making process.
+
+### Session Statistics
+
+- **PRs merged this session**: 1 (#113); **documented this session but merged earlier the same
+  day**: 3 (#110, #111, #112) + 1 standalone (#114)
+- **PRs backfilled from the prior undocumented session**: 21 (#89-#109)
+- **Files deleted**: 1 (`frontend/tests/unit/forums.test.ts`, untracked)
+- **Context files updated**: 4 (`session-context.md`, `project-context.md`,
+  `conversation-context.md`, `session-summary.md`)
+- **Documentation gap closed**: ~27 hours of commit history (2026-07-13 18:49 → 2026-07-15 19:19)
+
+---
+
 ## Appendix: Session Patterns
 
 ### Successful Patterns This Session
