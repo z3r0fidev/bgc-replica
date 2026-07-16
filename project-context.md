@@ -444,31 +444,35 @@ real extent of backend `app/api/` route-handler test coverage.
 
 ### Active Branch
 - **Branch**: `main`, local in sync with `origin/main`.
-- **HEAD**: `62167f5` (squash-merge commit for PR #116, on top of `3feaa0f` for PR #115) as of
-  2026-07-16.
+- **HEAD**: `547f452` (docs close-out PR #117, on top of `62167f5` for PR #116 and `3feaa0f` for
+  PR #115) as of 2026-07-16.
 - **Status**: The 2026-07-16 session merged PR #115 (fixes `messages` having zero partitions
-  attached in every environment since 2025-12-21 — not yet deployed to production) and PR #116
-  (closes 5 of 18 backend `app/api/` modules' zero-test-coverage gap, plus a real `forums.py`
-  bug fix), deleting both branches (local + origin). This resolves both items the 2026-07-15
-  close-out had left open. See items 28-30 above for full detail. Issue #66 (DB partitioning),
-  completed PR #89/#90 (2026-07-14), turned out to have this one latent bug in its own migration
-  chain — do not treat #66 as fully closed until PR #115 is confirmed deployed to production (see
-  Next Priorities item 1 below).
+  attached in every environment since 2025-12-21 — **confirmed deployed to production**, see
+  below) and PR #116 (closes 5 of 18 backend `app/api/` modules' zero-test-coverage gap, plus a
+  real `forums.py` bug fix), deleting both branches (local + origin). This resolves both items
+  the 2026-07-15 close-out had left open. See items 28-30 above for full detail. Issue #66 (DB
+  partitioning), completed PR #89/#90 (2026-07-14), turned out to have this one latent bug in its
+  own migration chain — **now fully closed**: PR #115's `Deploy Backend` GitHub Action ran
+  automatically on merge (push to `main` touching `backend/**`) and succeeded, and a follow-up
+  read-only production query confirmed `alembic_version` = `k5l6m7n8o9p0` with
+  `messages_default`/`messages_y2026m07`/`messages_y2026m08` all present and the FK constraints
+  intact.
 
 ### Next Priorities
-1. **New, urgent, from 2026-07-16 — deploy PR #115 to production.** `messages` currently rejects
-   every `INSERT` in production (confirmed via a live read-only query this session) because it has
-   had zero partitions attached since 2025-12-21. PR #115 fixes this in a migration but has only
-   been validated locally — run `alembic upgrade head` against production before real traffic
-   depends on `messages`.
+1. ~~**deploy PR #115 to production**~~ — **confirmed deployed 2026-07-16**. `Deploy Backend`'s
+   auto-deploy job (triggered by the PR #115/#116 merges touching `backend/**`) succeeded per
+   GitHub Actions run history, and a direct read-only production query confirmed
+   `alembic_version` = `k5l6m7n8o9p0` and `messages_default`/`messages_y2026m07`/
+   `messages_y2026m08` all exist. `messages` can accept inserts again.
 2. **verify the `bgclive.online` domain in the Resend dashboard.** Celery has been
    correctly processing tasks in production since PR #86/#87 (2026-07-13), but Resend rejects real
    sends until the domain is DNS-verified. Not confirmed done as of 2026-07-16 — still the last step
    needed for verification/reset/warning emails to actually reach users.
 3. ~~**resume Issue #66 (DB partitioning)**~~ — **done, PR #89/#90 (2026-07-14)**, with a follow-up
-   bug fixed 2026-07-16 (PR #115, see item 1 above). Once PR #115 is deployed, still run
+   bug fixed and deployed 2026-07-16 (PR #115, see item 1 above). Still run
    `backend/scripts/backfill_messages_partitions.py` against production (described in PR #89 as
-   manual/supervised, not automatic) to redistribute any rows that need it.
+   manual/supervised, not automatic) to redistribute any rows that need it — moot for now since
+   production has 0 rows in `messages`, but revisit once real traffic exists.
 4. **New, from 2026-07-16 — the last backend `app/api/` coverage gap**: PR #116 closed 5 of 18
    modules' zero-coverage gap (`block.py`, `forums.py`, `groups.py`, `notifications.py`,
    `stories.py`). **Still open**: `verification.py` and `moderation.py` have only service-layer
@@ -683,16 +687,16 @@ real extent of backend `app/api/` route-handler test coverage.
    - ~~**`messages` table partition automation gap (found via #66 investigation, not yet fixed)**~~
      — **fixed 2026-07-14, PR #89/#90** (backfilled into this file 2026-07-15). Monthly partition
      automation now runs weekly via Celery Beat; `status_updates` is now partitioned too.
-   - **NEW, urgent, 2026-07-16 — `messages` has zero partitions attached in production right now**:
-     PR #89's own follow-on migration (`96be264b314b`, an unreviewed autogenerate side effect)
-     dropped `messages_default` and `messages_y2025m12` in every environment, including production,
-     the day after partitioning was introduced. Confirmed live via a read-only production query.
-     Every `INSERT` into `messages` currently fails. **Fixed in code** by PR #115
-     (`k5l6m7n8o9p0_restore_messages_partitions.py`), validated locally, **but not yet deployed** —
-     run `alembic upgrade head` against production before this matters for real traffic. Once
-     deployed, still run `backend/scripts/backfill_messages_partitions.py` against production to
-     redistribute any rows that need it. See `session-context.md`'s "Latest Session — PR #115"
-     entry for full detail.
+   - ~~**`messages` had zero partitions attached in production**~~ — **fixed and deployed
+     2026-07-16, PR #115**. PR #89's own follow-on migration (`96be264b314b`, an unreviewed
+     autogenerate side effect) had dropped `messages_default` and `messages_y2025m12` in every
+     environment, including production, the day after partitioning was introduced — every
+     `INSERT` into `messages` was failing. PR #115 (`k5l6m7n8o9p0_restore_messages_partitions.py`)
+     fixed this; `Deploy Backend`'s auto-deploy ran on merge and a follow-up read-only production
+     query confirmed `alembic_version` = `k5l6m7n8o9p0` with the partitions present. Still run
+     `backend/scripts/backfill_messages_partitions.py` against production once real rows exist in
+     `messages_default` to redistribute them (moot today — 0 rows). See `session-context.md`'s
+     "Latest Session — PR #115" entry for full detail.
 
 ## Subprojects
 

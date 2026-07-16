@@ -43,8 +43,12 @@ end-to-end locally: replayed the full migration chain from scratch (reproduced t
 applied the fix, confirmed both a current-dated insert and an unmatched-date insert route correctly
 (to the monthly partition and to `messages_default` respectively), confirmed
 `alembic downgrade`/re-`upgrade` are clean and idempotent, and confirmed the existing
-`tests/test_partition_automation.py` suite still passes unchanged. All CI checks passed. **Not yet
-deployed to production** — the top carried-forward priority for the next session.
+`tests/test_partition_automation.py` suite still passes unchanged. All CI checks passed. **Confirmed
+deployed to production the same session**: merging to `main` (touching `backend/**`) auto-triggered
+`Deploy Backend`'s `deploy` job (`railway up`), which succeeded per GitHub Actions run history, and
+`backend/start.sh` ran `alembic upgrade head` on the resulting container restart. A follow-up
+read-only production query confirmed `alembic_version` = `k5l6m7n8o9p0` with `messages_default`/
+`messages_y2026m07`/`messages_y2026m08` all present and the FK constraints intact.
 
 Separately, cross-referenced all 18 `backend/app/api/*.py` route modules against `backend/tests/*.py`
 (by both import and URL-prefix grep): confirmed 5 modules had zero endpoint-level tests —
@@ -116,10 +120,10 @@ this project.
 
 ### Outstanding Tasks / Follow-Up Items
 
-- [ ] **Deploy PR #115 to production**: run `alembic upgrade head` against the real Supabase
-      database. Until this happens, every `INSERT` into `messages` in production fails outright.
-- [ ] Once deployed, run `backend/scripts/backfill_messages_partitions.py` against production to
-      redistribute any rows that need it.
+- [x] ~~Deploy PR #115 to production~~ — confirmed deployed 2026-07-16 (auto-deployed via
+      `Deploy Backend`'s `deploy` job on merge; verified via direct read-only production query).
+- [ ] Run `backend/scripts/backfill_messages_partitions.py` against production to redistribute any
+      rows that need it — moot for now since `messages` has 0 rows in production.
 - [ ] Add endpoint-level tests for `verification.py` and `moderation.py` (only service-layer tests
       exist).
 - [ ] Resend domain verification (`bgclive.online`) — long-carried-forward, still unconfirmed.

@@ -2263,8 +2263,11 @@ Fixed via **PR #115**: adds migration `k5l6m7n8o9p0_restore_messages_partitions.
 `messages_default` plus a current/next-month partition, mirroring `status_updates`. Validated
 end-to-end locally (fresh-replay reproduction of the bug, insert routing to the correct
 partition/default, `alembic downgrade`/re-`upgrade` idempotency, existing
-`tests/test_partition_automation.py` suite unaffected). All CI checks passed. **Not yet deployed to
-production** — this is the top carried-forward priority.
+`tests/test_partition_automation.py` suite unaffected). All CI checks passed. **Confirmed deployed
+to production the same session**: merging to `main` auto-triggered `Deploy Backend`'s `deploy` job
+(`railway up`), which succeeded, and `backend/start.sh` ran `alembic upgrade head` on the resulting
+container restart. A follow-up read-only production query confirmed `alembic_version` =
+`k5l6m7n8o9p0` with the partitions present.
 
 Separately, cross-referenced all 18 `backend/app/api/*.py` route modules against `backend/tests/*.py`
 and confirmed 5 had zero endpoint-level tests: `block.py`, `forums.py`, `groups.py`,
@@ -2322,10 +2325,10 @@ project.
 
 ### Outstanding Tasks / Follow-Up Items
 
-- [ ] **Deploy PR #115 to production** — run `alembic upgrade head` against the real Supabase
-      database. Until this happens, every `INSERT` into `messages` in production fails outright.
-- [ ] Once PR #115 is deployed, run `backend/scripts/backfill_messages_partitions.py` against
-      production to redistribute any rows that need it.
+- [x] ~~Deploy PR #115 to production~~ — confirmed deployed 2026-07-16 (auto-deployed via
+      `Deploy Backend`'s `deploy` job on merge; verified via direct read-only production query).
+- [ ] Run `backend/scripts/backfill_messages_partitions.py` against production to redistribute any
+      rows that need it — moot for now since `messages` has 0 rows in production.
 - [ ] Add endpoint-level tests for `verification.py` and `moderation.py` (only service-layer tests
       exist for these two modules).
 - [ ] Resend domain verification (`bgclive.online`) — long-carried-forward, still unconfirmed.
