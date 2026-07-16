@@ -1,8 +1,8 @@
 # Session Context
 
-**Last Updated**: 2026-07-16 (Session Closing — PR #115 merged: fixed a real, currently-live production bug where `messages` has had zero partitions attached since Dec 2025; PR #116 merged: closed the remaining backend `app/api/` route-handler test-coverage gap for 5 modules, and fixed a real `GET /api/forums/tree` crash found while writing those tests)
+**Last Updated**: 2026-07-16 (Session Closing — PR #115 merged and **confirmed deployed to production**: fixed a real production bug where `messages` had zero partitions attached since Dec 2025; PR #116 merged: closed the remaining backend `app/api/` route-handler test-coverage gap for 5 modules, and fixed a real `GET /api/forums/tree` crash found while writing those tests; PR #117 merged: session-close doc updates)
 **Current Branch**: `main`
-**Session Status**: Closed. Two PRs reviewed, merged (squash), and branch-deleted (local + origin) this session: **PR #115** (`fix(db): restore messages_default and monthly partitions dropped by 96be264b314b`, merge `3feaa0f`) and **PR #116** (`test: add endpoint coverage for block, forums, groups, notifications, stories`, merge `62167f5`). This session resolved both open items the prior (2026-07-15) close-out had flagged as unconfirmed: (1) whether PR #89's claim that `status_updates`'/`messages`' dropped FK/index was "already fixed by an unrelated earlier migration" was true — **confirmed true** (see below), but that same migration turned out to have silently broken `messages` partitioning in the process, a previously-undiscovered bug now fixed by PR #115; (2) the extent of backend `app/api/` route-handler test coverage — **now confirmed**: 5 of 18 modules (`block.py`, `forums.py`, `groups.py`, `notifications.py`, `stories.py`) had zero endpoint tests, now fixed by PR #116, which also fixed a real `forums.py` crash bug found in the process. Whether `backend/scripts/backfill_messages_partitions.py` has been run against production remains unconfirmed — see Next Session Priorities.
+**Session Status**: Closed. Three PRs reviewed, merged (squash), and branch-deleted (local + origin) this session: **PR #115** (`fix(db): restore messages_default and monthly partitions dropped by 96be264b314b`, merge `3feaa0f`), **PR #116** (`test: add endpoint coverage for block, forums, groups, notifications, stories`, merge `62167f5`), and **PR #117** (docs close-out, merge `547f452`). This session resolved both open items the prior (2026-07-15) close-out had flagged as unconfirmed: (1) whether PR #89's claim that `status_updates`'/`messages`' dropped FK/index was "already fixed by an unrelated earlier migration" was true — **confirmed true** (see below), but that same migration turned out to have silently broken `messages` partitioning in the process, a previously-undiscovered bug now fixed by PR #115 **and confirmed deployed to production** (see below); (2) the extent of backend `app/api/` route-handler test coverage — **now confirmed**: 5 of 18 modules (`block.py`, `forums.py`, `groups.py`, `notifications.py`, `stories.py`) had zero endpoint tests, now fixed by PR #116, which also fixed a real `forums.py` crash bug found in the process. Whether `backend/scripts/backfill_messages_partitions.py` has been run against production remains moot for now (production `messages` has 0 rows) — see Next Session Priorities.
 
 ## Current State
 
@@ -16,7 +16,7 @@
 3. `status_updates` does **not** have this problem — its own partitioning migration (`j4k5l6m7n8o9`) creates its default/current/next-month partitions inline, so there was no autogenerate gap to clobber it.
 4. Cross-referenced all 18 `backend/app/api/*.py` route modules against `backend/tests/*.py` (by both import and URL-prefix grep): 5 modules had zero endpoint-level tests (`block.py`, `forums.py`, `groups.py`, `notifications.py`, `stories.py`). `verification.py` and `moderation.py` have only service-layer tests, not endpoint/route tests — still an open gap, not addressed this session.
 
-**PR #115** — `fix(db): restore messages_default and monthly partitions dropped by 96be264b314b` (branch `fix/66-restore-messages-partitions`, merged squash `3feaa0f`, branch deleted). Adds migration `k5l6m7n8o9p0_restore_messages_partitions.py` creating `messages_default` plus a current/next-month partition for `messages`, mirroring `status_updates`. Validated against a scratch local Postgres 17 container: replayed the full migration chain from scratch (reproduced the zero-partition bug exactly), applied the fix, confirmed both a current-dated insert and an unmatched-date insert now route correctly (to the monthly partition and to `messages_default` respectively), confirmed `alembic downgrade`/re-`upgrade` are clean and idempotent, and confirmed the existing `tests/test_partition_automation.py` suite still passes unchanged. All CI checks green (Backend/Frontend CI, 4x Playwright E2E, Vercel preview, codecov).
+**PR #115** — `fix(db): restore messages_default and monthly partitions dropped by 96be264b314b` (branch `fix/66-restore-messages-partitions`, merged squash `3feaa0f`, branch deleted). Adds migration `k5l6m7n8o9p0_restore_messages_partitions.py` creating `messages_default` plus a current/next-month partition for `messages`, mirroring `status_updates`. Validated against a scratch local Postgres 17 container: replayed the full migration chain from scratch (reproduced the zero-partition bug exactly), applied the fix, confirmed both a current-dated insert and an unmatched-date insert now route correctly (to the monthly partition and to `messages_default` respectively), confirmed `alembic downgrade`/re-`upgrade` are clean and idempotent, and confirmed the existing `tests/test_partition_automation.py` suite still passes unchanged. All CI checks green (Backend/Frontend CI, 4x Playwright E2E, Vercel preview, codecov). **Confirmed deployed to production later the same session**: merging to `main` (touching `backend/**`) auto-triggered `Deploy Backend`'s `deploy` job (`railway up`), which completed successfully per GitHub Actions run history; Railway's container restart then ran `alembic upgrade head` via `backend/start.sh`. A follow-up read-only production query confirmed `alembic_version` = `k5l6m7n8o9p0`, with `messages_default`/`messages_y2026m07`/`messages_y2026m08` all present and the FK constraints intact. The initial close-out draft had flagged this as "not yet deployed" purely because it was written before the deploy job had finished — corrected once verified.
 
 **PR #116** — `test: add endpoint coverage for block, forums, groups, notifications, stories` (branch `test/api-block-forums-groups-notifications-stories`, merged squash `62167f5`, branch deleted). Adds `tests/test_block.py`, `tests/test_forums.py`, `tests/test_groups.py`, `tests/test_notifications.py`, `tests/test_stories.py` (53 new tests), following the existing `tests/test_group_chats.py` convention (`_token_for`/`_headers_for`/`_make_*` helpers, one test class per endpoint, direct `db_session` fixture seeding). **Also fixed a real bug found while writing these tests**: `GET /api/forums/tree` crashed with a `MissingGreenlet` SQLAlchemy async error on any request where at least one forum category exists — `ForumCategoryTree.model_validate(cat)` tried to read `cat.children`, a lazy-loaded ORM relationship created by `ForumCategory.parent`'s `backref="children"`, outside an awaited context. The endpoint's own code already rebuilds the tree manually right after this call, so the lazy relationship read was both unnecessary and unsafe. Fixed in `backend/app/api/forums.py` by validating against `ForumCategorySchema` (no `children` field) and constructing `ForumCategoryTree` explicitly with `children=[]`. Undetected until now because the project has never had real forum categories populated (0 rows in production). Verified: all 53 new tests pass, full existing 596-test backend suite unaffected, black/flake8 clean. Needed one `gh pr update-branch` cycle after PR #115 merged first, to get back to a CLEAN merge state before merging #116.
 
@@ -28,7 +28,8 @@
 
 **Still open, not addressed this session**:
 - `verification.py` and `moderation.py` API routes still lack endpoint-level tests (only service-layer tests exist).
-- PR #115's fix has been validated locally/at the code level only — **not yet confirmed applied via `alembic upgrade head` against the actual production database**. Production still needs a real deploy to pick it up; until then, production `messages` inserts will continue to fail.
+- ~~PR #115's fix has been validated locally/at the code level only — not yet confirmed applied via `alembic upgrade head` against the actual production database~~ — **confirmed deployed 2026-07-16**, see the PR #115 entry above.
+- `backend/scripts/backfill_messages_partitions.py` has still never been run against production, but this is moot right now since `messages` has 0 rows there — revisit once real traffic exists.
 
 ### Previous Session — PR #113 Merged (Gallery/Groups/Social Test Coverage), Coverage Initiative Complete, Stale Test File Cleanup
 
@@ -649,14 +650,14 @@ The single reliable interception point is the **Pydantic validation layer** (bef
       fastapi version pin) — see bridging note above
 
 ### Next Session Priorities
-0. **New, urgent, from 2026-07-16 — deploy PR #115 to production**: `messages` has had **zero**
-    partitions attached in production since 2025-12-21 (confirmed via a live read-only query this
-    session); every `INSERT` into `messages` currently fails outright. PR #115 fixes this in code
-    and migration form (`k5l6m7n8o9p0_restore_messages_partitions.py`) but has only been validated
-    locally — **`alembic upgrade head` has not yet been run against the actual production
-    database**. This is the single highest-priority item carried into the next session; production
-    has no real users yet so nothing has visibly broken, but this must land before real traffic
-    hits `messages`.
+0. ~~**deploy PR #115 to production**~~ — **confirmed deployed 2026-07-16, same session**.
+    `messages` had zero partitions attached in production since 2025-12-21 (confirmed via a live
+    read-only query); every `INSERT` into `messages` was failing outright. PR #115 fixed this
+    (`k5l6m7n8o9p0_restore_messages_partitions.py`); merging to `main` auto-triggered
+    `Deploy Backend`'s deploy job (`railway up`), which succeeded, and `backend/start.sh` ran
+    `alembic upgrade head` on the resulting container restart. A follow-up read-only query
+    confirmed `alembic_version` = `k5l6m7n8o9p0` with `messages_default`/`messages_y2026m07`/
+    `messages_y2026m08` all present in production. No action needed next session.
 0b. **New, from 2026-07-16 — backend `app/api/` route-handler coverage is now confirmed, with two
    gaps remaining**: PR #116 closed the 5-module gap found this session (`block.py`, `forums.py`,
    `groups.py`, `notifications.py`, `stories.py`). **Still open**: `verification.py` and
@@ -829,10 +830,10 @@ hot-path latency) held and is why the full scope was implemented rather than a p
 migration in its chain, `96be264b314b` (2025-12-21, nominally an unrelated autogenerate for a
 `profile` column), had unreviewed side effects dropping `messages_default` and
 `messages_y2025m12`, leaving `messages` with zero partitions attached in every environment
-including production ever since. Fixed by PR #115 (`k5l6m7n8o9p0_restore_messages_partitions.py`).
-Not a flaw in the #66 design decision itself — a downstream migration-review gap. See the "Latest
-Session — PR #115" entry near the top of this file for full detail, and Next Session Priorities
-item 0 for the still-outstanding production deploy.
+including production ever since. Fixed by PR #115 (`k5l6m7n8o9p0_restore_messages_partitions.py`),
+**confirmed deployed to production the same session** (see below). Not a flaw in the #66 design
+decision itself — a downstream migration-review gap. See the "Latest Session — PR #115" entry near
+the top of this file for full detail.
 
 ### SafeBaseModel Architecture (PR #42)
 1. **Pydantic layer as single guard**: Chosen over asyncpg-level patch because it catches all
@@ -856,12 +857,12 @@ item 0 for the still-outstanding production deploy.
 ## Notes for Next Session
 
 ### Important Context
-- **`messages` cannot accept inserts in production right now** — read Next Session Priorities item 0
-  before touching anything chat/messages-related. PR #115 (2026-07-16) fixed the root cause in code
-  (a migration, `k5l6m7n8o9p0_restore_messages_partitions.py`, restoring `messages_default` and
-  current/next-month partitions) but that migration has **not yet been run against production**.
-  Confirmed live via a direct read-only production query this session — do not assume this is
-  theoretical.
+- ~~`messages` cannot accept inserts in production right now~~ — **fixed and confirmed deployed,
+  2026-07-16**. PR #115 fixed the root cause (a migration,
+  `k5l6m7n8o9p0_restore_messages_partitions.py`, restoring `messages_default` and current/next-month
+  partitions), merging to `main` auto-deployed it via `Deploy Backend`'s `deploy` job, and a
+  follow-up direct read-only production query confirmed `alembic_version` = `k5l6m7n8o9p0` with the
+  partitions present. No action needed.
 - **Backend `app/api/` route coverage: `verification.py` and `moderation.py` are the last gap.**
   PR #116 (2026-07-16) closed the other 5 zero-coverage modules (`block.py`, `forums.py`,
   `groups.py`, `notifications.py`, `stories.py`) and fixed a real `GET /api/forums/tree`
