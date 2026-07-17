@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * CSP Violation Report Endpoint
@@ -10,16 +11,17 @@ export async function POST(request: NextRequest) {
     const report = await request.json();
 
     // Log CSP violations for monitoring
-    // In production, this should be sent to your logging/monitoring service
     console.error("CSP Violation Report:", JSON.stringify(report, null, 2));
 
-    // Optionally forward to Sentry or other monitoring
-    // if (process.env.NODE_ENV === 'production') {
-    //   Sentry.captureMessage('CSP Violation', {
-    //     level: 'warning',
-    //     extra: report,
-    //   });
-    // }
+    // Forward to Sentry so violations are visible/alertable instead of only
+    // reaching stdout - this endpoint had a report-only policy feeding it
+    // since Feb 2026 with nothing ever reading what it collected.
+    if (process.env.NODE_ENV === "production") {
+      Sentry.captureMessage("CSP Violation", {
+        level: "warning",
+        extra: report,
+      });
+    }
 
     return NextResponse.json({ status: "received" }, { status: 200 });
   } catch {
