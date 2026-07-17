@@ -22,7 +22,7 @@ cd frontend && npm run dev
 ```bash
 cd frontend && npm run build        # Next.js production build
 cd frontend && npm run lint         # ESLint
-cd backend && black . && flake8 .   # Python formatting
+cd backend && ruff check .           # Python linting (matches backend-ci.yml; black/flake8 are not used)
 ```
 
 ### Testing
