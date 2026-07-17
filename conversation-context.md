@@ -2360,6 +2360,175 @@ answer definitively (whether production had already been remediated some other w
 
 ---
 
+## Session: 2026-07-16 (Session 2) — Frontend `src/lib` Coverage (PR #119/#120), Deploy Frontend CI Fix (PR #121), Backend Verification/Moderation API Coverage (PR #122)
+
+### Session Information
+- **Date**: 2026-07-16 (a separate conversation from, but the same calendar day as, the PR
+  #115/#116/#117 session above)
+- **Branch**: `main` (reviewed from `test/lib-coverage-auth-performance-offline-storage`,
+  `test/lib-prisma-coverage`, `fix/remove-redundant-deploy-job`,
+  `test/verification-moderation-api-coverage`)
+- **PRs Merged**: #119 (`3aa7fe2`, squash), #120 (`e64108c`, squash), #121 (`36ecb13`, squash), #122
+  (`cca5c04`, squash)
+- **HEAD after session**: `cca5c04`
+- **Focus**: Confirm PR #118 (docs correction) was merged, then frontend `src/lib` test coverage,
+  investigate `Deploy Frontend` CI failures, and close the last backend API coverage gap
+  (`verification.py`/`moderation.py`) flagged open by the PR #116 session.
+
+### High-Level Summary
+
+Confirmed PR #118 (docs-correction PR from the earlier same-day session) was merged, then
+investigated frontend `src/lib` test coverage at the user's request: `auth.ts`, `offline-storage.ts`,
+`performance.ts`, and `prisma.ts` all had 0% coverage.
+
+**PR #119** added tests for `auth.ts`/`performance.ts`/`offline-storage.ts` via three parallel
+staff-engineer subagents (one per file), each independently re-verified by re-running the real `npx
+vitest` command and reading the resulting file rather than trusting self-report. `auth.ts` (8 tests)
+mocks `next-auth`/`@auth/prisma-adapter`/provider factories as identity functions to capture the real
+config object and callbacks without touching Prisma/a real DB; locks in that the Credentials
+provider's `authorize()` is an unimplemented placeholder (always returns `null`) and that the `jwt`
+callback is pure passthrough. `performance.ts` (28 tests) covers all 13 exports using
+`vi.useFakeTimers()` and hand-built `IntersectionObserver`/`matchMedia` mocks. `offline-storage.ts`
+(13 tests) needed a hand-built fake `indexedDB` (jsdom has none, via `vi.stubGlobal`); found the `if
+(!this.db) return` guards in `saveFeed`/`getFeed` are dead code given how `init()` assigns `db`,
+documented not fixed. Caught and fixed two real issues the subagents' own "done" reports missed
+(project-wide `tsc`/`eslint` weren't run by them, only per-file checks): a TS2352 unsafe-cast error,
+and three `react-hooks/globals` lint violations (mutating an outer-scope variable during render
+inside a test probe component — fixed by moving the capture into `useEffect`).
+
+**Unplanned fix**: `frontend/node_modules/.bin/vitest` was a broken shim — Synology Drive sync had
+flattened the npm-created symlink into a real file copy, breaking `vitest.mjs`'s relative `import
+'./dist/cli.js'`. Recreated the symlink and restored the exec bit.
+
+**PR #120** added coverage for `prisma.ts` (9 tests), which had been deprioritized as "low risk" but
+was added anyway at the user's request. All of its logic is import-time side effects (env-var
+branching between throw/warn on missing `DATABASE_URL`, dev-mode global-instance caching), tested via
+`vi.resetModules()` + dynamic `import()` per scenario. `src/lib` is now 100% lines/functions across
+every file except two documented-intentional gaps in `performance.ts`/`offline-storage.ts`
+(unreachable defensive branches). This subagent ran the requested project-wide `tsc`/`eslint`/full-
+suite checks unprompted, clean on first report, independently re-verified anyway (133 files / 1257
+tests, no regressions).
+
+**Investigated why `Deploy Frontend` was failing on `main`** after PR #119/#120 merged — led to **PR
+#121**. Root cause: the workflow has two unrelated jobs, `quality-check` (a build smoke test) and
+`deploy` (`vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt`). The `deploy` job failed
+both times with `Error: Invalid rewrite found` (`next.config.ts`'s `/api/:path*` rewrite destination
+wasn't a valid URL), most likely because `NEXT_PUBLIC_API_URL` is flagged "Sensitive" in Vercel's
+dashboard, excluding it from `vercel pull` run outside Vercel's own build infrastructure. Critically,
+confirmed via the Vercel API that production was never actually affected: Vercel's native GitHub
+integration (`source: "git"`, a completely separate deploy path) was auto-building and deploying
+every push to `main` successfully throughout, live on `www.bgclive.online`/`bgclive.online`. PR #121
+removed the entire `deploy` job as pure duplicate effort rather than chasing the CLI-specific env var
+gap. Confirmed via `gh api .../branches/main/protection` that `deploy` was never a required status
+check.
+
+**PR #122** closed the last item from the PR #116 session's "Still open" note: `verification.py` and
+`moderation.py` had only service-layer tests, zero endpoint/route coverage. Two staff-engineer
+subagents worked in parallel against isolated local Postgres/Redis Docker containers (`bgc-test-db`
+on `localhost:15433`, `bgc-test-redis` on `localhost:16379`), never the checked-in `.env` (which
+points at production Supabase per the existing `pytest_test_db_isolation_landmine` memory).
+`tests/test_verification_api.py` (19 tests, all 4 routes) found via actual testing — not assumption —
+that auth (401) is checked before body validation (422) for `POST /{user_id}`, correcting the task
+brief's opposite assumption. `tests/test_moderation_api.py` (47 tests, all 8 routes) found and
+documented (not fixed) a likely real logic bug: `GET /stats`'s `resolved_today` filters by
+`created_at`, not an actual resolution timestamp (no such column exists on `ContentReport`), so a
+report created yesterday and genuinely resolved today via `POST /resolve` is not counted. Full suite:
+662 passed, 1 xfailed, zero regressions; confirmed `ruff check .` (not `flake8`) is this repo's actual
+CI linter — `CLAUDE.md`'s documented `black . && flake8 .` command is stale.
+
+**Merge-time surprise on PR #122, resolved not blocking**: a non-required "Vercel" status context
+showed `FAILURE` despite every required/actual CI check passing. Verified via the Vercel API this was
+not an account-wide block (the most recent production deployment was `READY` moments earlier) — an
+isolated, transient preview-build issue for a backend-only PR with no frontend changes to preview.
+Merged on the strength of the required `quality-check` check plus confirmed-healthy production.
+
+**Second Synology Drive sync corruption instance found**: `backend/venv` came out of a fresh
+`python3.12 -m venv venv` + `pip install` with `pip`'s own vendored `_vendor` directory missing
+entirely — same root cause as the `vitest` symlink flattening (both are rapid-many-small-file-write
+directories inside the synced repo folder). Worked around by building the venv in the session's
+scratchpad directory instead — not committed anywhere, does not persist. Recommended (not actioned):
+exclude `frontend/node_modules/`, `backend/venv/`, and `frontend/.next/` from Synology Drive sync at
+the client level.
+
+**Also flagged for a future session, not part of this session's PRs**: `tests/test_api_contract.py`
+bypasses the `db_session` per-test-rollback fixture (`TestClient` on `app.main.app` directly, no
+`dependency_overrides` for `get_db`), so schemathesis's fuzzed mutating requests commit for real —
+currently harmless only because no CI workflow runs it combined with other test files in one `pytest`
+process, but fragile-by-accident. Also `schemathesis`/`starlette_testclient` aren't pinned in
+`requirements.txt` despite `deploy-backend.yml` needing them.
+
+### Files Modified/Created
+
+| File | Change |
+|------|--------|
+| `frontend/tests/unit/lib-auth.test.ts` | New (PR #119) — 8 tests |
+| `frontend/tests/unit/lib-performance.test.ts` | New (PR #119) — 28 tests |
+| `frontend/tests/unit/lib-offline-storage.test.ts` | New (PR #119) — 13 tests |
+| `frontend/tests/unit/lib-prisma.test.ts` | New (PR #120) — 9 tests |
+| `.github/workflows/deploy-frontend.yml` | Modified (PR #121) — removed the redundant `deploy` job |
+| `backend/tests/test_verification_api.py` | New (PR #122) — 19 tests |
+| `backend/tests/test_moderation_api.py` | New (PR #122) — 47 tests |
+| `frontend/node_modules/.bin/vitest` | Unplanned fix — recreated symlink flattened by Synology Drive sync (not committed, gitignored) |
+| `session-context.md`, `project-context.md`, `conversation-context.md`, `session-summary.md` | This session's doc-close update |
+
+### Key Decisions and Rationale
+
+1. **Independently re-verify subagent "done" reports rather than trust self-report**: caught a
+   TS2352 unsafe-cast error and three `react-hooks/globals` lint violations that the PR #119
+   subagents' own per-file checks had missed by not running project-wide `tsc`/`eslint`.
+2. **Remove the redundant `Deploy Frontend` CLI job rather than fix its env var resolution gap**:
+   since Vercel's native GitHub integration was already independently and successfully deploying
+   every push, the CLI job was pure duplicate effort — removing it was strictly less work and
+   equally correct, and avoids maintaining a second deploy path going forward.
+3. **Confirm production was unaffected via the Vercel API before treating the CI failures as
+   urgent**: checked deployment `source`/`state` fields directly rather than assuming a failing
+   GitHub Actions job meant broken production.
+4. **Merge PR #122 past a non-required failing "Vercel" check**: verified via the Vercel API this
+   was an isolated transient preview-build issue, not an account-wide block, and the PR had no
+   frontend changes to preview anyway — matches the PR #85-session precedent for merging past
+   non-required failing checks.
+5. **Verify local test isolation against Docker containers, never the checked-in `.env`**: per the
+   existing `pytest_test_db_isolation_landmine` memory, all PR #122 verification ran against
+   isolated local Postgres/Redis containers, never production Supabase.
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] `GET /api/moderation/stats`'s `resolved_today` field likely has a real logic bug (counts by
+      `created_at`, not actual resolution time) — needs a human decision (schema change vs. docs fix).
+- [ ] `tests/test_api_contract.py` DB isolation gap — wrap its `TestClient`/schema fixture in the
+      same `db_session`-backed override pattern used elsewhere; low urgency.
+- [ ] `schemathesis`/`starlette_testclient` not pinned in `requirements.txt`.
+- [ ] `CLAUDE.md`'s documented backend lint command (`black . && flake8 .`) is stale — actual CI
+      linter is `ruff check .`.
+- [ ] Exclude `frontend/node_modules/`, `backend/venv/`, `frontend/.next/` from Synology Drive sync
+      at the client level (infra recommendation, not code).
+- [ ] Resend domain verification (`bgclive.online`) — long-carried-forward, still unconfirmed.
+- [ ] `topical/[slug]/page.tsx` coverage (82.4%, intentional) — revisit once a real endpoint exists.
+- [ ] Untracked local tooling files — gitignore or commit intentionally (carried forward across four
+      sessions now).
+- [ ] NUL-byte/surrogate query-param validation audit for `chat.py`/`admin.py`/`groups.py`/
+      `moderation.py` — still not addressed.
+
+### Blockers / Challenges
+
+None significant. The main environmental friction was the second Synology Drive sync corruption
+instance (`backend/venv`), worked around by building outside the synced tree for this session only.
+
+### Session Statistics
+
+- **PRs merged this session**: 4 (#119, #120, #121, #122)
+- **New test files**: 6 (`lib-auth.test.ts`, `lib-performance.test.ts`, `lib-offline-storage.test.ts`,
+  `lib-prisma.test.ts`, `test_verification_api.py`, `test_moderation_api.py`) — 124 new tests total
+  (8+28+13+9 frontend, 19+47 backend)
+- **Workflow files modified**: 1 (`.github/workflows/deploy-frontend.yml`)
+- **Real bugs found**: 1 documented-not-fixed (`GET /api/moderation/stats` `resolved_today` logic);
+  2 sync-corruption incidents fixed (`vitest` symlink, `backend/venv`)
+- **Context files updated**: 4 (`session-context.md`, `project-context.md`,
+  `conversation-context.md`, `session-summary.md`)
+- **Obsidian vault**: see this session's vault-update summary in the doc-close report
+
+---
+
 ## Appendix: Session Patterns
 
 ### Successful Patterns This Session
