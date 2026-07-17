@@ -16,14 +16,17 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
  *     collected (the report-only header has existed since PR #13 with no
  *     mechanism to observe what it reports).
  *
- * Phase 0 (this file, initial version): assert enforce-violations are zero
- * (already true), and log report-violations without failing on them — we
- * don't have real data yet, so asserting zero here would be asserting
- * against a number nobody has ever measured. Once Phase 1 (script-src nonce)
- * and Phase 2 (style-src split) land, tighten the report-violation
- * assertions to zero (or an explicitly-allowlisted remainder) directive by
- * directive, turning this into the actual CI gate for "E2E tests pass
- * without CSP violations".
+ * Phase 0 (initial version): asserted enforce-violations were zero (trivially
+ * true, the enforcing policy still allowed unsafe-inline/unsafe-eval) and
+ * logged report-violations without failing on them, to collect the first
+ * real baseline data this project ever had.
+ *
+ * Phase 1 (script-src nonce rollout, src/proxy.ts + src/app/layout.tsx):
+ * enforce-violations now gate script-src for real (see
+ * ALLOWED_ENFORCED_VIOLATIONS below for the one documented, investigated
+ * exception). style-src is still permissive - Phase 2 splits it into
+ * style-src-elem/style-src-attr, at which point report-violations should
+ * start getting the same enforce-only-with-documented-exceptions treatment.
  */
 
 interface CspViolation {
@@ -79,10 +82,37 @@ function summarize(violations: CspViolation[]): string {
     .join(', ');
 }
 
-/** Asserts the currently-ENFORCED policy is clean, and reports (without
- * failing) what the stricter Report-Only policy would additionally catch. */
+/**
+ * Known, investigated, accepted script-src violations - each entry here
+ * must have a comment explaining WHY it's safe to allow, not just what it
+ * is. This is not a place to silence inconvenient failures.
+ */
+const ALLOWED_ENFORCED_VIOLATIONS: Array<(v: CspViolation) => boolean> = [
+  // A third-party dependency bundled into react-hook-form/zod's chunk on
+  // /login and /profile/edit does `try { Function("") } catch { ... }` as a
+  // feature-detection probe for eval availability (visible directly in the
+  // built chunk at the reported column: confirmed via `curl` + manual
+  // inspection, not guessed). The try/catch means it already has a working
+  // fallback for when eval is unavailable for ANY reason (CSP, a sandboxed
+  // iframe, a strict runtime like Cloudflare Workers, which the same code
+  // explicitly special-cases) - blocking it via CSP does not break page
+  // functionality, confirmed by both pages loading and rendering correctly
+  // with this violation present. Exact upstream package not pinned down
+  // (grepping node_modules for the distinctive Cloudflare+Function("")
+  // pattern found no exact match, likely due to minification differences
+  // between the published package and this repo's Turbopack-bundled
+  // output) - if this needs to be revisited, the code is directly visible
+  // by fetching the chunk at the violation's sourceFile/lineNumber/columnNumber.
+  (v) => v.violatedDirective === 'script-src' && v.blockedURI === 'eval',
+];
+
+/** Asserts the currently-ENFORCED policy is clean (modulo the documented
+ * allowlist above), and reports (without failing) what the stricter
+ * Report-Only policy would additionally catch. */
 async function assertNoEnforcedViolations(violations: CspViolation[], route: string) {
-  const enforced = violations.filter((v) => v.disposition === 'enforce');
+  const enforced = violations
+    .filter((v) => v.disposition === 'enforce')
+    .filter((v) => !ALLOWED_ENFORCED_VIOLATIONS.some((isAllowed) => isAllowed(v)));
   const reportOnly = violations.filter((v) => v.disposition === 'report');
 
   test.info().annotations.push({

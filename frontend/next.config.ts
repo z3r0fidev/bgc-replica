@@ -75,6 +75,12 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    // Content-Security-Policy and Content-Security-Policy-Report-Only are
+    // NOT set here (Issue #68, Phase 1) - they need a fresh per-request
+    // nonce for script-src, which a static next.config.ts can't produce.
+    // See src/proxy.ts, which sets both on every response this config's
+    // own matcher covers (all HTML document routes). Static assets/API
+    // routes excluded by that matcher don't need a CSP header.
     return [
       {
         source: "/(.*)",
@@ -94,16 +100,6 @@ const nextConfig: NextConfig = {
           {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains; preload",
-          },
-          {
-            key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://*.sentry.io; font-src 'self' data:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.up.railway.app wss://*.up.railway.app https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:; frame-src 'self' https://accounts.google.com; worker-src 'self' blob:;",
-          },
-          {
-            // Report-only CSP to test stricter policy without breaking the site
-            // Monitor violations before enforcing removal of unsafe-inline/eval
-            key: "Content-Security-Policy-Report-Only",
-            value: "default-src 'self'; script-src 'self' https://accounts.google.com; style-src 'self'; img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://*.sentry.io; font-src 'self' data:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.up.railway.app wss://*.up.railway.app https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:; frame-src 'self' https://accounts.google.com; worker-src 'self' blob:; report-uri /api/csp-report;",
           },
         ],
       },
