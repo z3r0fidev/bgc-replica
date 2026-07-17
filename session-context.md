@@ -1,12 +1,32 @@
 # Session Context
 
-**Last Updated**: 2026-07-16 (Session Closing — PR #115 merged and **confirmed deployed to production**: fixed a real production bug where `messages` had zero partitions attached since Dec 2025; PR #116 merged: closed the remaining backend `app/api/` route-handler test-coverage gap for 5 modules, and fixed a real `GET /api/forums/tree` crash found while writing those tests; PR #117 merged: session-close doc updates)
+**Last Updated**: 2026-07-16 (Session Closing — a separate conversation from, but the same calendar day as, the PR #115/#116/#117 session below. Confirmed PR #118 merged, then merged four new PRs: **PR #119** frontend `src/lib` test coverage for `auth.ts`/`performance.ts`/`offline-storage.ts`; **PR #120** `prisma.ts` coverage, rounding `src/lib` out to 100% lines/functions; **PR #121** removed a redundant/broken CLI deploy job from `Deploy Frontend` after confirming production was never actually affected; **PR #122** backend endpoint coverage for `verification.py`/`moderation.py`, closing the last gap flagged by the PR #116 session below)
 **Current Branch**: `main`
-**Session Status**: Closed. Three PRs reviewed, merged (squash), and branch-deleted (local + origin) this session: **PR #115** (`fix(db): restore messages_default and monthly partitions dropped by 96be264b314b`, merge `3feaa0f`), **PR #116** (`test: add endpoint coverage for block, forums, groups, notifications, stories`, merge `62167f5`), and **PR #117** (docs close-out, merge `547f452`). This session resolved both open items the prior (2026-07-15) close-out had flagged as unconfirmed: (1) whether PR #89's claim that `status_updates`'/`messages`' dropped FK/index was "already fixed by an unrelated earlier migration" was true — **confirmed true** (see below), but that same migration turned out to have silently broken `messages` partitioning in the process, a previously-undiscovered bug now fixed by PR #115 **and confirmed deployed to production** (see below); (2) the extent of backend `app/api/` route-handler test coverage — **now confirmed**: 5 of 18 modules (`block.py`, `forums.py`, `groups.py`, `notifications.py`, `stories.py`) had zero endpoint tests, now fixed by PR #116, which also fixed a real `forums.py` crash bug found in the process. Whether `backend/scripts/backfill_messages_partitions.py` has been run against production remains moot for now (production `messages` has 0 rows) — see Next Session Priorities.
+**Session Status**: Closed. Four PRs reviewed, merged (squash), and branch-deleted (local + origin) this session: **PR #119** (`test: add coverage for lib/auth, lib/performance, lib/offline-storage`, merge `3aa7fe2`), **PR #120** (`test: add coverage for lib/prisma.ts`, merge `e64108c`), **PR #121** (`fix(ci): remove redundant/broken CLI deploy job from Deploy Frontend`, merge `36ecb13`), and **PR #122** (`test: add endpoint coverage for verification and moderation APIs`, merge `cca5c04`). This session closed the one open item the PR #116 session below flagged as "Still open": backend `verification.py`/`moderation.py` route-handler test coverage — **now done**, PR #122. It also investigated and resolved a CI false alarm (`Deploy Frontend` failing on every push since PR #119 — root cause was a redundant deploy path, production itself was never affected) and hit a second instance of Synology Drive sync corrupting a gitignored build directory (`backend/venv`, after `frontend/node_modules/.bin` previously) — see Local Machine Notes. The untracked local tooling files carried forward across four sessions now remain untouched, still not committed, per standing instruction.
 
 ## Current State
 
-### Latest Session — PR #115 (Messages Partition Restore Fix) + PR #116 (Backend API Endpoint Test Coverage) Merged
+### Latest Session — PR #119-#122: Frontend `src/lib` Coverage, Deploy Frontend CI Fix, Backend Verification/Moderation API Coverage
+
+**Starting point**: this session began by confirming PR #118 (docs correction, already merged) was green, then investigating frontend `src/lib` test coverage at the user's request. `auth.ts`, `offline-storage.ts`, `performance.ts`, and `prisma.ts` all had 0% coverage; `utils.ts` and `validations/profile.ts` were already fully covered incidentally via component tests.
+
+**PR #119** — `test: add coverage for lib/auth, lib/performance, lib/offline-storage` (branch `test/lib-coverage-auth-performance-offline-storage`, merged squash `3aa7fe2`, branch deleted). Three staff-engineer subagents (one per file, `auth.ts`/`performance.ts` in parallel, `offline-storage.ts` after) wrote the tests; each was independently re-verified (not trusted on self-report) by re-running the real `npx vitest` command and reading the resulting file. `auth.ts` (8 tests): mocks `next-auth`/`@auth/prisma-adapter`/provider factories as identity functions to capture the real config object and callbacks without touching Prisma/a real DB; locks in that the Credentials provider's `authorize()` is an unimplemented placeholder (always returns `null`) and that the `jwt` callback is pure passthrough. `performance.ts` (28 tests): all 13 exports (`debounce`/`throttle`/`useIntersectionObserver`/`useLazyLoad`/`usePrefersReducedMotion`/`useVirtualList`/`preloadResource`/`preconnect`/`requestIdleCallback`/`cancelIdleCallback`/`useDeferredValue`), using `vi.useFakeTimers()` and hand-built `IntersectionObserver`/`matchMedia` mocks. `offline-storage.ts` (13 tests): jsdom has no native `indexedDB`, so a minimal hand-built fake (`vi.stubGlobal`) was needed; found the `if (!this.db) return` guards in `saveFeed`/`getFeed` are dead code (unreachable given how `init()` assigns `db`), documented not fixed. Result: `src/lib` coverage 0%→100% lines/functions on these three files. Caught and fixed two real issues the subagents' own self-reported "done" missed (project-wide `tsc --noEmit`/`eslint` weren't run by them, only isolated per-file checks): a TS2352 unsafe-cast error in `lib-auth.test.ts`, and three `react-hooks/globals` lint violations in `lib-performance.test.ts` (mutating an outer-scope variable during render inside a test probe component — fixed by moving the capture into `useEffect`).
+
+**Also fixed this round, unplanned**: `frontend/node_modules/.bin/vitest` was a broken shim — Synology Drive sync had flattened the npm-created symlink into a real file copy, breaking `vitest.mjs`'s relative `import './dist/cli.js'`. Recreated the symlink + restored the exec bit; unblocks `npx vitest`/`npm run test` for anyone on this machine until the next sync/reinstall re-breaks it (see Local Machine Notes for the recommended fix).
+
+**PR #120** — `test: add coverage for lib/prisma.ts` (branch `test/lib-prisma-coverage`, merged squash `e64108c`, branch deleted). `prisma.ts` was initially deprioritized as "low risk" (thin client singleton) but the user asked for it anyway. All of its logic is import-time side effects (env-var branching between throw/warn on missing `DATABASE_URL`, dev-mode global-instance caching), so the test uses `vi.resetModules()` + dynamic `import()` per scenario. 9 tests, all branches covered; `src/lib` now 100% lines/functions across every file except two documented-intentional gaps in `performance.ts`/`offline-storage.ts` (unreachable defensive branches). This subagent ran the requested project-wide `tsc`/`eslint`/full-suite checks unprompted — clean on first report, independently re-verified anyway (133 files / 1257 tests, no regressions).
+
+**Investigation — `Deploy Frontend` CI failures (led to PR #121)**: the user asked to investigate why `Deploy Frontend` was failing on `main` after PR #119/#120 merged. Root cause: the workflow has two unrelated jobs — `quality-check` (an `npm run build` smoke test using the GitHub Actions secret `NEXT_PUBLIC_API_URL`) and `deploy` (`vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt`, using whatever `NEXT_PUBLIC_API_URL` Vercel's own Production environment resolves to via the CLI). The `deploy` job failed both times with `Error: Invalid rewrite found` (`next.config.ts`'s `/api/:path*` rewrite destination wasn't a valid URL) — most likely because `NEXT_PUBLIC_API_URL` is flagged "Sensitive" in Vercel's dashboard, which excludes it from `vercel pull` when run outside Vercel's own build infrastructure. Critically, **production was never actually affected**: confirmed via the Vercel API that Vercel's native GitHub integration (a completely separate deploy path, `source: "git"` in the deployments API) was auto-building and deploying every push to `main` successfully throughout, aliased live to `www.bgclive.online`/`bgclive.online`. **PR #121** — `fix(ci): remove redundant/broken CLI deploy job from Deploy Frontend` (branch `fix/remove-redundant-deploy-job`, merged squash `36ecb13`, branch deleted) — removed the entire `deploy` job as pure duplicate effort rather than chasing the CLI-specific env var resolution gap. Confirmed via `gh api .../branches/main/protection` that `deploy` was never a required status check (it only runs on push to `main`, never on PRs) and no other workflow references it.
+
+**PR #122** — `test: add endpoint coverage for verification and moderation APIs` (branch `test/verification-moderation-api-coverage`, merged squash `cca5c04`, branch deleted). Closes the last item from the PR #116 session's "Still open" note below: `app/api/verification.py` and `app/api/moderation.py` had only service-layer tests (different, lower-level modules), zero endpoint/route coverage. Two staff-engineer subagents worked in parallel against **isolated local Postgres/Redis Docker containers** (`bgc-test-db` on `localhost:15433`, `bgc-test-redis` on `localhost:16379`) — never the checked-in `.env`, which the existing `pytest_test_db_isolation_landmine` memory correctly warns points at production Supabase. `tests/test_verification_api.py` (19 tests, all 4 routes): found via actual testing (not assumption) that auth (401) is checked before body validation (422) for `POST /{user_id}` — the task brief had assumed the opposite and was corrected by the agent's own experiment. `tests/test_moderation_api.py` (47 tests, all 8 routes): found and documented (not fixed) a likely real logic bug — `GET /stats`'s `resolved_today` filters by `created_at`, not an actual resolution timestamp (no such column exists on `ContentReport`), so a report created yesterday and genuinely resolved today via `POST /resolve` is not counted; `test_resolved_today_counts_by_created_at_not_actual_resolution_time` demonstrates this concretely. Full suite: 662 passed, 1 xfailed, zero regressions; `black`/`ruff` clean (confirmed `ruff check .` — not `flake8` — is this repo's actual CI linter per `backend-ci.yml`; `CLAUDE.md`'s documented `black . && flake8 .` command is stale, `flake8` isn't even in `requirements.txt`).
+
+**Merge-time surprise, resolved not blocking**: PR #122's non-required "Vercel" status context showed `FAILURE` (pointing at Vercel's "why is my account deployment blocked" doc) despite every required/actual CI check passing. Verified via the Vercel API this was NOT an account-wide block — the most recent production deployment (for PR #121's merge) was `READY` and live moments earlier — so this was an isolated, transient preview-build issue for a backend-only PR (which has no frontend changes to preview anyway). Merged on the strength of the required `quality-check` check plus confirmed-healthy production, matching the PR #85-session precedent for merging past non-required failing checks.
+
+**Second Synology Drive sync corruption instance found**: `backend/venv` came out of a fresh `python3.12 -m venv venv` + `pip install` with `pip`'s own vendored `_vendor` directory missing entirely — traced to the same root cause as the earlier `frontend/node_modules/.bin/vitest` symlink flattening (both are rapid-many-small-file-write directories inside the Synology-synced repo folder). Worked around by building the venv in the session's scratchpad directory (outside the synced tree) instead — this is NOT committed anywhere (both `venv/` and the scratchpad path are outside git entirely) and does not persist across sessions; a future session hitting a broken `backend/venv` should suspect this same cause first and either rebuild outside the synced folder or exclude `frontend/node_modules/` + `backend/venv/` (and preventively `frontend/.next/`) from Synology Drive sync at the OS/client level — recommended to the user this session but not actioned (a Synology Drive Client settings change, outside this session's tooling).
+
+**Also discovered, not part of this session's PRs, flagged for a future session**: `tests/test_api_contract.py` (schemathesis-based fuzz/contract tests) bypasses the `db_session` per-test-rollback fixture entirely (calls `app.main.app` directly via `starlette_testclient.TestClient` with no `dependency_overrides` for `get_db`), so its fuzzed mutating requests commit for real against whatever DB it's pointed at. This is currently harmless only because no CI workflow ever runs it combined with other test files in the same `pytest` process (`backend-ci.yml`/`pr-validation.yml` `--ignore` it entirely; `deploy-backend.yml` runs it as a fully separate, later `pytest` invocation) — but it's fragile-by-accident, not fragile-by-design. Also: `schemathesis`/`starlette_testclient` aren't pinned in `requirements.txt` at all despite `deploy-backend.yml` needing them (`pip install pytest ruff httpx schemathesis pytest-alembic` as an inline step) — a latent dependency-pinning gap.
+
+### Previous Session — PR #115 (Messages Partition Restore Fix) + PR #116 (Backend API Endpoint Test Coverage) Merged
 
 **Starting point**: the 2026-07-15 close-out had left two specific items open (see "Previous Session" section below): (1) a prior session couldn't verify via `git log --follow` whether PR #89's commit message was correct that `status_updates`'/`messages`' dropped FK/index issue was "already fixed by an unrelated earlier migration"; (2) whether `backend/scripts/backfill_messages_partitions.py` had been run against production, and the real extent of backend API test coverage, were both unconfirmed.
 
@@ -576,6 +596,23 @@ The single reliable interception point is the **Pydantic validation layer** (bef
 
 ## Current Objectives
 
+### Completed (as of 2026-07-16, PR #119-#122 session)
+- [x] PR #119 merged (squash, `3aa7fe2`) — `src/lib/auth.ts`/`performance.ts`/`offline-storage.ts` test
+      coverage, 0%→100% lines/functions. Also fixed a broken `frontend/node_modules/.bin/vitest`
+      symlink (Synology Drive sync had flattened it into a real file copy).
+- [x] PR #120 merged (squash, `e64108c`) — `src/lib/prisma.ts` test coverage, rounding `src/lib` out
+      to 100% lines/functions across every file.
+- [x] PR #121 merged (squash, `36ecb13`) — removed the redundant/broken CLI `deploy` job from
+      `Deploy Frontend`; production was confirmed unaffected throughout (Vercel's native GitHub
+      integration deploys independently and was never broken).
+- [x] PR #122 merged (squash, `cca5c04`) — backend `verification.py`/`moderation.py` endpoint test
+      coverage (19 + 47 tests), closing the last item flagged open by the PR #116 session below.
+      Found and documented (not fixed) a likely real bug: `GET /api/moderation/stats`'s
+      `resolved_today` counts by `created_at`, not actual resolution time.
+- [x] All four branches (`test/lib-coverage-auth-performance-offline-storage`,
+      `test/lib-prisma-coverage`, `fix/remove-redundant-deploy-job`,
+      `test/verification-moderation-api-coverage`) deleted (local + origin).
+
 ### Completed (as of 2026-07-16)
 - [x] PR #115 merged (squash, `3feaa0f`) — fixes a real, currently-live production bug: `messages`
       has had zero partitions attached since 2025-12-21 (an unreviewed autogenerate side effect of
@@ -658,19 +695,43 @@ The single reliable interception point is the **Pydantic validation layer** (bef
     `alembic upgrade head` on the resulting container restart. A follow-up read-only query
     confirmed `alembic_version` = `k5l6m7n8o9p0` with `messages_default`/`messages_y2026m07`/
     `messages_y2026m08` all present in production. No action needed next session.
-0b. **New, from 2026-07-16 — backend `app/api/` route-handler coverage is now confirmed, with two
-   gaps remaining**: PR #116 closed the 5-module gap found this session (`block.py`, `forums.py`,
-   `groups.py`, `notifications.py`, `stories.py`). **Still open**: `verification.py` and
-   `moderation.py` have only service-layer tests, not endpoint/route tests — a future session should
-   add dedicated `tests/test_verification_api.py`/equivalent for `moderation.py`'s routes following
-   the same `tests/test_group_chats.py`-style convention used in PR #116. Also carried forward:
-   `topical/[slug]/page.tsx` coverage (currently 82.4%, intentionally incomplete) should be revisited
-   once its real data-fetch endpoint replaces the current hardcoded-empty-array stub. Separately, the
+0b. ~~**backend `app/api/` route-handler coverage — `verification.py`/`moderation.py` gap**~~ —
+   **DONE, PR #122 (2026-07-16)**. PR #116 closed the 5-module gap found in that session (`block.py`,
+   `forums.py`, `groups.py`, `notifications.py`, `stories.py`); PR #122 closed the remaining two
+   (`tests/test_verification_api.py` 19 tests, `tests/test_moderation_api.py` 47 tests). Still
+   carried forward, untouched: `topical/[slug]/page.tsx` coverage (currently 82.4%, intentionally
+   incomplete) should be revisited once its real data-fetch endpoint replaces the current
+   hardcoded-empty-array stub. Also still carried forward, now across **four** sessions: the
    untracked local tooling files (`.agents/`, `.claude/skills/`, `backend/.agents/`,
    `backend/.mcp.json`, `backend/Procfile`, `backend/skills-lock.json`, `skills-lock.json`, plus a
    modified-but-unstaged `.claude/settings.local.json`) should be either gitignored or committed
-   intentionally so `git status` stays clean — carried forward across three sessions now, still
-   unresolved.
+   intentionally so `git status` stays clean — still unresolved, not touched this session either.
+0c. **New, from 2026-07-16 (PR #119-#122 session) — likely real bug, needs a human decision**:
+   `GET /api/moderation/stats`'s `resolved_today` field filters `ContentReport.created_at >= today's
+   start AND status == RESOLVED` — there's no `resolved_at`/`reviewed_at` column, so this actually
+   counts reports *created* today that happen to be resolved, not reports *resolved* today. A report
+   created yesterday and genuinely resolved today via `POST /resolve` is NOT counted.
+   `tests/test_moderation_api.py::TestGetModerationStats::test_resolved_today_counts_by_created_at_not_actual_resolution_time`
+   demonstrates this concretely. Needs either a schema change (add a `resolved_at` column) or a
+   docs/UI fix acknowledging the field means something narrower than its name suggests.
+0d. **New, from 2026-07-16 — `test_api_contract.py` DB isolation gap, low urgency**: bypasses the
+   `db_session` per-test-rollback fixture (`TestClient` on `app.main.app` directly, no
+   `dependency_overrides` for `get_db`), so schemathesis's fuzzed mutating requests commit for real.
+   Currently harmless only because no CI workflow runs it combined with other test files in one
+   `pytest` process (`backend-ci.yml`/`pr-validation.yml` `--ignore` it; `deploy-backend.yml` runs it
+   as a fully separate, later invocation) — fragile-by-accident, not by design. A future session
+   should wrap its `TestClient`/schema fixture in the same `db_session`-backed override pattern. Also:
+   `schemathesis`/`starlette_testclient` aren't pinned in `requirements.txt` at all despite
+   `deploy-backend.yml` needing them.
+0e. **New, from 2026-07-16 — docs fix, trivial**: `CLAUDE.md`'s documented backend lint command
+   (`black . && flake8 .`) is stale — this repo's actual CI linter is `ruff check .`
+   (`backend-ci.yml`), and `flake8` isn't even in `requirements.txt`.
+0f. **New, from 2026-07-16 — infra recommendation, not code**: exclude `frontend/node_modules/`,
+   `backend/venv/`, and preventively `frontend/.next/` from Synology Drive sync on this Linux
+   workstation (Settings → Sync, in the Synology Drive Client, not something fixable from this repo).
+   Both `node_modules/.bin/vitest` (this session, again) and `backend/venv` (this session, new) have
+   now been corrupted by sync flattening symlinks / dropping files mid-write on rapid-many-small-file
+   directories. All three paths are already gitignored, so nothing is lost by excluding them.
 1. **New, urgent — Resend domain verification**: `bgclive.online` is not verified in the Resend
    dashboard, so even though the Celery worker is now correctly processing tasks in production,
    actual email sends (verification, password reset, warnings) still fail at the Resend API level.
@@ -734,6 +795,13 @@ The single reliable interception point is the **Pydantic validation layer** (bef
   verification (`bgclive.online`) — see Next Session Priorities above.
 
 ### Branch & Git State
+- **[2026-07-16 later-session update]** Active branch: `main`, local in sync with `origin/main`
+  (HEAD `cca5c04`, squash-merge commit for PR #122, on top of `36ecb13`/`e64108c`/`3aa7fe2` for PRs
+  #121/#120/#119 and `38dc6bc`/`547f452` for #118/#117 below).
+- This session added: PR #119 (`3aa7fe2`), PR #120 (`e64108c`), PR #121 (`36ecb13`), PR #122
+  (`cca5c04`) — all four branches deleted (local + origin) after merge. No doc-close commit landed
+  yet as of this writing; this file's own update is that commit, staged for the human/agent closing
+  this session to commit.
 - **[2026-07-16 update]** Active branch: `main`, local in sync with `origin/main` (HEAD `62167f5`,
   squash-merge commit for PR #116, on top of `3feaa0f` for PR #115). Local `main` had diverged from
   `origin/main` at session start (this session's docs-close commit for 2026-07-15 vs. #115/#116
@@ -773,6 +841,17 @@ historical accuracy; see the 2026-07-16 update above for current state.)*
   session). If `git status` ever again shows a large wave of unexplained deletions or an installed
   binary suddenly gets "Permission denied", suspect Synology sync first before assuming repo
   corruption.
+- **[2026-07-16 later-session update] Two more concrete corruption instances, same root cause**:
+  `frontend/node_modules/.bin/vitest` was found flattened from an npm symlink into a real file copy
+  (broke `npx vitest`'s relative `import './dist/cli.js'` — fixed by recreating the symlink + exec
+  bit), and `backend/venv` came out of a fresh `python3.12 -m venv` + `pip install` with `pip`'s own
+  `_vendor` directory missing entirely (fixed by rebuilding the venv in the session's scratchpad
+  directory, outside the synced tree, instead). Both are rapid-many-small-file-write directories
+  inside the sync folder — this looks like a systemic pattern, not one-off flakes. **Recommended,
+  not yet actioned**: exclude `frontend/node_modules/`, `backend/venv/`, and preventively
+  `frontend/.next/` from Synology Drive sync via the Synology Drive Client's own settings (a
+  machine/account-level change, not something fixable from within this repo) — all three are already
+  gitignored, so nothing is lost by excluding them. See Next Session Priorities item 0f.
 
 ## Key Decisions
 
@@ -835,6 +914,30 @@ including production ever since. Fixed by PR #115 (`k5l6m7n8o9p0_restore_message
 decision itself — a downstream migration-review gap. See the "Latest Session — PR #115" entry near
 the top of this file for full detail.
 
+### Deploy Frontend: Removed the Redundant CLI Deploy Job, Did Not Fix It (PR #121, 2026-07-16)
+1. **Two independent deploy paths existed for the same app**: Vercel's native GitHub integration
+   (auto-builds/deploys every push to `main`, `source: "git"` in the Vercel API, no GitHub Actions
+   involvement at all) and `.github/workflows/deploy-frontend.yml`'s own `deploy` job (`vercel pull`
+   → `vercel build --prod` → `vercel deploy --prebuilt`, entirely separate). Only the second one was
+   broken (`Error: Invalid rewrite found`, `NEXT_PUBLIC_API_URL` not resolving to a valid URL via
+   `vercel pull` — likely flagged "Sensitive" in Vercel's dashboard, which excludes it from CLI pulls
+   run outside Vercel's own build infra).
+2. **Removed rather than fixed**: since the native integration was already successfully deploying
+   every push independently (confirmed live on `www.bgclive.online` throughout the failures), the
+   broken CLI job was pure duplicate effort with a spurious-but-real-looking CI failure as its only
+   observable effect. Fixing the CLI-side env var resolution gap was explicitly not attempted —
+   removing the redundant job was strictly less work and equally correct.
+3. **Do not re-add a CLI-based `vercel deploy` step to this workflow** without first checking whether
+   Vercel's native GitHub integration is still connected and deploying successfully on its own (check
+   the Vercel dashboard's Git integration settings, or query the Vercel API for recent deployments'
+   `source` field) — if it is, a second deploy path is redundant by construction, not just currently
+   broken.
+4. **If a working CLI-based deploy is ever genuinely needed** (e.g. to deploy from a non-`main`
+   source, or to control build/deploy separately from Vercel's own webhook trigger), the actual fix
+   is un-marking `NEXT_PUBLIC_API_URL` as "Sensitive" in Vercel's Production environment variables
+   (Project Settings → Environment Variables) — not something this session had dashboard access to
+   verify or change.
+
 ### SafeBaseModel Architecture (PR #42)
 1. **Pydantic layer as single guard**: Chosen over asyncpg-level patch because it catches all
    three encoding-path variants (String, ARRAY(String), JSONB) uniformly.
@@ -857,6 +960,34 @@ the top of this file for full detail.
 ## Notes for Next Session
 
 ### Important Context
+- **Backend `app/api/` route coverage is now complete for all previously-zero-coverage modules.**
+  PR #116 (2026-07-16) closed `block.py`/`forums.py`/`groups.py`/`notifications.py`/`stories.py`; PR
+  #122 (2026-07-16, later session) closed the remaining `verification.py`/`moderation.py`. If a
+  future session is asked to find more backend API coverage gaps, cross-reference every router's URL
+  prefix in `backend/app/api/*.py` against `backend/tests/test_*_api.py`/`test_*.py` file names the
+  same way these two sessions did — don't assume more exist without checking, but also don't assume
+  none exist without actually cross-referencing.
+- **`GET /api/moderation/stats`'s `resolved_today` field likely has a real logic bug** — see Next
+  Session Priorities item 0c above. Don't "fix" tests to hide this if touching this endpoint; the
+  existing test (`test_resolved_today_counts_by_created_at_not_actual_resolution_time`) documents the
+  actual (buggy-looking) behavior deliberately.
+- **`Deploy Frontend`'s `deploy` job was removed in PR #121 (2026-07-16), not fixed.** Vercel's
+  native GitHub integration is the sole frontend deploy mechanism now — see the new Key Decisions
+  entry above before ever considering re-adding a CLI-based deploy step to this workflow.
+- **This machine (Linux workstation, Synology Drive-synced repo folder) has now corrupted two
+  different gitignored build directories** (`frontend/node_modules/.bin/vitest`, `backend/venv`) via
+  what looks like a systemic sync issue with rapid-many-small-file-write directories, not one-off
+  flakes. If `npx vitest`/`pip install`/any dev-tooling command behaves inexplicably on this machine,
+  suspect this before assuming a real code/config problem — see Local Machine Notes above for the
+  recommended (not yet actioned) Synology Drive sync exclusions.
+- **`schemathesis`/`starlette_testclient` are used by `deploy-backend.yml` but not pinned in
+  `requirements.txt`.** If a fresh venv/CI runner ever needs to run `tests/test_api_contract.py`
+  directly (outside that one workflow step), it will need these installed manually until someone
+  pins them. Also see the `test_api_contract.py` DB-isolation gap in Next Session Priorities item 0d
+  before ever running it combined with other test files in one `pytest` process.
+- **`CLAUDE.md`'s documented backend lint command is stale** (says `black . && flake8 .`; actual CI
+  linter is `ruff check .` per `backend-ci.yml`, and `flake8` isn't even in `requirements.txt`) — a
+  trivial docs fix, not yet made.
 - ~~`messages` cannot accept inserts in production right now~~ — **fixed and confirmed deployed,
   2026-07-16**. PR #115 fixed the root cause (a migration,
   `k5l6m7n8o9p0_restore_messages_partitions.py`, restoring `messages_default` and current/next-month
