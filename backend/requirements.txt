@@ -1,7 +1,7 @@
 # FastAPI 0.137.0 wraps include_router() results in _IncludedRouter objects
-# that lack a .path attribute, breaking fastapi-limiter, prometheus-fastapi-
-# instrumentator, and opentelemetry-instrumentation-fastapi (all iterate
-# app.routes and read .path). Unpin once those libraries release fixes.
+# that lack a .path attribute, breaking fastapi-limiter and prometheus-
+# fastapi-instrumentator (both iterate app.routes and read .path). Unpin
+# once those libraries release fixes.
 fastapi<0.137.0
 uvicorn[standard]
 sqlalchemy
@@ -26,10 +26,6 @@ fastapi-limiter
 pyrate-limiter
 bleach
 celery
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-instrumentation-fastapi
-opentelemetry-exporter-otlp
 sentry-sdk[fastapi]
 resend
 pyotp

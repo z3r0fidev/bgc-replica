@@ -59,7 +59,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest ruff httpx schemathesis pytest-alembic
+          # ruff pinned: 0.16.0 changed its default rule selection and
+          # started flagging ~986 pre-existing findings (DTZ001/DTZ003,
+          # import sort, etc.) across files nobody had touched, breaking
+          # every backend PR regardless of content. 0.15.22 is the version
+          # backend-check last passed cleanly with (PR #122, 2026-07-17).
+          pip install pytest "ruff==0.15.22" httpx schemathesis pytest-alembic
 
       - name: Lint with Ruff
         run: ruff check .

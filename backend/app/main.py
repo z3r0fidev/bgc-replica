@@ -1,56 +1,48 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
-import socketio
-from app.core.socket_config import sio, initialize_redis_manager
-from app.api.auth import router as auth_router
-from app.api.profiles import router as profile_router
-from app.api.social import router as social_router
-from app.api.search import router as search_router
-from app.api.forums import router as forums_router
-from app.api.feed import router as feed_router
-from app.api.groups import router as groups_router
-from app.api.chat import router as chat_router
-from app.api.group_chats import router as group_chats_router
-from app.api.moderation import router as moderation_router
-from app.api.media import router as media_router
-from app.api.gallery import router as gallery_router
-from app.api.stories import router as stories_router
-from app.api.block import router as block_router
-from app.api.totp import router as totp_router
-from app.api.notifications import router as notifications_router
-from app.api.sessions import router as sessions_router
-from app.api.verification import router as verification_router
-from app.api.admin import router as admin_router
-from app.core.database import SessionLocal
-from app.core.redis_config import get_redis
-from app.core.config import settings, VERCEL_PREVIEW_ORIGIN_PATTERN
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError, DataError, ProgrammingError as SQLAProgrammingError, InterfaceError as SQLAInterfaceError
-from app.core.exceptions import BaseAppException
-
-from prometheus_fastapi_instrumentator import Instrumentator
-
-
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-# Initialize Tracing
-if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
-    provider = TracerProvider()
-    processor = BatchSpanProcessor(OTLPSpanExporter())
-    provider.add_span_processor(processor)
-    trace.set_tracer_provider(provider)
 
 import sentry_sdk
+import socketio
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from sqlalchemy import text
+from sqlalchemy.exc import DataError, IntegrityError
+from sqlalchemy.exc import InterfaceError as SQLAInterfaceError
+from sqlalchemy.exc import ProgrammingError as SQLAProgrammingError
 
+from app.api.admin import router as admin_router
+from app.api.auth import router as auth_router
+from app.api.block import router as block_router
+from app.api.chat import router as chat_router
+from app.api.feed import router as feed_router
+from app.api.forums import router as forums_router
+from app.api.gallery import router as gallery_router
+from app.api.group_chats import router as group_chats_router
+from app.api.groups import router as groups_router
+from app.api.media import router as media_router
+from app.api.moderation import router as moderation_router
+from app.api.notifications import router as notifications_router
+from app.api.profiles import router as profile_router
+from app.api.search import router as search_router
+from app.api.sessions import router as sessions_router
+from app.api.social import router as social_router
+from app.api.stories import router as stories_router
+from app.api.totp import router as totp_router
+from app.api.verification import router as verification_router
+from app.core.config import VERCEL_PREVIEW_ORIGIN_PATTERN, settings
+from app.core.database import SessionLocal
+from app.core.exceptions import BaseAppException
+from app.core.middleware import CacheControlMiddleware, SecurityHeadersMiddleware
+from app.core.redis_config import get_redis
+from app.core.socket_config import initialize_redis_manager, sio
+
+# Distributed tracing (Issue #72): Sentry's Python SDK auto-instruments
+# FastAPI/Starlette, SQLAlchemy, and Redis on its own via traces_sample_rate
+# below - no separate opentelemetry-instrumentation-* packages needed, and
+# using both simultaneously would double-instrument the same requests.
 if os.getenv("TESTING") != "true" and settings.SENTRY_DSN:
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
@@ -64,6 +56,7 @@ if os.getenv("TESTING") != "true" and settings.SENTRY_DSN:
         profile_session_sample_rate=0.1,
         # Set profile_lifecycle to "trace" to automatically run the profiler when there is an active transaction
         profile_lifecycle="trace",
+        debug=os.getenv("SENTRY_DEBUG") == "true",
     )
 
 from app.core.logging_config import setup_logging
@@ -78,12 +71,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="BGCLive Replica API", lifespan=lifespan)
-
-# Instrument FastAPI
-if os.getenv("TESTING") != "true" and os.getenv("ENABLE_OTEL") == "true":
-    FastAPIInstrumentor.instrument_app(app)
-
-
 
 # Instrument Prometheus
 if os.getenv("TESTING") != "true":
@@ -143,7 +130,14 @@ app.add_middleware(
     allow_origin_regex=VERCEL_PREVIEW_ORIGIN_PATTERN.pattern,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    # sentry-trace/baggage (Issue #72): the frontend's cross-origin fetch
+    # calls to NEXT_PUBLIC_API_URL attach these for distributed tracing -
+    # without them here, the CORS preflight strips them before this backend
+    # ever sees them, breaking trace continuity for every non-same-origin
+    # request (i.e. every production request, since the frontend calls the
+    # Railway backend's own origin directly rather than only through the
+    # Next.js same-origin rewrite).
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "sentry-trace", "baggage"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(SecurityHeadersMiddleware)
@@ -170,20 +164,27 @@ async def health_check():
     health = {"status": "ok", "checks": {}}
 
     # DB Check
+    # Catching blind Exception is intentional here: this endpoint's job is
+    # to report whether the dependency is reachable at all, for whatever
+    # reason it might not be (network error, timeout, auth failure, driver-
+    # specific exception, etc.) - narrowing this would risk the health check
+    # itself 500ing on an error type we didn't anticipate, instead of
+    # correctly reporting "down".
     try:
         async with SessionLocal() as db:
             await db.execute(text("SELECT 1"))
         health["checks"]["database"] = "up"
-    except Exception:
+    except Exception:  # noqa: BLE001
         health["checks"]["database"] = "down"
         health["status"] = "error"
 
-    # Redis Check
+    # Redis Check (see DB check's comment above for why Exception is blind
+    # here on purpose)
     try:
         redis = await get_redis()
         await redis.ping()
         health["checks"]["redis"] = "up"
-    except Exception:
+    except Exception:  # noqa: BLE001
         health["checks"]["redis"] = "down"
         health["status"] = "error"
 
