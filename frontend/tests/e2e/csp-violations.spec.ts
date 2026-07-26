@@ -24,9 +24,19 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
  * Phase 1 (script-src nonce rollout, src/proxy.ts + src/app/layout.tsx):
  * enforce-violations now gate script-src for real (see
  * ALLOWED_ENFORCED_VIOLATIONS below for the one documented, investigated
- * exception). style-src is still permissive - Phase 2 splits it into
- * style-src-elem/style-src-attr, at which point report-violations should
- * start getting the same enforce-only-with-documented-exceptions treatment.
+ * exception).
+ *
+ * Phase 2 (Issue #127, style-src split): style-src is now split into
+ * style-src-elem (nonce-restricted) and style-src-attr (kept permissive -
+ * Radix/Framer Motion/@tanstack/react-virtual/@dnd-kit set inline style
+ * *attributes* via JS at runtime, which no nonce/hash source can cover).
+ * style-src-elem is enforced for real too now - it needed a hash allowlist
+ * (src/proxy.ts's STYLE_ELEM_HASHES) for a handful of static, JS-injected
+ * <style> elements from sonner/@radix-ui that have no nonce API of their
+ * own. One of those (sonner's Toaster) additionally needed a patch-package
+ * fix (patches/sonner+2.0.7.patch) for an insertion-order bug that made its
+ * <style> element permanently un-hashable/un-nonce-able by Chromium
+ * regardless of CSP config - see that patch file for details.
  */
 
 interface CspViolation {

@@ -7,6 +7,54 @@ const IMG_SRC = "'self' data: https://*.supabase.co https://lh3.googleuserconten
 const CONNECT_SRC = "'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.up.railway.app wss://*.up.railway.app https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:"
 const FRAME_SRC = "'self' https://accounts.google.com"
 
+// Static `<style>` elements that a handful of dependencies inject via JS at
+// module/mount time - fixed content, not per-request, so a CSP hash source
+// covers them permanently (until the dependency version bumps and changes
+// the string) without weakening style-src-elem's nonce restriction.
+// Verified empirically (Issue #127): built the app (`next build && next
+// start`), loaded a real page in Chromium, read each <style> element's
+// actual textContent, and hashed exactly that - not derived from source by
+// inspection, since a JS bundler could in principle alter the string.
+const STYLE_ELEM_HASHES = [
+  // sonner@2.0.7's Toaster component - one `<style>` with its complete
+  // component CSS, appended unconditionally on mount via an internal
+  // `__insertCSS` helper with no nonce/hash support in this version (no
+  // public API to inject one). Present on every page via the root layout's
+  // <Toaster />.
+  `'sha256-CIxDM5jnsGiKqXs2v7NKCY5MzdR9gu6TtiMJrDw29AY='`,
+  // @radix-ui/react-scroll-area@1.2.10's Viewport - one `<style>` hiding the
+  // native scrollbar, via dangerouslySetInnerHTML with no nonce/hash prop.
+  // Present wherever ScrollArea renders (e.g. /chat, /users).
+  `'sha256-vGQdhYJbTuF+M8iCn1IZCHpdkiICocWHDq4qnQF4Rjw='`,
+  // @radix-ui/react-select@2.2.6's Viewport - same pattern as ScrollArea
+  // above, same fixed scrollbar-hiding CSS (different selector). Only
+  // present while a Select's dropdown is open, so not caught by the
+  // page-load-only E2E spec, but the same static-string reasoning applies -
+  // hash taken directly from the installed package's source, not triggered
+  // live (@radix-ui/react-scroll-area's matching live-vs-source hash
+  // confirmed this is a safe substitute for the ones that can't easily be
+  // triggered by a page load alone).
+  `'sha256-441zG27rExd4/il+NvIqyL8zFx5XmyNQtE381kSkUJk='`,
+  // Empty string, i.e. `sha256("")`. React DOM's client-side "Resource"
+  // insertion path for a `<style precedence>` element (used here for
+  // Radix Scroll Area/Select's Viewport CSS specifically when it's mounted
+  // client-side post-hydration rather than baked into the initial SSR HTML
+  // - confirmed via a live Vercel preview deployment on /chat and /users,
+  // both of which fetch real data over the network) creates the element and
+  // connects it to <head> BEFORE setting its text content, then fills the
+  // content in a separate step right after. Chromium's CSP check for a
+  // `<style>` element runs at the "connected to document" moment - with
+  // empty content, that's this hash; the actual CSS then applies
+  // successfully once set, since (unlike sonner's manual two-step insertion
+  // patched above) this is React's own reconciler committing the host
+  // node's children immediately after insertion, not a delayed/conditional
+  // fill - confirmed via the same live-Vercel-preview method: with this
+  // hash present, both routes' ScrollArea/Select CSS ends up correctly
+  // applied (non-empty content, matching `hasSheet: true` on the resulting
+  // stylesheet), not silently broken.
+  `'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='`,
+]
+
 // Directives that don't need a per-request nonce and aren't part of the
 // Phase 1/Phase 2 script-src/style-src work - added now per issue #68's
 // security review since they're zero functional cost. frame-ancestors is
@@ -41,28 +89,33 @@ function buildCsp(nonce: string) {
   const isDev = process.env.NODE_ENV === 'development'
   const scriptSrc = `'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com${isDev ? " 'unsafe-eval'" : ''}`
 
+  // style-src is split (Issue #68, Phase 2): style-src-elem is
+  // nonce-restricted like script-src, but style-src-attr stays permissive
+  // since Radix/Framer Motion/@tanstack/react-virtual/@dnd-kit set inline
+  // style *attributes* via JS at runtime - no nonce source expression can
+  // cover style-src-attr at all, so this is a deliberate, documented
+  // exception rather than an oversight. See Issue #127 for the full
+  // reasoning and the Report-Only baseline data that shaped this split.
+  const styleSrcElem = `style-src-elem 'self' 'nonce-${nonce}' ${STYLE_ELEM_HASHES.join(' ')}`
+  const styleSrcAttr = `style-src-attr 'unsafe-inline'`
+
   const enforced = [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
-    // style-src is intentionally unchanged here (still 'unsafe-inline') -
-    // Phase 2 splits this into style-src-elem (nonce-restricted) /
-    // style-src-attr (kept permissive), since Radix/Framer Motion/
-    // @tanstack/react-virtual/@dnd-kit set inline style *attributes* via
-    // JS at runtime, which nonces cannot cover at all. See the Issue #68
-    // plan for the full reasoning.
-    `style-src 'self' 'unsafe-inline'`,
+    styleSrcElem,
+    styleSrcAttr,
     ...BASE_DIRECTIVES,
   ].join('; ')
 
-  // Report-Only forward-tests the Phase 2 target (style-src split) ahead
-  // of actually enforcing it, reusing this request's real nonce so the
-  // nonce-restricted style-src-elem test is meaningful rather than
-  // comparing against a value nothing can ever match.
+  // Report-Only forward-tests the next tightening target ahead of actually
+  // enforcing it, reusing this request's real nonce. style-src-attr has no
+  // stricter target to forward-test (see comment above), so it's identical
+  // to the enforced value here.
   const reportOnly = [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
-    `style-src-elem 'self' 'nonce-${nonce}'`,
-    `style-src-attr 'unsafe-inline'`,
+    styleSrcElem,
+    styleSrcAttr,
     ...BASE_DIRECTIVES,
   ].join('; ')
 
