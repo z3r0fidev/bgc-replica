@@ -134,12 +134,15 @@ describe("proxy", () => {
       const enforced = response.headers.get("Content-Security-Policy")!;
       const styleSrcElem = enforced.split(";").find((d) => d.trim().startsWith("style-src-elem"))!;
 
-      // sonner's Toaster, @radix-ui/react-scroll-area's Viewport, and
-      // @radix-ui/react-select's Viewport - see Issue #127 and the
+      // sonner's Toaster, @radix-ui/react-scroll-area's Viewport,
+      // @radix-ui/react-select's Viewport, and the empty string (React DOM's
+      // client-side <style precedence> Resource insertion connects the
+      // element before setting its content) - see Issue #127 and the
       // STYLE_ELEM_HASHES comment in src/proxy.ts for how these were derived.
       expect(styleSrcElem).toContain("'sha256-CIxDM5jnsGiKqXs2v7NKCY5MzdR9gu6TtiMJrDw29AY='");
       expect(styleSrcElem).toContain("'sha256-vGQdhYJbTuF+M8iCn1IZCHpdkiICocWHDq4qnQF4Rjw='");
       expect(styleSrcElem).toContain("'sha256-441zG27rExd4/il+NvIqyL8zFx5XmyNQtE381kSkUJk='");
+      expect(styleSrcElem).toContain("'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='");
     });
 
     it("report-only policy matches the enforced style-src split (no further tightening target pending)", () => {

@@ -35,6 +35,24 @@ const STYLE_ELEM_HASHES = [
   // confirmed this is a safe substitute for the ones that can't easily be
   // triggered by a page load alone).
   `'sha256-441zG27rExd4/il+NvIqyL8zFx5XmyNQtE381kSkUJk='`,
+  // Empty string, i.e. `sha256("")`. React DOM's client-side "Resource"
+  // insertion path for a `<style precedence>` element (used here for
+  // Radix Scroll Area/Select's Viewport CSS specifically when it's mounted
+  // client-side post-hydration rather than baked into the initial SSR HTML
+  // - confirmed via a live Vercel preview deployment on /chat and /users,
+  // both of which fetch real data over the network) creates the element and
+  // connects it to <head> BEFORE setting its text content, then fills the
+  // content in a separate step right after. Chromium's CSP check for a
+  // `<style>` element runs at the "connected to document" moment - with
+  // empty content, that's this hash; the actual CSS then applies
+  // successfully once set, since (unlike sonner's manual two-step insertion
+  // patched above) this is React's own reconciler committing the host
+  // node's children immediately after insertion, not a delayed/conditional
+  // fill - confirmed via the same live-Vercel-preview method: with this
+  // hash present, both routes' ScrollArea/Select CSS ends up correctly
+  // applied (non-empty content, matching `hasSheet: true` on the resulting
+  // stylesheet), not silently broken.
+  `'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='`,
 ]
 
 // Directives that don't need a per-request nonce and aren't part of the
