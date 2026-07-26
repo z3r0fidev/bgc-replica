@@ -12,6 +12,21 @@ Sentry.init({
   // Enable logs to be sent to Sentry
   enableLogs: true,
 
+  // Distributed tracing (Issue #72): the default tracePropagationTargets
+  // only covers same-origin/relative requests, but src/services/*.ts call
+  // NEXT_PUBLIC_API_URL directly - a different origin in every deployed
+  // environment (the Railway backend), not just via the Next.js same-origin
+  // /api rewrite. Without the backend's origin listed here, those direct
+  // cross-origin fetches never get a sentry-trace/baggage header, breaking
+  // frontend->backend trace continuity for most real requests. The backend
+  // must also allow these headers via CORS (see backend/app/main.py's
+  // CORSMiddleware) or the browser strips them before this ever matters.
+  tracePropagationTargets: [
+    /^\//,
+    /^https?:\/\/(localhost|127\.0\.0\.1):8000/,
+    /^https:\/\/([a-z0-9-]+\.)*up\.railway\.app/,
+  ],
+
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
