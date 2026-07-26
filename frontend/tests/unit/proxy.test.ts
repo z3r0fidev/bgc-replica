@@ -91,8 +91,8 @@ describe("proxy", () => {
       expect(nonceMatch).not.toBeNull();
       const nonce = nonceMatch![1];
 
-      // The same nonce is reused for script-src (enforced) and
-      // style-src-elem (report-only), per the Issue #68 plan.
+      // The same nonce is reused for script-src and style-src-elem, in both
+      // the enforced and report-only headers.
       expect(reportOnly).toContain(`'nonce-${nonce}'`);
 
       const response2 = proxy(makeRequest("/"));
@@ -120,20 +120,36 @@ describe("proxy", () => {
       expect(scriptSrc).toContain("'unsafe-eval'");
     });
 
-    it("style-src remains permissive in the enforcing policy (Phase 2 not landed yet)", () => {
+    it("style-src is split into a nonce-restricted style-src-elem and a permissive style-src-attr (Issue #127, Phase 2)", () => {
       const response = proxy(makeRequest("/"));
       const enforced = response.headers.get("Content-Security-Policy")!;
 
-      expect(enforced).toContain(`style-src 'self' 'unsafe-inline'`);
-      expect(enforced).not.toContain("style-src-elem");
+      expect(enforced).not.toContain(`style-src '`);
+      expect(enforced).toMatch(/style-src-elem 'self' 'nonce-[^']+'/);
+      expect(enforced).toContain(`style-src-attr 'unsafe-inline'`);
     });
 
-    it("report-only policy forward-tests the Phase 2 style-src split", () => {
+    it("style-src-elem allowlists the fixed-content hashes for library-injected <style> elements that can't take a nonce", () => {
       const response = proxy(makeRequest("/"));
+      const enforced = response.headers.get("Content-Security-Policy")!;
+      const styleSrcElem = enforced.split(";").find((d) => d.trim().startsWith("style-src-elem"))!;
+
+      // sonner's Toaster, @radix-ui/react-scroll-area's Viewport, and
+      // @radix-ui/react-select's Viewport - see Issue #127 and the
+      // STYLE_ELEM_HASHES comment in src/proxy.ts for how these were derived.
+      expect(styleSrcElem).toContain("'sha256-CIxDM5jnsGiKqXs2v7NKCY5MzdR9gu6TtiMJrDw29AY='");
+      expect(styleSrcElem).toContain("'sha256-vGQdhYJbTuF+M8iCn1IZCHpdkiICocWHDq4qnQF4Rjw='");
+      expect(styleSrcElem).toContain("'sha256-441zG27rExd4/il+NvIqyL8zFx5XmyNQtE381kSkUJk='");
+    });
+
+    it("report-only policy matches the enforced style-src split (no further tightening target pending)", () => {
+      const response = proxy(makeRequest("/"));
+      const enforced = response.headers.get("Content-Security-Policy")!;
       const reportOnly = response.headers.get("Content-Security-Policy-Report-Only")!;
 
-      expect(reportOnly).toContain(`style-src-attr 'unsafe-inline'`);
-      expect(reportOnly).toMatch(/style-src-elem 'self' 'nonce-[^']+'/);
+      const enforcedStyleSrcElem = enforced.split(";").find((d) => d.trim().startsWith("style-src-elem"))!;
+      const reportOnlyStyleSrcElem = reportOnly.split(";").find((d) => d.trim().startsWith("style-src-elem"))!;
+      expect(reportOnlyStyleSrcElem).toBe(enforcedStyleSrcElem);
     });
 
     it("includes the free security headers added alongside the nonce work", () => {
