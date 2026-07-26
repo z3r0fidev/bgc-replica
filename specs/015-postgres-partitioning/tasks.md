@@ -78,10 +78,12 @@
 
 ## Phase 7: Production Rollout (each step explicitly confirmed before executing, per this session's established pattern)
 
-- [ ] T025 Apply rev1 (automation function) to Supabase
-- [ ] T026 Apply rev2 (`status_updates` partitioning) to Supabase — low-traffic window
-- [ ] T027 Run the `messages_default` backfill script against Supabase — low-traffic window, supervised
-- [ ] T028 Deploy model + `moderation.py` fixes (same release as rev2)
-- [ ] T029 Manually invoke `ensure_future_partitions` once in production, confirm correct partitions created
-- [ ] T030 Enable the Beat schedule (redeploy `celery-worker` with `--beat`)
-- [ ] T031 Verify: `messages_default`/`status_updates_default` are empty (or near-empty) in steady state; Beat fires on schedule
+**Correction (2026-07-26)**: this whole phase was already complete when checked - just never marked done here. Discovered while walking through T025 "first": a read-only `SELECT version_num FROM alembic_version` against production returned `k5l6m7n8o9p0`, the chain's actual head, which cannot be reached without `i3j4k5l6m7n8` (T025) and `j4k5l6m7n8o9` (T026) having already applied. Same stale-checklist pattern as Spec 007's T008 (OpenTelemetry) - not a deliberate deferral, just never checked off.
+
+- [x] T025 Apply rev1 (automation function) to Supabase — confirmed via read-only query: `alembic_version = k5l6m7n8o9p0` (chain head, requires this revision applied) and `create_monthly_partition` present in `pg_proc`
+- [x] T026 Apply rev2 (`status_updates` partitioning) to Supabase — confirmed via read-only query: `status_updates` has an entry in `pg_partitioned_table`
+- [x] T027 Run the `messages_default` backfill script against Supabase — confirmed via read-only query: `messages_default` has 0 rows
+- [x] T028 Deploy model + `moderation.py` fixes (same release as rev2) — confirmed via `railway status --json`: `bgc-replica` service auto-deploys from `main` on every push (observed directly this session across PR #128/#129 merges), so the current deployment necessarily includes these already-merged fixes
+- [x] T029 Manually invoke `ensure_future_partitions` once in production, confirm correct partitions created — confirmed via read-only query: both `messages` and `status_updates` have exactly a `_default` plus `_y2026m07`/`_y2026m08` (current + next month as of 2026-07-26) partitions, matching what this task creates
+- [x] T030 Enable the Beat schedule (redeploy `celery-worker` with `--beat`) — confirmed via `railway logs --service celery-worker`: `[INFO/Beat] beat: Starting...` present, `ensure_future_partitions` listed in registered tasks
+- [x] T031 Verify: `messages_default`/`status_updates_default` are empty (or near-empty) in steady state; Beat fires on schedule — confirmed via the same read-only queries/logs above: both defaults are 0 rows, Beat is running
