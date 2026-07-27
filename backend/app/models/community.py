@@ -204,3 +204,9 @@ class ContentReport(Base):
         String(50), default="PENDING"
     )  # PENDING, RESOLVED, DISMISSED
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Set alongside reviewed_by when a report is actioned (resolve_report/
+    # bulk_resolve_reports) - NULL for reports resolved before this column
+    # existed, and for still-PENDING reports. Distinct from created_at:
+    # "resolved today" should mean "actioned today", not "filed today and
+    # happens to be resolved" (Issue #132).
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime)

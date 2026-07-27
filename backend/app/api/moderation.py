@@ -238,13 +238,16 @@ async def get_moderation_stats(
     )
     pending_count = pending_result.scalar() or 0
 
-    # Resolved today
+    # Resolved today - by resolved_at (Issue #132), not created_at. A report
+    # filed yesterday and resolved today counts; a report filed today but
+    # still PENDING (or resolved before this column existed, resolved_at
+    # NULL) does not.
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     resolved_result = await db.execute(
         select(func.count(ContentReport.id)).where(
             and_(
                 ContentReport.status == "RESOLVED",
-                ContentReport.created_at >= today_start,
+                ContentReport.resolved_at >= today_start,
             )
         )
     )
@@ -318,6 +321,7 @@ async def get_report_detail(
         status=report.status,
         created_at=report.created_at,
         reviewed_by=report.reviewed_by,
+        resolved_at=report.resolved_at,
     )
 
     # Get reported content/user info
@@ -414,6 +418,7 @@ async def resolve_report(
                 user_to_ban.is_active = False
 
     report.reviewed_by = current_user.id
+    report.resolved_at = datetime.utcnow()
     await db.commit()
 
     return {
@@ -443,6 +448,7 @@ async def bulk_resolve_reports(
             else:
                 report.status = "RESOLVED"
             report.reviewed_by = current_user.id
+            report.resolved_at = datetime.utcnow()
             resolved += 1
 
     await db.commit()

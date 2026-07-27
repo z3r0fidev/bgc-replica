@@ -624,24 +624,24 @@ class TestGetModerationStats:
         assert data["reports_by_reason"] == {"SPAM": 2, "HARASSMENT": 1}
 
     @pytest.mark.asyncio
-    async def test_resolved_today_counts_by_created_at_not_actual_resolution_time(
+    async def test_resolved_today_counts_by_resolved_at_not_created_at(
         self, client: AsyncClient, db_session: AsyncSession
     ):
         """
-        get_moderation_stats computes resolved_today by filtering
-        ContentReport.created_at >= today's start AND status == RESOLVED.
-        ContentReport has no separate "resolved_at"/"reviewed_at" timestamp
-        column, so this is really "created today and currently resolved",
-        not "resolved today". A report created yesterday and resolved via
-        the /resolve endpoint today is NOT counted here even though it was
-        genuinely resolved today - likely a real logic bug worth flagging
-        rather than a behavior to silently rely on.
+        Issue #132 regression guard. get_moderation_stats computes
+        resolved_today by filtering ContentReport.resolved_at >= today's
+        start AND status == RESOLVED - not created_at. A report filed
+        yesterday but resolved today via the real /resolve endpoint should
+        count; a report that's RESOLVED but was never actually processed
+        through resolve_report/bulk_resolve_reports (resolved_at still NULL,
+        e.g. a pre-migration row or a test fixture that sets status directly)
+        should not, regardless of when it was created.
         """
         admin = await _make_user(db_session, is_superuser=True)
         reporter = await _make_user(db_session)
         yesterday = datetime.utcnow() - timedelta(days=1)
 
-        # Created yesterday, resolved *today* via the real endpoint.
+        # Created yesterday, resolved *today* via the real endpoint - should count.
         stale_report = await _make_report(
             db_session,
             reporter,
@@ -658,14 +658,16 @@ class TestGetModerationStats:
         )
         assert resolve_response.status_code == 200
         # dismiss doesn't count as RESOLVED - force status to RESOLVED directly
-        # to isolate the created_at behavior from the dismiss/resolve distinction.
+        # (resolved_at, set by the real endpoint above, is left untouched) to
+        # isolate the resolved_at behavior from the dismiss/resolve distinction.
         await db_session.execute(
             text("UPDATE content_reports SET status = 'RESOLVED' WHERE id = :id"),
             {"id": stale_report.id},
         )
         await db_session.commit()
 
-        # Created today, and RESOLVED (regardless of when reviewed).
+        # Created today, RESOLVED, but never actually processed through the
+        # real endpoint - resolved_at is NULL, so it should NOT count.
         fresh_report = await _make_report(
             db_session,
             reporter,
@@ -681,8 +683,9 @@ class TestGetModerationStats:
 
         assert response.status_code == 200
         data = response.json()
-        # Only the report actually created today is counted, even though
-        # both reports are RESOLVED and both were resolved today.
+        # Only the report actually resolved today (via the real endpoint) is
+        # counted, even though both reports are RESOLVED and fresh_report was
+        # created today.
         assert data["resolved_today"] == 1
         assert fresh_report.id != stale_report.id
 

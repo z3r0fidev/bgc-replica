@@ -125,6 +125,7 @@ class ReportSchema(BaseModel):
     status: str
     created_at: datetime
     reviewed_by: Optional[uuid.UUID] = None
+    resolved_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -153,6 +154,7 @@ class ReportDetailSchema(BaseModel):
     status: str
     created_at: datetime
     reviewed_by: Optional[uuid.UUID] = None
+    resolved_at: Optional[datetime] = None
     # For USER reports
     reported_user: Optional[ReportedUserInfo] = None
     # For content reports
