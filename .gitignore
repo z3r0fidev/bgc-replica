@@ -92,3 +92,17 @@ build/
 *.log
 .idea/
 .vscode/
+
+# Claude Code (Issue #134)
+# settings.local.json is per-developer (permission allowlist etc.) - the
+# "local" in the name is the convention signal that it's not meant to be
+# shared. It was tracked by mistake, which is why it kept showing up
+# modified-but-unstaged every session; untracked via git rm --cached in the
+# same commit that added this line.
+.claude/settings.local.json
+# Skill content materialized from skills-lock.json (source: GitHub repos,
+# tracked via computedHash) - regenerable, analogous to node_modules/ from
+# package-lock.json. The lock files themselves ARE committed.
+.agents/
+.claude/skills/
+backend/.agents/
