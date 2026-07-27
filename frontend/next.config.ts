@@ -67,12 +67,24 @@ const nextConfig: NextConfig = {
     // environment, and a real source of divergence from vercel.json's
     // rewrite for requests that don't go through Vercel's edge rewrite.
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiUrl}/api/:path*`,
-      },
-    ];
+    // `fallback`, not a plain array (Issue #144). A plain-array return is
+    // Next's implicit "afterFiles" phase, which is checked before dynamic
+    // routes are resolved - that shadowed this app's own dynamic API routes
+    // (src/app/api/auth/[...nextauth]/route.ts) behind this catch-all,
+    // sending NextAuth's own /api/auth/* traffic to the backend (which has
+    // no such routes) and 404ing Google OAuth/Passkey sign-in in
+    // production. `fallback` rewrites only run after Next has tried and
+    // failed to resolve the request against its own routes (static AND
+    // dynamic), so real app routes now win and only genuinely
+    // backend-owned /api/* paths get proxied.
+    return {
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: `${apiUrl}/api/:path*`,
+        },
+      ],
+    };
   },
   async headers() {
     // Content-Security-Policy and Content-Security-Policy-Report-Only are
