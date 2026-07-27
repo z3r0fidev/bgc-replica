@@ -2529,6 +2529,189 @@ instance (`backend/venv`), worked around by building outside the synced tree for
 
 ---
 
+## Session: 2026-07-26 — CSP Phase 2 (PR #128), Distributed Tracing via Sentry (PR #129), Spec 015 Phase 7 Verification (PR #130), Full Repo Cleanup
+
+**Duration**: single session, 3 PRs merged plus a repo cleanup pass
+**Branch**: `main` (reviewed from `fix/68-csp-style-src-elem-attr`, a tracing-fix branch, and a
+docs-only branch for #130 — see PR history for exact names)
+**PRs Merged**: #128 (`ebc0347`, squash), #129 (`11266ce`, squash), #130 (`b319b05`, squash)
+**Issues Closed**: #127 (opened and closed this session), #72 (closed via PR #129)
+**HEAD after session**: `b319b05`
+**Note**: this file was not updated for the two intervening sessions that shipped PR #124 (docs fix)
+and PR #125/#126 (CSP Phase 0/Phase 1, Issue #68) — those landed on `main` between the previous entry
+above and this one. This session's own work picked up from CSP Phase 1's shipped state.
+
+### Session Summary
+
+Three independent PRs closing out CSP hardening, wiring distributed tracing, and confirming a spec's
+production rollout checklist actually reflected reality — followed by a full branch/worktree cleanup
+pass now that zero work remained in flight.
+
+### Major Accomplishments
+
+#### 1. CSP Phase 2 — `style-src-elem`/`style-src-attr` split (Issue #127 → PR #128)
+
+Split `style-src` into `style-src-elem` (nonce-restricted) and `style-src-attr` (kept permissive —
+Radix/Framer Motion/`@tanstack/react-virtual`/`@dnd-kit` set inline `style` *attributes* via JS at
+runtime, which no nonce/hash source can cover; this is a real platform constraint). Filed and closed
+Issue #127 for this scope.
+
+Two real bugs found and fixed, not just a header flip:
+- **sonner@2.0.7's `Toaster`** injects CSS via a broken two-step pattern (empty `<style>` connected to
+  `<head>` first, content filled in a separate mutation afterward). Chromium's CSP engine validates a
+  `<style>` element once, at that first (empty) connection, and never re-validates later — no nonce
+  or hash could ever make it pass. Fixed via a `patch-package` patch,
+  `frontend/patches/sonner+2.0.7.patch`, reordering the two lines so content is set before the
+  element connects to the document.
+- Added a `STYLE_ELEM_HASHES` allowlist in `frontend/src/proxy.ts` for other static, JS-injected
+  `<style>` elements with no nonce API (Radix ScrollArea/Select viewports) — hashes derived
+  empirically against a real production build, not guessed from source.
+
+CI on the PR surfaced two more real, pre-existing issues invisible in local testing (only reproduce
+against the live Vercel preview deployment):
+- Vercel's own preview "Toolbar"/Live Feedback widget loads `vercel.live` content that violated
+  `frame-src` and injected an un-nonced inline `<style>`. Fixed by the user disabling it via the
+  `VERCEL_PREVIEW_FEEDBACK_ENABLED=0` Vercel project env var — not a code change.
+- A separate, second `style-src-elem` violation on `/chat` and `/users` specifically (pages with real
+  network calls), traced to React DOM's own client-side `<style precedence>` Resource insertion path
+  — the same empty-then-filled pattern as sonner's bug, but internal to React. Fixed by adding the
+  well-known SHA-256 hash of the empty string to the allowlist, verified against a live Vercel
+  preview deployment that the real CSS ends up applied correctly afterward, not silently broken.
+
+#### 2. Distributed tracing via Sentry, replacing dead OpenTelemetry code (Issue #72 → PR #129)
+
+Investigated Issue #72 ("implement OpenTelemetry distributed tracing," sourced from Spec 007 task
+T008). Found T008 was checked off in `specs/007-production-readiness-secops/tasks.md` but didn't
+match reality: backend had a raw, disconnected OTel `TracerProvider`/`OTLPSpanExporter` gated behind
+an `ENABLE_OTEL` env var never set anywhere, pointed at no real collector (`OTLPSpanExporter()`
+defaults to unreachable `localhost:4317`); frontend had zero `@opentelemetry/*` packages at all.
+
+User chose to route tracing through Sentry (already fully configured, DSN present both sides) rather
+than standing up new infra, since Sentry's Python SDK auto-instruments FastAPI/Starlette/SQLAlchemy/
+Redis natively via its default integrations — confirmed by installing `sentry-sdk` in a scratch venv
+and inspecting `sentry_sdk/integrations/__init__.py`'s `_DEFAULT_INTEGRATIONS`. Removed the dead OTel
+code/packages from `backend/app/main.py` and `backend/requirements.txt`.
+
+Found and fixed two real gaps between "Sentry is configured" and "traces actually connect":
+- Frontend: Sentry JS's default `tracePropagationTargets` only covers same-origin requests, but
+  `frontend/src/services/*.ts` call `NEXT_PUBLIC_API_URL` directly — a different origin (the Railway
+  backend) in every deployed environment. Added the backend origins explicitly in
+  `frontend/src/instrumentation-client.ts`.
+- Backend: `CORSMiddleware`'s `allow_headers` in `backend/app/main.py` didn't include
+  `sentry-trace`/`baggage`, so a cross-origin preflight would strip them before the backend ever saw
+  them.
+
+Verified end-to-end, not assumed: sent a crafted `sentry-trace` header with `sampled=1` to a
+locally-run backend and confirmed Sentry honored that sampling decision instead of its own random 10%
+sample (proof of trace continuation); used a live Chromium session against a locally-run frontend to
+confirm outgoing fetch requests to a Railway-backend-matching URL actually carry
+`sentry-trace`/`baggage` headers. Also fixed two pre-existing `ruff` BLE001 findings in the same file
+(blind `except Exception:` in `/health`'s DB/Redis checks) — intentionally blind by design (the whole
+point of a health check is to catch any failure reason), suppressed with `# noqa: BLE001` plus an
+explanatory comment rather than narrowing incorrectly. Added
+`backend/tests/test_main.py::test_cors_preflight_allows_sentry_trace_headers` and
+`frontend/tests/unit/instrumentation-client.test.ts`.
+
+**CI on PR #129 also failed, for an unrelated reason**: `backend-check`/`quality-check` failed with
+986 pre-existing lint findings across backend test files nobody had touched. Root-caused to ruff
+0.16.0 (unpinned `pip install ruff` in three GitHub Actions workflows) changing its default rule
+selection sometime between 2026-07-17 (when PR #122 last passed `backend-check` cleanly) and now.
+Confirmed by running ruff 0.15.22 vs 0.16.0 locally against the identical tree — 0.15.22 passes clean,
+0.16.0 doesn't. Fixed by pinning `ruff==0.15.22` in `.github/workflows/backend-ci.yml`,
+`.github/workflows/pr-validation.yml`, and `.github/workflows/deploy-backend.yml` in the same commit,
+same PR (user explicitly approved this as the fix — necessary to unblock the PR, not scope creep).
+
+#### 3. Repo cleanup
+
+Deleted 30 local + 28 remote git branches. Verified safety before deleting anything: cross-referenced
+every branch name against `gh pr list --state all` — 28 corresponded to already-merged PRs (git's
+local `--merged` check missed them because squash-merges create a new commit not recognized as a
+literal ancestor); the remaining 2 (`fix/gallery-async-mock` and `rebase-temp`, identical commits)
+had no PR but diffing them against current `main` showed every fix already present verbatim, folded
+in via a later superseding branch. Also removed 16 stale `.claude/worktrees/agent-*` git worktrees +
+branches left over from earlier agent tool invocations (all already merged), and a scratch ruff venv
+from `/tmp`.
+
+#### 4. Spec verification — Postgres partitioning Phase 7 (Issue #66 → PR #130, docs-only)
+
+User asked to check for remaining open issues/specs work. Found
+`specs/015-postgres-partitioning/tasks.md` (Issue #66) had Phase 7 (T025–T031, the production
+rollout steps: apply migrations, run backfill, deploy, invoke `ensure_future_partitions`, enable
+Celery Beat, verify steady state) all unchecked. Rather than assume, walked through it starting with
+T025: a read-only `SELECT version_num FROM alembic_version` against production Supabase (explicit
+user approval obtained first, per this repo's established convention for touching production)
+returned `k5l6m7n8o9p0` — the migration chain's actual head, unreachable without T025/T026 already
+applied. Followed up with more read-only checks (`pg_proc`, `pg_partitioned_table`, per-partition row
+counts) plus `railway logs`/`railway status --json` (Railway CLI, already authenticated) — confirmed
+**all of T025–T031 were already fully complete in production**, just never checked off. Updated the
+checklist with the evidence for each item, opened PR #130 (docs-only, zero code changes), merged.
+
+### Files Modified/Created
+
+| File | Change |
+|------|--------|
+| `frontend/src/proxy.ts` | Modified (PR #128) — `style-src-elem`/`style-src-attr` split, `STYLE_ELEM_HASHES` allowlist |
+| `frontend/tests/e2e/csp-violations.spec.ts`, `frontend/tests/unit/proxy.test.ts` | Modified (PR #128) |
+| `frontend/package.json`, `frontend/package-lock.json` | Modified (PR #128) — `patch-package` wiring |
+| `frontend/patches/sonner+2.0.7.patch` | New (PR #128) |
+| `backend/app/main.py` | Modified (PR #129) — removed dead OTel code, added `sentry-trace`/`baggage` to CORS `allow_headers`, `noqa: BLE001` on two health-check excepts |
+| `backend/requirements.txt` | Modified (PR #129) — removed OTel packages |
+| `backend/tests/test_main.py` | Modified (PR #129) — new CORS preflight test |
+| `frontend/src/instrumentation-client.ts` | Modified (PR #129) — explicit `tracePropagationTargets` |
+| `frontend/tests/unit/instrumentation-client.test.ts` | New (PR #129) |
+| `.github/workflows/backend-ci.yml`, `.github/workflows/pr-validation.yml`, `.github/workflows/deploy-backend.yml` | Modified (PR #129) — pinned `ruff==0.15.22` |
+| `specs/015-postgres-partitioning/tasks.md` | Modified (PR #130) — Phase 7 checked off with evidence, docs-only |
+| `session-context.md`, `project-context.md`, `conversation-context.md`, `session-summary.md` | This session's doc-close update |
+
+### Key Decisions and Rationale
+
+1. **Keep `style-src-attr` permissive rather than chase full lockdown**: inline `style` *attributes*
+   set by third-party libraries via JS have no nonce/hash mechanism in the CSP spec — this is a
+   platform limitation, not a gap in this session's implementation.
+2. **Route tracing through Sentry instead of standing up OTel infra**: Sentry was already fully
+   configured with auto-instrumentation covering the stack; a second observability system would have
+   been pure added surface area for no functional gain.
+3. **Pin `ruff` in CI rather than fix 986 findings**: the findings were pre-existing, untouched by
+   this PR, and caused purely by an unpinned tool version drifting — pinning is the correct fix, not
+   a workaround, since it restores the exact rule set the code was actually written and reviewed
+   against.
+4. **Verify Spec 015 Phase 7 against live production state via read-only queries before either
+   checking or leaving unchecked**: a checklist's checked/unchecked state is not itself evidence;
+   this is the second time this pattern has mattered this project (see Spec 007 T008 in PR #129,
+   opposite direction — checked but not actually done).
+5. **Delete branches only after cross-referencing against `gh pr list --state all`, not git's own
+   `--merged` flag**: squash-merges don't register as literal ancestors, so `--merged` alone would
+   have under-reported what was safe to delete.
+
+### Outstanding Tasks / Follow-Up Items
+
+None identified — this session's own verification pass found zero open issues, zero open PRs, and no
+other unchecked items across any `specs/*/tasks.md`. See `session-context.md`'s "Notes for Next
+Session" for standing carry-forward items unrelated to this session's scope (Synology Drive sync
+corruption workaround, untracked local tooling files still not committed, etc.).
+
+### Blockers / Challenges
+
+None. The two CI failures encountered (PR #128's Vercel preview widget CSP violation, PR #129's ruff
+version drift) were both root-caused and fixed within the same session, not carried forward.
+
+### Session Statistics
+
+- **PRs merged this session**: 3 (#128, #129, #130)
+- **Issues closed**: 2 (#127 opened+closed this session, #72 closed via #129)
+- **Branches deleted**: 58 (30 local + 28 remote), plus 16 stale agent worktrees/branches
+- **New files**: `frontend/patches/sonner+2.0.7.patch`, `frontend/tests/unit/instrumentation-client.test.ts`
+- **Workflow files modified**: 3 (`backend-ci.yml`, `pr-validation.yml`, `deploy-backend.yml` — ruff pin)
+- **Real bugs found and fixed**: sonner CSS-injection CSP violation, React DOM `<style precedence>`
+  CSP violation, missing `sentry-trace`/`baggage` CORS headers, missing frontend
+  `tracePropagationTargets` for cross-origin backend calls, ruff version drift in CI
+- **Context files updated**: 4 (`session-context.md`, `project-context.md`,
+  `conversation-context.md`, `session-summary.md`)
+- **Obsidian vault**: see this session's vault-update summary in the doc-close report
+- **Final repo state**: zero open issues, zero open PRs, `main`-only branch state, all CI green
+
+---
+
 ## Appendix: Session Patterns
 
 ### Successful Patterns This Session
