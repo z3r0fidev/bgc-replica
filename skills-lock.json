@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "fastapi-async-patterns": {
+      "source": "thebushidocollective/han",
+      "sourceType": "github",
+      "skillPath": "plugins/frameworks/fastapi/skills/fastapi-async-patterns/SKILL.md",
+      "computedHash": "cd39488c82cb6f9db2a91489a57eb1f99f8333072fb4db5386a45d343fd07908"
+    }
+  }
+}
