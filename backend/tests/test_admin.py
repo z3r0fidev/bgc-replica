@@ -664,6 +664,24 @@ class TestGetUserWarnings:
         assert response.status_code == 200
         assert response.json()["total"] == 0
 
+    @pytest.mark.asyncio
+    async def test_status_rejects_nul_byte(
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession
+    ):
+        """Issue #133: status was used directly in a WHERE clause (Warning.status
+        == status) with no validate_query_params() call, unlike every other
+        string query param in this module - a NUL byte would have reached
+        asyncpg unvalidated and surfaced as an unhandled 500 instead of a 422."""
+        user = await _make_user(db_session)
+
+        response = await client.get(
+            f"/api/admin/users/{user.id}/warnings",
+            params={"status": "REVOKED\x00"},
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 422
+
 
 class TestRevokeWarning:
     @pytest.mark.asyncio

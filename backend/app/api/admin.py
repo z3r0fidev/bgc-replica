@@ -506,6 +506,7 @@ async def get_user_warnings(
     offset: int = Query(0, ge=0),
 ):
     """Get paginated warning history for a user."""
+    validate_query_params(status=status)
     stmt = select(Warning).where(Warning.user_id == user_id)
     count_stmt = select(func.count(Warning.id)).where(Warning.user_id == user_id)
     active_count_stmt = select(func.count(Warning.id)).where(
