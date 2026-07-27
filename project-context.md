@@ -576,21 +576,21 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
   origin). See items 31-35 above for full detail.
 
 ### Next Priorities
-0. **New, from 2026-07-16 (PR #122) — likely real bug, needs a human decision**: `GET
-   /api/moderation/stats`'s `resolved_today` field filters `ContentReport.created_at`, not an actual
-   resolution timestamp (no `resolved_at`/`reviewed_at` column exists), so a report created
-   yesterday and genuinely resolved today via `POST /resolve` is not counted. Needs either a schema
-   change (add `resolved_at`) or a docs/UI fix acknowledging the narrower meaning. Demonstrated by
+0. **Tracked as Issue #132.** `GET /api/moderation/stats`'s `resolved_today` field filters
+   `ContentReport.created_at`, not an actual resolution timestamp (no `resolved_at`/`reviewed_at`
+   column exists), so a report created yesterday and genuinely resolved today via `POST /resolve`
+   is not counted. Needs either a schema change (add `resolved_at`) or a docs/UI fix acknowledging
+   the narrower meaning. Demonstrated by
    `tests/test_moderation_api.py::TestGetModerationStats::test_resolved_today_counts_by_created_at_not_actual_resolution_time`.
 1. ~~**deploy PR #115 to production**~~ — **confirmed deployed 2026-07-16**. `Deploy Backend`'s
    auto-deploy job (triggered by the PR #115/#116 merges touching `backend/**`) succeeded per
    GitHub Actions run history, and a direct read-only production query confirmed
    `alembic_version` = `k5l6m7n8o9p0` and `messages_default`/`messages_y2026m07`/
    `messages_y2026m08` all exist. `messages` can accept inserts again.
-2. **verify the `bgclive.online` domain in the Resend dashboard.** Celery has been
-   correctly processing tasks in production since PR #86/#87 (2026-07-13), but Resend rejects real
-   sends until the domain is DNS-verified. Not confirmed done as of 2026-07-16 — still the last step
-   needed for verification/reset/warning emails to actually reach users.
+2. ~~**verify the `bgclive.online` domain in the Resend dashboard.**~~ — **confirmed verified,
+   2026-07-26**. Checked via a read-only `GET /domains` call to Resend's API (no email sent):
+   `bgclive.online` shows `"status": "verified"`, sending enabled. Verification/reset/warning
+   emails can now actually reach users.
 3. ~~**resume Issue #66 (DB partitioning)**~~ — **done, PR #89/#90 (2026-07-14)**, with a follow-up
    bug fixed and deployed 2026-07-16 (PR #115, see item 1 above). Still run
    `backend/scripts/backfill_messages_partitions.py` against production (described in PR #89 as
@@ -602,29 +602,30 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
 5. **New, non-blocking — `totp_secret` CI flakiness**: investigated (2026-07-13), root cause not
    found (passes locally in a reproduction of CI's exact environment); likely a GitHub Actions
    runner/pip-cache quirk, not an app bug.
-6. **`search-advanced.spec.ts` dropdown bug**: Ethnicity/Position option list stops appearing after
-   the first filter selection — needs Playwright UI mode/trace viewer, not curl, to diagnose.
+6. **Tracked as Issue #136.** `search-advanced.spec.ts` dropdown bug: Ethnicity/Position option
+   list stops appearing after the first filter selection — needs Playwright UI mode/trace viewer,
+   not curl, to diagnose.
 7. **WebKit-only flakiness**: `auth-2fa`/`auth-credentials` on mobile-safari improved but not fully
    resolved after the production DB migration fix; may be Playwright-WebKit-on-Linux-CI flakiness.
-8. **NUL-byte/surrogate query-param audit**: extend the `search.py` fix to `chat.py`, `admin.py`,
-   `groups.py`, `moderation.py` query params — same `SafeBaseModel`-bypass class of bug. Not
-   addressed by the 2026-07-13/14 coverage work (that work added tests for existing behavior; it did
-   not audit query-param validation).
+8. **Tracked as Issue #133.** NUL-byte/surrogate query-param audit: extend the `search.py` fix to
+   `chat.py`, `admin.py`, `groups.py`, `moderation.py` query params — same `SafeBaseModel`-bypass
+   class of bug. Not addressed by the 2026-07-13/14 coverage work (that work added tests for
+   existing behavior; it did not audit query-param validation).
 9. **Consider a dedicated non-production backend/database for E2E** — the production-DB-
    never-migrated incident from an earlier session is a strong argument; E2E currently shares fate
    with production data.
 10. **E2E stress tests**: Still CI-skipped — consider moving to a nightly scheduled workflow.
 11. Verify `CODECOV_TOKEN`/`SENTRY_AUTH_TOKEN` are actually wired (PR #47 addressed this — confirm).
-12. **Untracked local tooling files**: `.agents/`, `.claude/skills/`, `backend/.agents/`,
-    `backend/.mcp.json`, `backend/Procfile` (untracked, recreated locally after PR #86 deleted it
-    from git), `backend/skills-lock.json`, `skills-lock.json`, plus a modified-but-unstaged
-    `.claude/settings.local.json` — none are application code, none committed as of 2026-07-16
-    (now carried forward across four sessions); should be gitignored or committed intentionally so
-    `git status` stays clean.
+12. **Tracked as Issue #134.** Untracked local tooling files: `.agents/`, `.claude/skills/`,
+    `backend/.agents/`, `backend/.mcp.json`, `backend/Procfile` (untracked, recreated locally after
+    PR #86 deleted it from git), `backend/skills-lock.json`, `skills-lock.json`, plus a
+    modified-but-unstaged `.claude/settings.local.json` — none are application code, none committed
+    as of 2026-07-16 (now carried forward across five sessions); should be gitignored or committed
+    intentionally so `git status` stays clean.
 13. ~~**docs fix, trivial**: `CLAUDE.md`'s documented backend lint command
     (`black . && flake8 .`) is stale~~ — **fixed, PR #124**. `CLAUDE.md` now correctly documents
     `ruff check .`.
-14. **New, from 2026-07-16 — infra recommendation, not code**: exclude `frontend/node_modules/`,
+14. **Tracked as Issue #135.** Infra recommendation, not code: exclude `frontend/node_modules/`,
     `backend/venv/`, and preventively `frontend/.next/` from Synology Drive sync on the Linux
     workstation — both have now been corrupted by sync flattening symlinks/dropping files mid-write.
 15. **New, from 2026-07-16 — low urgency**: `tests/test_api_contract.py` bypasses the `db_session`
@@ -636,9 +637,17 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
 16. ~~**Issue #68 (CSP hardening) / Issue #72 (distributed tracing) / Issue #66 Phase 7 (partitioning
     rollout verification)**~~ — **all closed as of 2026-07-26** (PRs #125/#126/#128 for CSP, #129
     for tracing, #130 for the partitioning rollout verification). As of this date: **zero open
-    issues, zero open PRs**, only `main` exists as a branch. Items 12 (untracked local tooling
-    files) and 14 (Synology Drive sync exclusions) above remain the only standing carry-forward
-    items from prior sessions; neither was touched this session.
+    issues, zero open PRs**, only `main` exists as a branch.
+    **Correction (later same day)**: this item's claim that only 12/14 remained was itself wrong —
+    items 0, 6, and 8 above were also still open at the time, just never filed as GitHub issues
+    (they'd only ever lived in this file's running notes). See item 17.
+17. ~~**File the substantive backlog items above as real GitHub issues**~~ — **done, 2026-07-26**.
+    Items 0, 6, 8, 12, 14 filed as Issues #132-#136 respectively (see each item above for the exact
+    mapping). Items 5, 7, 9, 10, 11, 15 deliberately left as running notes rather than issues — they
+    read as either non-blocking flakiness under investigation or open process questions ("should we
+    do X") rather than a concrete, actionable fix. Also confirmed via a read-only Resend API call
+    (`GET /domains`, no email sent) that item 2 (`bgclive.online` domain verification) is genuinely
+    done — status `verified`, sending enabled.
 
 ## Dependencies
 
