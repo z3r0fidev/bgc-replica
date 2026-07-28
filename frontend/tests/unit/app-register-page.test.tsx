@@ -16,11 +16,15 @@ import { toast } from "sonner";
 
 function fillForm({
   name = "Jane Doe",
+  username = "janedoe",
   email = "jane@example.com",
   password = "ValidPass123!",
-}: { name?: string; email?: string; password?: string } = {}) {
+}: { name?: string; username?: string; email?: string; password?: string } = {}) {
   fireEvent.change(screen.getByPlaceholderText("John Doe"), {
     target: { value: name },
+  });
+  fireEvent.change(screen.getByPlaceholderText("johndoe"), {
+    target: { value: username },
   });
   fireEvent.change(screen.getByPlaceholderText("name@example.com"), {
     target: { value: email },
@@ -43,6 +47,22 @@ describe("RegisterPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Name must be at least 2 characters.")).toBeDefined();
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["ab", "3-30 characters, must start with a letter, letters/numbers/underscores only."],
+    ["1abc", "3-30 characters, must start with a letter, letters/numbers/underscores only."],
+    ["has space", "3-30 characters, must start with a letter, letters/numbers/underscores only."],
+    ["has-dash", "3-30 characters, must start with a letter, letters/numbers/underscores only."],
+  ])("shows a validation error for an invalid username: %s", async (username, expectedMessage) => {
+    render(<RegisterPage />);
+    fillForm({ username });
+    fireEvent.click(screen.getByRole("button", { name: /^register$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(expectedMessage)).toBeDefined();
     });
     expect(global.fetch).not.toHaveBeenCalled();
   });
@@ -92,6 +112,7 @@ describe("RegisterPage", () => {
     const payload = JSON.parse(options?.body as string);
     expect(payload).toEqual({
       name: "Jane Doe",
+      username: "janedoe",
       email: "jane@example.com",
       password: "ValidPass123!",
     });

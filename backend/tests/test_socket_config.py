@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from jose import jwt
@@ -20,14 +20,16 @@ def _make_token(user_id: str, secret: str | None = None, algorithm: str | None =
     )
 
 
-async def _make_user(db: AsyncSession) -> User:
-    user = User(
-        id=uuid.uuid4(),
-        email=f"socket-test-{uuid.uuid4()}@example.com",
-        name="Socket Test User",
-        hashed_password="x",
-        is_active=True,
-    )
+async def _make_user(db: AsyncSession, **overrides) -> User:
+    fields = {
+        "id": uuid.uuid4(),
+        "email": f"socket-test-{uuid.uuid4()}@example.com",
+        "name": "Socket Test User",
+        "hashed_password": "x",
+        "is_active": True,
+    }
+    fields.update(overrides)
+    user = User(**fields)
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -431,6 +433,70 @@ class TestSendDmHandler:
             assert event_name == "new_dm"
             assert payload["content"] == "hello there"
             assert payload["sender_id"] == str(sender.id)
+
+    @pytest.mark.asyncio
+    async def test_queues_email_when_recipient_offline_and_allows_it(
+        self, mock_sio, db_session: AsyncSession, monkeypatch
+    ):
+        sender = await _make_user(db_session)
+        recipient = await _make_user(db_session)
+        mock_sio["get_session"].return_value = {"user_id": str(sender.id)}
+        monkeypatch.setattr(sc, "SessionLocal", lambda: db_session)
+        monkeypatch.setattr(
+            presence_service, "is_user_online", AsyncMock(return_value=False)
+        )
+
+        with patch("app.core.socket_config.send_new_message_email_task") as mock_task:
+            await sc.send_dm(
+                "sid1", {"recipient_id": str(recipient.id), "content": "hello there"}
+            )
+
+        mock_task.delay.assert_called_once_with(
+            to_email=recipient.email,
+            sender_name=sender.name or "Someone",
+            message_preview="hello there",
+            to_user_name=recipient.name,
+        )
+
+    @pytest.mark.asyncio
+    async def test_does_not_queue_email_when_recipient_online(
+        self, mock_sio, db_session: AsyncSession, monkeypatch
+    ):
+        sender = await _make_user(db_session)
+        recipient = await _make_user(db_session)
+        mock_sio["get_session"].return_value = {"user_id": str(sender.id)}
+        monkeypatch.setattr(sc, "SessionLocal", lambda: db_session)
+        monkeypatch.setattr(
+            presence_service, "is_user_online", AsyncMock(return_value=True)
+        )
+
+        with patch("app.core.socket_config.send_new_message_email_task") as mock_task:
+            await sc.send_dm(
+                "sid1", {"recipient_id": str(recipient.id), "content": "hello there"}
+            )
+
+        mock_task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_does_not_queue_email_when_recipient_disabled_message_emails(
+        self, mock_sio, db_session: AsyncSession, monkeypatch
+    ):
+        sender = await _make_user(db_session)
+        recipient = await _make_user(
+            db_session, notification_preferences={"email_messages": False}
+        )
+        mock_sio["get_session"].return_value = {"user_id": str(sender.id)}
+        monkeypatch.setattr(sc, "SessionLocal", lambda: db_session)
+        monkeypatch.setattr(
+            presence_service, "is_user_online", AsyncMock(return_value=False)
+        )
+
+        with patch("app.core.socket_config.send_new_message_email_task") as mock_task:
+            await sc.send_dm(
+                "sid1", {"recipient_id": str(recipient.id), "content": "hello there"}
+            )
+
+        mock_task.delay.assert_not_called()
 
 
 class TestSendRoomMessageHandler:

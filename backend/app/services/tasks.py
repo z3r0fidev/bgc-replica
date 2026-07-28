@@ -165,3 +165,71 @@ def send_warning_email_task(
         )
 
     return run_async(_send_email())
+
+
+@celery_app.task(name="app.services.tasks.send_new_message_email_task")
+def send_new_message_email_task(
+    to_email: str,
+    sender_name: str,
+    message_preview: str,
+    to_user_name: Optional[str] = None,
+):
+    """Celery task to notify a user of a new DM received while offline."""
+
+    async def _send_email():
+        from app.services.email_service import email_service
+
+        return await email_service.send_new_message_email(
+            to_email=to_email,
+            sender_name=sender_name,
+            message_preview=message_preview,
+            to_user_name=to_user_name,
+        )
+
+    return run_async(_send_email())
+
+
+@celery_app.task(name="app.services.tasks.send_friend_request_email_task")
+def send_friend_request_email_task(
+    to_email: str,
+    sender_name: str,
+    to_user_name: Optional[str] = None,
+):
+    """Celery task to notify a user of a new friend/connection request."""
+
+    async def _send_email():
+        from app.services.email_service import email_service
+
+        return await email_service.send_friend_request_email(
+            to_email=to_email,
+            sender_name=sender_name,
+            to_user_name=to_user_name,
+        )
+
+    return run_async(_send_email())
+
+
+@celery_app.task(name="app.services.tasks.send_mention_email_task")
+def send_mention_email_task(
+    to_email: str,
+    mentioner_name: str,
+    thread_title: str,
+    content_preview: str,
+    thread_id: str,
+    to_user_name: Optional[str] = None,
+):
+    """Celery task to notify a user they were @mentioned in a forum post."""
+
+    async def _send_email():
+        from app.services.email_service import email_service
+
+        return await email_service.send_mention_email(
+            to_email=to_email,
+            mentioner_name=mentioner_name,
+            thread_title=thread_title,
+            content_preview=content_preview,
+            thread_id=thread_id,
+            to_user_name=to_user_name,
+        )
+
+    return run_async(_send_email())

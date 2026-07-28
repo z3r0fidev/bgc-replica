@@ -316,5 +316,283 @@ If you believe this warning was issued in error, contact support: {support_url}
             print(f"Failed to send warning email: {e}")
             return False
 
+    async def send_new_message_email(
+        self,
+        to_email: str,
+        sender_name: str,
+        message_preview: str,
+        to_user_name: str | None = None,
+    ) -> bool:
+        """
+        Notify a user of a new direct message received while offline.
+
+        Args:
+            to_email: Recipient email address
+            sender_name: Display name of the message sender
+            message_preview: A short preview of the message content
+            to_user_name: Optional recipient name for personalization
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not settings.RESEND_API_KEY:
+            return False
+
+        greeting = f"Hi {to_user_name}," if to_user_name else "Hi,"
+        chat_url = f"{settings.APP_URL}/chat"
+        preview = (
+            message_preview
+            if len(message_preview) <= 200
+            else message_preview[:197] + "..."
+        )
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">New Message</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                    {greeting}
+                </p>
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                    <strong>{sender_name}</strong> sent you a message on BGCLive:
+                </p>
+                <p style="color: #374151; font-size: 16px; line-height: 1.6; background: #f9fafb; padding: 12px 16px; border-radius: 8px; border-left: 3px solid #764ba2;">
+                    {preview}
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{chat_url}"
+                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                              color: white;
+                              padding: 14px 30px;
+                              text-decoration: none;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              display: inline-block;">
+                        Reply
+                    </a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_content = f"""
+{greeting}
+
+{sender_name} sent you a message on BGCLive:
+
+{preview}
+
+Reply: {chat_url}
+
+- The BGCLive Team
+"""
+
+        try:
+            resend.Emails.send(
+                {
+                    "from": settings.RESEND_FROM_EMAIL,
+                    "to": [to_email],
+                    "subject": f"New message from {sender_name}",
+                    "html": html_content,
+                    "text": text_content,
+                }
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to send new message email: {e}")
+            return False
+
+    async def send_friend_request_email(
+        self,
+        to_email: str,
+        sender_name: str,
+        to_user_name: str | None = None,
+    ) -> bool:
+        """
+        Notify a user that they received a friend/connection request.
+
+        Args:
+            to_email: Recipient email address
+            sender_name: Display name of the user who sent the request
+            to_user_name: Optional recipient name for personalization
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not settings.RESEND_API_KEY:
+            return False
+
+        greeting = f"Hi {to_user_name}," if to_user_name else "Hi,"
+        connections_url = f"{settings.APP_URL}/connections"
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">New Friend Request</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                    {greeting}
+                </p>
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                    <strong>{sender_name}</strong> sent you a friend request on BGCLive.
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{connections_url}"
+                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                              color: white;
+                              padding: 14px 30px;
+                              text-decoration: none;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              display: inline-block;">
+                        View Request
+                    </a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_content = f"""
+{greeting}
+
+{sender_name} sent you a friend request on BGCLive.
+
+View it here: {connections_url}
+
+- The BGCLive Team
+"""
+
+        try:
+            resend.Emails.send(
+                {
+                    "from": settings.RESEND_FROM_EMAIL,
+                    "to": [to_email],
+                    "subject": f"{sender_name} sent you a friend request",
+                    "html": html_content,
+                    "text": text_content,
+                }
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to send friend request email: {e}")
+            return False
+
+    async def send_mention_email(
+        self,
+        to_email: str,
+        mentioner_name: str,
+        thread_title: str,
+        content_preview: str,
+        thread_id: str,
+        to_user_name: str | None = None,
+    ) -> bool:
+        """
+        Notify a user that they were @mentioned in a forum post.
+
+        Args:
+            to_email: Recipient email address
+            mentioner_name: Display name of the user who wrote the mention
+            thread_title: Title of the forum thread the mention appeared in
+            content_preview: A short preview of the post content
+            thread_id: ID of the thread, used to build the link
+            to_user_name: Optional recipient name for personalization
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not settings.RESEND_API_KEY:
+            return False
+
+        greeting = f"Hi {to_user_name}," if to_user_name else "Hi,"
+        thread_url = f"{settings.APP_URL}/forums/thread/{thread_id}"
+        preview = (
+            content_preview
+            if len(content_preview) <= 200
+            else content_preview[:197] + "..."
+        )
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">You Were Mentioned</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                    {greeting}
+                </p>
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                    <strong>{mentioner_name}</strong> mentioned you in
+                    <strong>{thread_title}</strong>:
+                </p>
+                <p style="color: #374151; font-size: 16px; line-height: 1.6; background: #f9fafb; padding: 12px 16px; border-radius: 8px; border-left: 3px solid #764ba2;">
+                    {preview}
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{thread_url}"
+                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                              color: white;
+                              padding: 14px 30px;
+                              text-decoration: none;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              display: inline-block;">
+                        View Thread
+                    </a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_content = f"""
+{greeting}
+
+{mentioner_name} mentioned you in {thread_title}:
+
+{preview}
+
+View thread: {thread_url}
+
+- The BGCLive Team
+"""
+
+        try:
+            resend.Emails.send(
+                {
+                    "from": settings.RESEND_FROM_EMAIL,
+                    "to": [to_email],
+                    "subject": f"{mentioner_name} mentioned you on BGCLive",
+                    "html": html_content,
+                    "text": text_content,
+                }
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to send mention email: {e}")
+            return False
+
 
 email_service = EmailService()

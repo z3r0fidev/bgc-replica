@@ -9,6 +9,8 @@ from app.schemas.social import Relationship as RelationshipSchema
 from app.schemas.common import PaginatedResponse
 from app.core.pagination import paginate_query
 from app.services.profile_service import profile_service
+from app.services.notification_prefs import should_send_email
+from app.services.tasks import send_friend_request_email_task
 import uuid
 
 router = APIRouter()
@@ -75,6 +77,16 @@ async def send_friend_request(
     db.add(new_rel)
     await db.commit()
     await db.refresh(new_rel)
+
+    recipient_result = await db.execute(select(User).where(User.id == user_id))
+    recipient = recipient_result.scalars().first()
+    if recipient and should_send_email(recipient, "email_friend_requests"):
+        send_friend_request_email_task.delay(
+            to_email=recipient.email,
+            sender_name=current_user.name or "Someone",
+            to_user_name=recipient.name,
+        )
+
     return new_rel
 
 

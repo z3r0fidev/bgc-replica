@@ -197,6 +197,7 @@ class TestVerificationApi:
             "/api/auth/register",
             json={
                 "email": email,
+                "username": f"user{uuid.uuid4().hex[:12]}",
                 "name": "New User",
                 "password": "StrongPass123!",
             },

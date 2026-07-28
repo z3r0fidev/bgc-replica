@@ -15,6 +15,9 @@ from app.schemas.community import (
     ForumCategoryTree,
 )
 from app.schemas.common import PaginatedResponse
+from app.services.mentions import extract_mentioned_usernames
+from app.services.notification_prefs import should_send_email
+from app.services.tasks import send_mention_email_task
 from fastapi_limiter.depends import RateLimiter
 from pyrate_limiter import Duration, Limiter, Rate
 import uuid
@@ -148,4 +151,23 @@ async def create_post(
 
     await db.commit()
     await db.refresh(new_post)
+
+    mentioned_usernames = extract_mentioned_usernames(new_post.content)
+    if mentioned_usernames and thread:
+        mentioned_result = await db.execute(
+            select(User).where(User.username.in_(mentioned_usernames))
+        )
+        for mentioned_user in mentioned_result.scalars().all():
+            if mentioned_user.id == current_user.id:
+                continue
+            if should_send_email(mentioned_user, "email_mentions"):
+                send_mention_email_task.delay(
+                    to_email=mentioned_user.email,
+                    mentioner_name=current_user.name or "Someone",
+                    thread_title=thread.title,
+                    content_preview=new_post.content,
+                    thread_id=str(thread.id),
+                    to_user_name=mentioned_user.name,
+                )
+
     return new_post
