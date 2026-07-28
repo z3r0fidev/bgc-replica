@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # Email Verification (Resend)
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "noreply@bgclive.com"
+    # Signing secret for the Resend webhook (Svix-based), from the Resend
+    # dashboard's webhook settings once the endpoint is registered. Empty by
+    # default so the webhook route can reject all requests (rather than
+    # silently accept unsigned ones) until it's actually configured.
+    RESEND_WEBHOOK_SECRET: str = ""
     APP_URL: str = "http://localhost:3000"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 1

@@ -32,6 +32,7 @@ from app.api.social import router as social_router
 from app.api.stories import router as stories_router
 from app.api.totp import router as totp_router
 from app.api.verification import router as verification_router
+from app.api.webhooks import router as webhooks_router
 from app.core.config import VERCEL_PREVIEW_ORIGIN_PATTERN, settings
 from app.core.database import SessionLocal
 from app.core.exceptions import BaseAppException
@@ -214,6 +215,7 @@ app.include_router(
     verification_router, prefix="/api/verification", tags=["verification"]
 )
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
 
 # Mount Socket.io
 socket_app = socketio.ASGIApp(sio, socketio_path="")
