@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MediaUploader, GalleryGrid, MediaLightbox } from "@/components/gallery";
+import { MediaUploader, GalleryGrid, MediaLightbox, AddToAlbumDialog } from "@/components/gallery";
 import { Plus, Trash2, FolderPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { GalleryMedia, GalleryPage as GalleryPageType } from "@/types/gallery";
@@ -37,6 +37,9 @@ export default function GalleryPage() {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<GalleryMedia | null>(null);
   const [isBulkDelete, setIsBulkDelete] = useState(false);
+
+  // Add to album
+  const [addToAlbumOpen, setAddToAlbumOpen] = useState(false);
 
   const fetchMedia = useCallback(async (cursor?: string, reset = false) => {
     try {
@@ -162,10 +165,7 @@ export default function GalleryPage() {
                 <>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      // TODO: Add to album dialog
-                      toast.info("Add to album coming soon");
-                    }}
+                    onClick={() => setAddToAlbumOpen(true)}
                   >
                     <FolderPlus className="h-4 w-4 mr-2" />
                     Add to Album
@@ -282,6 +282,17 @@ export default function GalleryPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add to album */}
+      <AddToAlbumDialog
+        mediaIds={Array.from(selectedIds)}
+        isOpen={addToAlbumOpen}
+        onClose={() => setAddToAlbumOpen(false)}
+        onSuccess={() => {
+          setSelectedIds(new Set());
+          setSelectionMode(false);
+        }}
+      />
 
       {/* Bulk delete confirmation */}
       <AlertDialog open={isBulkDelete} onOpenChange={setIsBulkDelete}>
