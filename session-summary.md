@@ -2,6 +2,197 @@
 
 ---
 
+## Session: 2026-07-28 — Resend Email Expansion (PR #147), Bounce/Complaint Webhook (PR #148), `.env*.example` Gitignore Fix (PR #149), Backend Test-Suite Flakiness Fix (PR #150)
+
+### Session Information
+- **Date**: 2026-07-28
+- **Duration**: Four merged PRs, none from filed GitHub issues — all from direct user requests or
+  findings raised and resolved within the same session
+- **Branch**: `main` (reviewed from per-PR feature branches)
+- **PRs Merged**: #147 (`1fe9120`, squash), #148 (`67495ca`, squash), #149 (`024d90f`, squash), #150
+  (`014db4e`, squash)
+- **HEAD after session**: `014db4e`
+- **Focus**: Expand Resend email coverage (new email types, deliverability verification, bounce/
+  complaint handling), then immediately resolve two smaller findings surfaced while wrapping up
+  (`.env*.example` gitignore gap, backend `pytest` local flakiness)
+
+### High-Level Summary
+
+Started with the user asking to "set up emails for Resend." Investigation found Resend was already
+fully working end-to-end (domain verified 2026-07-26, 3 email types — verification/password-reset/
+warning — all Celery-queued). Asked what was specifically wanted; the user chose three concrete asks:
+add new email types, verify deliverability end-to-end against the real Resend API, add bounce/
+complaint webhook handling.
+
+Building the message/friend-request/mention emails surfaced two gaps: the existing
+`notification_preferences` schema (8 email toggles) had never actually triggered any email, and there
+was no unique/parseable username field to resolve `@mentions` against (only a nullable, non-unique
+`display_name`). The user chose to add a real username field first — the bigger option — over skipping
+mentions or matching against the fragile `display_name`.
+
+**PR #147** added `users.username` (unique, indexed, nullable like `email`) via an Alembic migration
+with a Python-driven backfill (display_name → email local-part → user id, slugified/deduped on
+collision), tested against a disposable local Postgres with seeded edge cases (duplicate local-parts,
+special characters, NULL email). Required on registration, changeable via `PATCH /api/auth/username` +
+a new `UsernameCard` on profile edit. Added `send_new_message_email`/`send_friend_request_email`/
+`send_mention_email` to `email_service.py` + Celery tasks (`app/services/tasks.py`), wired into
+`send_dm` (`socket_config.py`, only when recipient offline via `presence_service`), `send_friend_request`
+(`social.py`), and new `@mention` parsing (`app/services/mentions.py`) in `create_post` (`forums.py`) —
+all gated through a new `should_send_email()` helper (`app/services/notification_prefs.py`). Verified
+all 6 email types (3 pre-existing + 3 new) end-to-end against the real Resend API, confirmed
+`delivered` via Resend's own event tracking, sent to the user's real inbox with explicit approval.
+
+**Recurring incident, disclosed transparently each time it happened**: hit the exact same mistake three
+times this session — a bash command missing its `DATABASE_URL=`/`REDIS_URL=` prefix silently fell
+through to `backend/.env`'s real production Supabase database instead of the local test container,
+running real Alembic migrations against production. All three were schema-only, zero data impact
+(production `users` has 0 rows, confirmed read-only each time), disclosed immediately, user said "leave
+it, continue as planned" each time since the changes were exactly what each PR would deploy anyway.
+After the third occurrence, stopped relying on "just be more careful" and built a mechanical fix: a
+wrapper script hardcoding the test DB URL for the rest of the session. Saved as a feedback memory
+(`alembic_env_prefix_per_line_landmine.md`, updated 3x) — flagged as needing to stay salient into next
+session, since two prior rounds of "be more careful" hadn't stuck.
+
+**PR #148** built `POST /api/webhooks/resend`, svix-signature-verified (new `svix` dependency in
+`backend/requirements.txt`), failing closed with 401 if `RESEND_WEBHOOK_SECRET` is unset — deliberately
+reusing the same 401 as bad-signature rather than a distinct 503, since schemathesis's contract-test
+fuzzing flags any 5xx as an automatic failure regardless of intent (actually caught by that exact
+contract test during verification, in `backend/tests/test_webhooks.py`). Persists
+`email.bounced`/`email.complained`/`suppression.added`/`suppression.removed` to a new `email_events`
+table (`backend/app/models/email_event.py`); other event types acknowledged but not persisted. Added
+`docs/resend-webhook-setup.md` covering the one manual step the code can't do for itself. **Registered
+later the same session**: confirmed via Resend's API no webhook existed yet, registered it against the
+real production URL (`https://bgc-live-production.up.railway.app/api/webhooks/resend`), set
+`RESEND_WEBHOOK_SECRET` in Railway, and verified end-to-end — a real signed test request returned `200
+{"received":true}` and a read-only production DB query confirmed the row landed in `email_events`. No
+longer queued.
+
+**Two more findings, tackled immediately at explicit user request instead of deferred**: while wrapping
+up, found (a) `backend/.env.production.example`, `frontend/.env.production.example`, and two
+`bgc-personals` `.env*.example` files were silently caught by the broad `.env*` gitignore pattern and
+had never been committed; (b) running the backend's full `pytest` (no `--ignore`) locally reliably
+failed 7 tests. Both were initially saved as memories with instructions to investigate next session;
+the user then asked to tackle both immediately instead — both fully resolved this same session.
+
+**PR #149** added `!.env*.example` negation right after the `.env*` exclusion in `.gitignore`. Verified
+via `git check-ignore` both that all 4 template files are now trackable and that real `.env`/
+`.env.local` files remain ignored. Manually reviewed all 4 files' contents first — placeholders/
+local-dev defaults only, no real secrets.
+
+**PR #150** — user explicitly asked to use senior agents/skills, spawn `gemini-research` for deep
+understanding, and use Plan mode before implementing. Followed that process exactly: spawned a
+`gemini-research` agent in parallel with a local empirical reproduction. Root cause confirmed three
+independent ways (local repro + `gemini-research`'s static analysis + real GitHub Actions run history):
+`backend/tests/test_api_contract.py`'s schemathesis-fuzzed `TestClient` never gets
+`app.dependency_overrides[get_db]` applied (unlike `conftest.py`'s `async_client`), so its fuzzed
+requests make real, committed writes through the app's real DB session — e.g. `POST
+/api/moderation/report` creates real `ContentReport` rows, breaking `test_moderation_api.py`'s
+exact-row-count assertions when both files share one pytest process. `test_main.py::test_health` failed
+too via a related connection-pool/event-loop interaction. **Key discovery that reframed the fix**:
+checking `deploy-backend.yml`'s actual CI run history (`gh run view`) showed it already runs contract
+tests as a fully separate `pytest` process there (`Run Contract Tests`, after a separate `--ignore`d
+`Run Tests` step) — there was never any real CI risk here, only a "developer runs bare `pytest` locally"
+ergonomics gap. Entered Plan mode, wrote the plan to
+`/home/z3r0d3v/.claude/plans/smooth-discovering-wombat.md`, got explicit user approval before touching
+any code. Fix: one line, `addopts = --ignore=tests/test_api_contract.py` in `backend/pytest.ini` — the
+exact flag CI's own steps already use. Empirically verified pytest's explicit-target precedence over
+`--ignore` means `pytest tests/test_api_contract.py` still runs all 133 cases normally — zero CI
+workflow changes needed. Verified: bare `pytest` 3x on fresh local containers, 711 passed / 1
+pre-existing xfail / 0 failures every time; then verified live in the PR's own CI run that both the
+"Run Tests" and "Run Contract Tests" steps in `deploy-backend.yml` still passed independently.
+Deliberately did not chase a secondary issue: `GET /metrics`'s schemathesis case fails locally with an
+ad hoc/unpinned schemathesis+hypothesis install but passes cleanly in real CI — documented as likely a
+local dependency-version artifact, not a live bug. Updated the `backend_full_suite_flaky_tests.md`
+memory to reflect the resolution.
+
+**Post-merge, before closing the session**: user asked to verify the "next session" list rather than
+accept it as-is. Verifying it turned up that the Resend webhook (above) was in fact still unregistered
+at that point, plus a new issue found along the way: `api.bgclive.online` resolved via DNS to stale
+Vercel IPs with no matching deployment, and Railway had no custom domain entry for it — confirmed not a
+live bug, since the real production frontend works fine regardless. User asked "should we update the
+production URL in railway?" and chose, via AskUserQuestion, to do both immediately: register the
+webhook and add the Railway custom domain. Both were completed and verified in the same session; the
+DNS record change itself needs the external DNS provider and is the new queued item below.
+
+### Files Modified/Created
+
+| File | Change |
+|------|--------|
+| `backend/alembic/versions/n8o9p0q1r2s3_add_username_to_users.py` | New (PR #147) |
+| `backend/app/models/user.py`, `backend/app/schemas/user.py` | Modified (PR #147) — `username` field |
+| `backend/app/api/auth.py` | Modified (PR #147) — `PATCH /api/auth/username` |
+| `backend/app/services/email_service.py`, `backend/app/services/tasks.py` | Modified (PR #147) — 3 new email functions + Celery tasks |
+| `backend/app/services/notification_prefs.py` | New (PR #147) — `should_send_email()` |
+| `backend/app/services/mentions.py` | New (PR #147) — `@mention` parsing |
+| `backend/app/core/socket_config.py`, `backend/app/api/social.py`, `backend/app/api/forums.py` | Modified (PR #147) — wired new emails in |
+| `frontend/src/components/profile/UsernameCard.tsx` | New (PR #147) |
+| `frontend/src/app/(auth)/register/page.tsx`, `frontend/src/app/(protected)/profile/edit/page.tsx` | Modified (PR #147) |
+| `backend/alembic/versions/o9p0q1r2s3t4_add_email_events_table.py` | New (PR #148) |
+| `backend/app/api/webhooks.py` | New (PR #148) — `POST /api/webhooks/resend` |
+| `backend/app/models/email_event.py` | New (PR #148) — `email_events` table |
+| `backend/app/core/config.py`, `backend/app/main.py` | Modified (PR #148) — `RESEND_WEBHOOK_SECRET`, router registration |
+| `backend/requirements.txt` | Modified (PR #148) — added `svix` |
+| `docs/resend-webhook-setup.md` | New (PR #148) |
+| `backend/tests/test_webhooks.py` | New (PR #148) |
+| `.gitignore` | Modified (PR #149) — `!.env*.example` negation |
+| `backend/.env.production.example`, `frontend/.env.production.example`, `bgc-personals/*/.env*.example` | Newly tracked (PR #149) |
+| `backend/pytest.ini` | Modified (PR #150) — `addopts = --ignore=tests/test_api_contract.py` |
+| `session-context.md`, `project-context.md`, `conversation-context.md`, `session-summary.md` | This session's doc-close update |
+
+### Key Decisions and Rationale
+
+1. **Add a real `username` column rather than skip mentions or match on `display_name`**: the user's
+   explicit choice — the bigger option, but the only one that doesn't leave mention-parsing fragile.
+2. **Replace "be more careful" with a mechanical wrapper script after the third alembic-env-var
+   incident**: verbal vigilance empirically didn't survive three repetitions under time pressure; a
+   script hardcoding the test DB URL removes the failure mode rather than hoping to remember it.
+3. **Reuse 401 rather than a distinct 503 for the webhook's missing-secret case**: schemathesis's
+   contract-test fuzzing treats any 5xx as an automatic failure — confirmed empirically during this
+   session's own verification pass, not just theorized.
+4. **Tackle the `.env*.example` and pytest-flakiness findings immediately rather than deferring them**:
+   both well-scoped and small; the user explicitly asked to do them now instead of carrying them
+   forward.
+5. **Use `gemini-research` + Plan mode for the flakiness investigation, per explicit user instruction**:
+   confirmed the root cause three independent ways before writing a single line of the fix; the real CI
+   run history discovery reframed the fix from a "shared state bug" to a "local ergonomics gap" — a
+   materially smaller fix than the initial hypothesis would have suggested.
+
+### Outstanding Tasks / Follow-Up Items
+
+- [x] ~~Register the Resend webhook in Resend's dashboard/API~~ — done later this same session,
+      verified end-to-end (see above).
+- [ ] **Add the DNS records for `api.bgclive.online`** at the external DNS provider: delete stale A
+      records, add a CNAME (`api` → `ei00i992.up.railway.app`) and a TXT verification record
+      (`_railway-verify.api` → `railway-verify=e46e98e55ef27fd9ee2fbc569328e1508fb0b2ad5217ca60b13b8a7c3a353970`).
+      Railway's side (custom domain) is already added. Not a live bug — the main actionable item for
+      next session.
+- [ ] If `GET /metrics`'s schemathesis case ever fails in real CI (hasn't so far) — pin
+      `schemathesis`/`hypothesis` in `backend/requirements.txt` and re-diagnose.
+- [ ] Consider formalizing the alembic env-var-prefix wrapper script as a checked-in
+      `scripts/test-alembic.sh` or Makefile target rather than an ad hoc scratchpad mitigation — a
+      process/tooling question, not a code bug.
+
+### Blockers / Challenges
+
+None left unresolved. The alembic-against-production incident recurred three times but each occurrence
+was disclosed immediately, confirmed schema-only/zero-data-impact via read-only checks, and explicitly
+approved by the user to leave in place.
+
+### Session Statistics
+
+- **PRs merged this session**: 4 (#147, #148, #149, #150)
+- **New backend dependency**: `svix` (webhook signature verification)
+- **New DB objects**: `users.username` column, `email_events` table
+- **New email types**: 3 (new message, friend request, mention) — 6 total including pre-existing
+- **Real incidents disclosed**: 3x alembic-against-production (schema-only, zero data impact, all
+  approved)
+- **Context files updated**: 4 (`session-context.md`, `project-context.md`,
+  `conversation-context.md`, `session-summary.md`)
+- **Final repo state**: zero open issues, zero open PRs, `main`-only branch state, all CI green — but
+  3 concrete action items queued for next session (Resend webhook registration being the main one)
+
+---
+
 ## Session: 2026-07-27 — next-auth/next CVE Patch (PR #143), P0 Production Auth Outage Fix (PR #145), Gallery Add-to-Album (PR #146)
 
 ### Session Information

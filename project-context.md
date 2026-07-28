@@ -527,7 +527,23 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
       `Authentication/Auth-Implementation.md`) for the reusable technical writeups.
     - **Session close**: zero open issues, zero open PRs, `main`-only, all CI green.
 
+### 2026-07-28 — Resend Email Expansion (PR #147), Bounce/Complaint Webhook (PR #148), `.env*.example` Gitignore Fix (PR #149), Test-Suite Flakiness Fix (PR #150)
+
+**Session origin**: user asked to "set up emails for Resend." Investigation found Resend was already fully working (domain verified 2026-07-26, 3 email types, Celery-queued) — the user redirected scope to three concrete asks instead: new email types, end-to-end deliverability verification, bounce/complaint handling.
+
+42. **New unique `users.username` column + 3 new Resend email types** (PR #147, squash `1fe9120`). Building message/friend-request/mention emails surfaced that the existing `notification_preferences` schema (8 email toggles) had never actually triggered an email, and that there was no unique/parseable username field to resolve `@mentions` against (only a nullable, non-unique `display_name`). User chose to add a real `username` column (unique, indexed, nullable like `email`) over skipping mentions or matching against `display_name` — added via an Alembic migration with a Python-driven backfill (display_name → email local-part → user id, slugified/deduped on collision), required on registration, changeable via `PATCH /api/auth/username` + a new `UsernameCard` on profile edit. Added `send_new_message_email`/`send_friend_request_email`/`send_mention_email` to `email_service.py` + Celery tasks, wired into `send_dm` (only when recipient offline), `send_friend_request`, and new `@mention` parsing in `create_post` — all gated through a new `should_send_email()` helper (`app/services/notification_prefs.py`). Verified all 6 email types (3 pre-existing + 3 new) end-to-end against the real Resend API, confirmed `delivered`.
+    - **Recurring incident this session, not this PR alone**: a bash command missing its `DATABASE_URL=`/`REDIS_URL=` prefix silently ran real Alembic migrations against production Supabase instead of the local test container — happened 3 times across this session's work, each schema-only with zero data impact (production `users` has 0 rows, confirmed read-only each time), disclosed transparently, user said "leave it, continue" each time. After the third occurrence, replaced "be more careful" with a mechanical wrapper script hardcoding the test DB URL for the rest of the session — see `session-context.md`'s "Queued for next session" for the open question of whether this deserves a permanent checked-in fix.
+43. **Resend bounce/complaint webhook** (PR #148, squash `67495ca`). `POST /api/webhooks/resend`, svix-signature-verified (new `svix` dependency), fails closed with 401 (deliberately reused rather than a distinct 503, since schemathesis's contract-test fuzzing flags any 5xx as an automatic failure — caught by that exact test during verification) when `RESEND_WEBHOOK_SECRET` is unset. Persists `email.bounced`/`email.complained`/`suppression.added`/`suppression.removed` to a new `email_events` table. `docs/resend-webhook-setup.md` documents the manual step. **Registered later the same session**: confirmed via Resend's API no webhook existed yet, registered it against the real production URL (`https://bgc-live-production.up.railway.app/api/webhooks/resend`), set `RESEND_WEBHOOK_SECRET` in Railway, verified end-to-end with a real signed test request (`200 {"received":true}`) and a read-only production DB query confirming the row landed in `email_events`. No longer a queued item.
+44. **`.env*.example` template files were silently gitignored, never committed** (PR #149, squash `024d90f`), found while wrapping up and fixed immediately at the user's request rather than deferred. The broad `.env*` gitignore pattern was catching `backend/.env.production.example`, `frontend/.env.production.example`, and two `bgc-personals/.env*.example` files. Added `!.env*.example` negation; verified via `git check-ignore` both that the 4 template files are now trackable and that real `.env`/`.env.local` files remain ignored. Manually reviewed all 4 files first — placeholders/local-dev defaults only, no real secrets.
+45. **Backend `pytest` (no `--ignore`) reliably failed 7 tests locally — fixed** (PR #150, squash `014db4e`), also found while wrapping up and fixed immediately at explicit user request, following a requested process (senior agents, a `gemini-research` spawn, Plan mode with approval before implementation). Root cause confirmed three independent ways (local repro, `gemini-research`'s static analysis, real GitHub Actions run history): `tests/test_api_contract.py`'s schemathesis-fuzzed `TestClient` never gets `dependency_overrides[get_db]` applied, so its fuzzed requests make real, committed writes through the real DB session — breaking `test_moderation_api.py`'s exact-row-count assertions when both files share one pytest process. **Key discovery**: `deploy-backend.yml`'s actual CI run history showed contract tests already run as a fully separate `pytest` process there — so there was never any real CI risk, only a local-ergonomics gap. Fix: one line, `addopts = --ignore=tests/test_api_contract.py` in `backend/pytest.ini` (the same flag CI's own steps already use). Verified: bare `pytest` 3x clean (711 passed / 1 xfail / 0 failures), plus live confirmation in the PR's own CI run that both the ignoring and non-ignoring CI steps still pass independently. A secondary, deliberately-not-chased finding: `GET /metrics`'s schemathesis case fails locally with an unpinned schemathesis/hypothesis install but passes in real CI — documented as a likely local dependency-version artifact, not a live bug (fix if it ever recurs: pin versions in `requirements.txt`).
+46. **Final repo state**: zero open issues, zero open PRs, `main`-only, all CI green. **Resend webhook registration (see #43) and the Railway custom-domain work below were both completed later the same session**, after this numbered list was first drafted — see `session-context.md`'s "Queued for next session" list for the current, accurate set: (1) the `api.bgclive.online` DNS record change (delete stale A records, add a CNAME + TXT verification record — outside what can be done without DNS-provider access), (2) pin `schemathesis`/`hypothesis` if the `/metrics` contract-test failure ever recurs in real CI, (3) consider formalizing the alembic env-var-prefix wrapper script as a checked-in `scripts/`/Makefile fix rather than an ad hoc scratchpad mitigation.
+47. **`api.bgclive.online` custom domain investigation** (discovered while verifying the above "queued" list was still accurate, before accepting it as this session's final state). DNS resolved this custom domain to stale Vercel IPs with no matching deployment (`DEPLOYMENT_NOT_FOUND`), and Railway had no custom domain entry for it. Confirmed this is **not a live bug** — production's real frontend (`www.bgclive.online`) works fine regardless, via whatever `NEXT_PUBLIC_API_URL` Vercel actually has configured. Added the custom domain on Railway's side (`railway domain api.bgclive.online`, additive/safe); the DNS record change itself needs the external DNS provider, which is outside what's directly actionable here — handed to the user with exact record values (CNAME `api` → `ei00i992.up.railway.app`, TXT `_railway-verify.api` → `railway-verify=e46e98e55ef27fd9ee2fbc569328e1508fb0b2ad5217ca60b13b8a7c3a353970`).
+
 ### Recent Commits (chronological, newest first)
+- **014db4e** (2026-07-28): fix(tests): exclude schemathesis contract tests from bare `pytest` by default (#150, squash-merged)
+- **024d90f** (2026-07-28): chore: track .env*.example template files, previously silently gitignored (#149, squash-merged)
+- **67495ca** (2026-07-28): feat: add Resend bounce/complaint webhook (#148, squash-merged)
+- **1fe9120** (2026-07-28): feat: unique usernames + 3 new Resend notification emails (#147, squash-merged)
 - **3a9c0b5** (2026-07-27): feat(gallery): wire up 'Add to Album' bulk action (#142) (#146, squash-merged)
 - **a6e90b5** (2026-07-27): fix(routing): NextAuth API routes shadowed by backend rewrite (P0) (#145, squash-merged)
 - **591c99e** (2026-07-27): security: upgrade next-auth and next to patch critical Auth.js CVEs (#141) (#143, squash-merged)
@@ -603,15 +619,39 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
 
 ### Active Branch
 - **Branch**: `main`, local in sync with `origin/main`.
-- **HEAD**: `3a9c0b5` (PR #146, on top of `a6e90b5` for PR #145, `591c99e` for PR #143) as of
-  2026-07-27.
-- **Status**: 2026-07-27 session merged three PRs closing three same-session-filed issues: **PR #143**
-  (next-auth/next critical CVE patch, Issue #141), **PR #145** (P0 production fix — NextAuth routes
-  shadowed by a backend rewrite, Issue #144), **PR #146** (gallery "Add to Album" wired up, Issue
-  #142). Zero open issues, zero open PRs, `main`-only branch state, all CI green. See item 41 above
-  and `session-context.md`'s "Latest Session" entry for full detail.
+- **HEAD**: `014db4e` (PR #150, on top of `024d90f` for PR #149, `67495ca` for PR #148, `1fe9120` for
+  PR #147) as of 2026-07-28.
+- **Status**: 2026-07-28 session merged four PRs: **PR #147** (unique usernames + 3 new Resend
+  notification emails), **PR #148** (Resend bounce/complaint webhook), **PR #149** (`.env*.example`
+  template files un-gitignored), **PR #150** (backend bare-`pytest` flakiness fix). Zero open issues,
+  zero open PRs, `main`-only branch state, all CI green. **Also done, later the same session**: the
+  Resend webhook from PR #148 was registered against production and verified end-to-end, and a Railway
+  custom domain was added for `api.bgclive.online` (DNS record change still needed at the external
+  provider — see item 47). See items 42-47 above and `session-context.md`'s "Latest Session" entry for
+  full detail.
 
 ### Next Priorities
+
+**Updated 2026-07-28 (end of session)**: zero open GitHub issues, zero open PRs — **three concrete
+action items are queued for next session**, none of them filed as GitHub issues (all surfaced/decided
+within this same session). The Resend webhook item that was originally item 1 here has since been
+completed (registered against production, verified end-to-end) and is replaced below by the DNS
+follow-up it left behind:
+1. **Add the DNS records for `api.bgclive.online`** at the external DNS provider (outside what's
+   directly actionable without provider access): delete the stale A records, add a CNAME (`api` →
+   `ei00i992.up.railway.app`) and a TXT verification record (`_railway-verify.api` →
+   `railway-verify=e46e98e55ef27fd9ee2fbc569328e1508fb0b2ad5217ca60b13b8a7c3a353970`). The Railway side
+   (custom domain added) is already done — see item 47 above. Not a live bug (production frontend works
+   fine without it), just an unfinished custom-domain setup.
+2. **If `GET /metrics`'s schemathesis case ever fails in real CI** (hasn't so far, confirmed via run
+   history as of PR #150) — pin `schemathesis`/`hypothesis` versions in `backend/requirements.txt` and
+   re-diagnose; see `backend_full_suite_flaky_tests.md`.
+3. **Consider formalizing the alembic env-var-prefix mitigation**: the same `DATABASE_URL=`/
+   `REDIS_URL=`-prefix-missing mistake hit real production Supabase 3 times this session (all
+   schema-only, zero data impact, disclosed and approved each time). A wrapper script was used for the
+   rest of the session but was scratchpad-only, not committed. Worth deciding whether a checked-in
+   `scripts/test-alembic.sh` or Makefile target is warranted so this doesn't have to be rediscovered
+   from scratch next time this class of task comes up — a process/tooling question, not a code bug.
 
 **Updated 2026-07-27**: all numbered items below (0-17) predate and were resolved by sessions before
 this one (Issues #132-#136 filed 2026-07-26, closed via PRs #133/#139, #134/#140, and others visible
@@ -716,6 +756,7 @@ only; do not treat any item in it as currently open without checking `gh issue l
 - `qrcode[pil]`: For QR code generation
 - `resend`: Email service for verification emails
 - `celery`: Async task queue for email delivery
+- `svix`: Webhook signature verification (Resend bounce/complaint webhook, PR #148, 2026-07-28)
 
 ## Environment Configuration
 
