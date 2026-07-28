@@ -30,8 +30,9 @@ cd backend && ruff check .           # Python linting (matches backend-ci.yml; b
 cd frontend && npm run test                    # Vitest unit tests
 cd frontend && npm run test:e2e                # Playwright E2E
 cd frontend && npm run test -- --run path/to   # Single test file
-cd backend && pytest                           # All backend tests
+cd backend && pytest                           # All backend tests (excludes schemathesis contract tests by default - see below)
 cd backend && pytest -k test_name              # Single test by name
+cd backend && pytest tests/test_api_contract.py # Schemathesis API contract/fuzz tests, run separately (matches CI)
 ```
 
 ### Database
