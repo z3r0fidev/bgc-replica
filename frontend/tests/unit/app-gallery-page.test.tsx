@@ -77,6 +77,24 @@ vi.mock("../../src/components/gallery", () => ({
         <button onClick={() => items[0] && onDelete?.(items[0])}>lightbox-delete</button>
       </div>
     ) : null,
+  AddToAlbumDialog: ({
+    mediaIds,
+    isOpen,
+    onClose,
+    onSuccess,
+  }: {
+    mediaIds: string[];
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess?: () => void;
+  }) =>
+    isOpen ? (
+      <div data-testid="add-to-album-dialog">
+        add-to-album-dialog-open ids={mediaIds.join(",")}
+        <button onClick={onSuccess}>mock-add-success</button>
+        <button onClick={onClose}>mock-add-close</button>
+      </div>
+    ) : null,
 }));
 
 function makeMedia(overrides: Partial<GalleryMedia> = {}): GalleryMedia {
@@ -276,7 +294,28 @@ describe("GalleryPage", () => {
     await waitFor(() => expect(screen.getByTestId("item-m2")).toBeDefined());
   });
 
-  it("shows the 'Add to Album' info toast (not-yet-implemented action)", async () => {
+  it("opens the Add to Album dialog with the selected media ids", async () => {
+    const items = [makeMedia({ id: "m1" }), makeMedia({ id: "m2" })];
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ items, next_cursor: null, total_count: 2 }),
+    });
+
+    render(<GalleryPage />);
+    await waitFor(() => expect(screen.getByTestId("item-m1")).toBeDefined());
+
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    fireEvent.click(screen.getByTestId("item-m1"));
+    fireEvent.click(screen.getByTestId("item-m2"));
+    fireEvent.click(screen.getByRole("button", { name: /add to album/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("add-to-album-dialog")).toBeDefined();
+    });
+    expect(screen.getByText("add-to-album-dialog-open ids=m1,m2")).toBeDefined();
+  });
+
+  it("exits selection mode when Add to Album succeeds", async () => {
     const items = [makeMedia({ id: "m1" })];
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
@@ -290,7 +329,12 @@ describe("GalleryPage", () => {
     fireEvent.click(screen.getByTestId("item-m1"));
     fireEvent.click(screen.getByRole("button", { name: /add to album/i }));
 
-    expect(toast.info).toHaveBeenCalledWith("Add to album coming soon");
+    await waitFor(() => expect(screen.getByTestId("add-to-album-dialog")).toBeDefined());
+    fireEvent.click(screen.getByText("mock-add-success"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Select" })).toBeDefined();
+    });
   });
 
   it("shows a toast error when the item delete request is not ok", async () => {
