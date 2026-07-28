@@ -60,10 +60,12 @@ fuzzing flags any 5xx as an automatic failure regardless of intent (actually cau
 contract test during verification, in `backend/tests/test_webhooks.py`). Persists
 `email.bounced`/`email.complained`/`suppression.added`/`suppression.removed` to a new `email_events`
 table (`backend/app/models/email_event.py`); other event types acknowledged but not persisted. Added
-`docs/resend-webhook-setup.md` covering the one manual step the code can't do for itself. **This
-registration has not been done yet** — needs the backend deployed with this code, then either the user
-or a future session must register the webhook in Resend's dashboard/API and set
-`RESEND_WEBHOOK_SECRET` in production. **This is the main queued item for next session.**
+`docs/resend-webhook-setup.md` covering the one manual step the code can't do for itself. **Registered
+later the same session**: confirmed via Resend's API no webhook existed yet, registered it against the
+real production URL (`https://bgc-live-production.up.railway.app/api/webhooks/resend`), set
+`RESEND_WEBHOOK_SECRET` in Railway, and verified end-to-end — a real signed test request returned `200
+{"received":true}` and a read-only production DB query confirmed the row landed in `email_events`. No
+longer queued.
 
 **Two more findings, tackled immediately at explicit user request instead of deferred**: while wrapping
 up, found (a) `backend/.env.production.example`, `frontend/.env.production.example`, and two
@@ -102,6 +104,15 @@ Deliberately did not chase a secondary issue: `GET /metrics`'s schemathesis case
 ad hoc/unpinned schemathesis+hypothesis install but passes cleanly in real CI — documented as likely a
 local dependency-version artifact, not a live bug. Updated the `backend_full_suite_flaky_tests.md`
 memory to reflect the resolution.
+
+**Post-merge, before closing the session**: user asked to verify the "next session" list rather than
+accept it as-is. Verifying it turned up that the Resend webhook (above) was in fact still unregistered
+at that point, plus a new issue found along the way: `api.bgclive.online` resolved via DNS to stale
+Vercel IPs with no matching deployment, and Railway had no custom domain entry for it — confirmed not a
+live bug, since the real production frontend works fine regardless. User asked "should we update the
+production URL in railway?" and chose, via AskUserQuestion, to do both immediately: register the
+webhook and add the Railway custom domain. Both were completed and verified in the same session; the
+DNS record change itself needs the external DNS provider and is the new queued item below.
 
 ### Files Modified/Created
 
@@ -148,9 +159,13 @@ memory to reflect the resolution.
 
 ### Outstanding Tasks / Follow-Up Items
 
-- [ ] **Register the Resend webhook** in Resend's dashboard/API once the backend is deployed with PR
-      #148's code, and set `RESEND_WEBHOOK_SECRET` in production. The main actionable item for next
-      session.
+- [x] ~~Register the Resend webhook in Resend's dashboard/API~~ — done later this same session,
+      verified end-to-end (see above).
+- [ ] **Add the DNS records for `api.bgclive.online`** at the external DNS provider: delete stale A
+      records, add a CNAME (`api` → `ei00i992.up.railway.app`) and a TXT verification record
+      (`_railway-verify.api` → `railway-verify=e46e98e55ef27fd9ee2fbc569328e1508fb0b2ad5217ca60b13b8a7c3a353970`).
+      Railway's side (custom domain) is already added. Not a live bug — the main actionable item for
+      next session.
 - [ ] If `GET /metrics`'s schemathesis case ever fails in real CI (hasn't so far) — pin
       `schemathesis`/`hypothesis` in `backend/requirements.txt` and re-diagnose.
 - [ ] Consider formalizing the alembic env-var-prefix wrapper script as a checked-in
