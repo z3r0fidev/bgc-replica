@@ -492,7 +492,45 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
       `search-profile-filters.spec.ts` now hits `NEXT_PUBLIC_API_URL` directly to sidestep it
     - E2E health: ~384 tests near-total-failure → 60-73/65-76 passing per shard
 
+41. **Discovery sweep → 3 issues filed, all resolved same session (2026-07-27)**: a fresh gap-finding
+    pass (backend `ruff check`, frontend `eslint`/`tsc`, `npm audit --omit=dev`, `pip-audit`,
+    TODO/FIXME grep, a manual query-param-validation re-audit that confirmed no gap remains — a false
+    lead) surfaced Issues #141 (next-auth/next critical CVEs) and #142 (gallery "Add to Album" dead
+    stub). While verifying #141's fix, found and filed a P0 production incident as Issue #144
+    (Google OAuth + Passkey sign-in completely broken in production). All three closed same session.
+    - **PR #143** (`591c99e`, squash, closes #141): `next-auth` `5.0.0-beta.30` → `beta.32` (2
+      critical + 1 high + 1 moderate live Auth.js CVEs: auth fail-open on config errors,
+      homoglyph-email uniqueness bypass, uncaught exception on malformed Bearer headers, OAuth
+      state/nonce/PKCE cookies not bound to their provider); `next` `16.1.0` → `16.2.12`
+      (request-smuggling-in-rewrites CVE, non-major); `@auth/prisma-adapter` → `2.11.3`. CI broke on
+      first push: `npm audit fix` had bumped the `prisma` CLI to `7.9.1` but left `@prisma/client` at
+      `7.2.0` — version skew where the newer CLI's `prisma generate` expects a client layout the older
+      package doesn't have, breaking `npm ci` postinstall everywhere. Fixed by bumping
+      `@prisma/client`/`@prisma/adapter-pg` to `7.9.1` to match and regenerating.
+    - **PR #145** (`a6e90b5`, squash, closes #144, P0): `next.config.ts`'s `/api/:path*` rewrite was a
+      plain array — Next's implicit **`afterFiles`** phase, resolved *before* dynamic routes, so every
+      request to the dynamic `[...nextauth]` catch-all was shadowed and proxied to the backend
+      instead. Fixed by switching to the **`fallback`** phase. A second, Vercel-only root cause then
+      surfaced: `vercel.json` had its own duplicate, unphased copy of the same rewrite, still shadowing
+      the route on Vercel's actual routing layer regardless of `next.config.ts`'s phase — removed
+      entirely, `next.config.ts` is now the sole source of truth. Added
+      `tests/e2e/nextauth-routing.spec.ts` (real `request.get()` response-status assertions, unlike the
+      pre-existing specs which only checked a request fired). Fixed two now-incorrect
+      `auth-passkey.spec.ts` assertions that had encoded the old broken behavior.
+    - **PR #146** (`3a9c0b5`, squash, closes #142): built
+      `frontend/src/components/gallery/AddToAlbumDialog.tsx`, wired into `gallery/page.tsx` replacing
+      a `toast.info("Add to album coming soon")` stub. Backend album support has existed since Spec
+      010; this closed the missing frontend half.
+    - See `session-context.md`'s "Latest Session" entry for full investigation detail, including the
+      Vercel MCP/trace.zip forensics for PR #145's second root cause, and `session-summary.md`/the
+      Obsidian vault (`Roadmap.md`, `Security Auditor - Vulnerability Assessment.md`,
+      `Authentication/Auth-Implementation.md`) for the reusable technical writeups.
+    - **Session close**: zero open issues, zero open PRs, `main`-only, all CI green.
+
 ### Recent Commits (chronological, newest first)
+- **3a9c0b5** (2026-07-27): feat(gallery): wire up 'Add to Album' bulk action (#142) (#146, squash-merged)
+- **a6e90b5** (2026-07-27): fix(routing): NextAuth API routes shadowed by backend rewrite (P0) (#145, squash-merged)
+- **591c99e** (2026-07-27): security: upgrade next-auth and next to patch critical Auth.js CVEs (#141) (#143, squash-merged)
 - **b319b05** (2026-07-26): docs: confirm Postgres partitioning Phase 7 rollout (Issue #66) is complete (#130, squash-merged)
 - **11266ce** (2026-07-26): feat(observability): fix distributed tracing to route through Sentry (#129, squash-merged)
 - **ebc0347** (2026-07-26): feat(csp): split style-src into style-src-elem (nonce) + style-src-attr (permissive) (#128, squash-merged)
@@ -565,17 +603,23 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
 
 ### Active Branch
 - **Branch**: `main`, local in sync with `origin/main`.
-- **HEAD**: `cca5c04` (PR #122, on top of `36ecb13` for PR #121, `e64108c` for PR #120, `3aa7fe2`
-  for PR #119, and `38dc6bc`/`547f452` for the two docs PRs before them) as of 2026-07-16.
-- **Status**: A second same-day 2026-07-16 session merged four more PRs: **PR #119**/**PR #120**
-  (frontend `src/lib` test coverage — `auth.ts`/`performance.ts`/`offline-storage.ts`/`prisma.ts`,
-  now 100% lines/functions), **PR #121** (removed a redundant/broken CLI deploy job from `Deploy
-  Frontend`; production was never actually affected — Vercel's native GitHub integration deploys
-  independently), and **PR #122** (backend `verification.py`/`moderation.py` endpoint test coverage,
-  closing the last item the PR #116 session had flagged open). All four branches deleted (local +
-  origin). See items 31-35 above for full detail.
+- **HEAD**: `3a9c0b5` (PR #146, on top of `a6e90b5` for PR #145, `591c99e` for PR #143) as of
+  2026-07-27.
+- **Status**: 2026-07-27 session merged three PRs closing three same-session-filed issues: **PR #143**
+  (next-auth/next critical CVE patch, Issue #141), **PR #145** (P0 production fix — NextAuth routes
+  shadowed by a backend rewrite, Issue #144), **PR #146** (gallery "Add to Album" wired up, Issue
+  #142). Zero open issues, zero open PRs, `main`-only branch state, all CI green. See item 41 above
+  and `session-context.md`'s "Latest Session" entry for full detail.
 
 ### Next Priorities
+
+**Updated 2026-07-27**: all numbered items below (0-17) predate and were resolved by sessions before
+this one (Issues #132-#136 filed 2026-07-26, closed via PRs #133/#139, #134/#140, and others visible
+in `git log` — e.g. `f72a1c7`/`#139` closed #133, `8c2da9d`/`#140` closed #134). This session's own
+discovery sweep independently re-confirmed the query-param validation gap (the old item 8/#133
+concern) is fully closed — no remaining gap found. As of this session's close: **zero open issues,
+zero open PRs**, nothing carried forward. The numbered list below is kept for historical reference
+only; do not treat any item in it as currently open without checking `gh issue list` first.
 0. **Tracked as Issue #132.** `GET /api/moderation/stats`'s `resolved_today` field filters
    `ContentReport.created_at`, not an actual resolution timestamp (no `resolved_at`/`reviewed_at`
    column exists), so a report created yesterday and genuinely resolved today via `POST /resolve`

@@ -24,6 +24,7 @@ class User(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     name: Mapped[Optional[str]] = mapped_column(String(255))
+    username: Mapped[Optional[str]] = mapped_column(String(30), unique=True, index=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True)
     email_verified: Mapped[Optional[datetime]] = mapped_column(DateTime)
     image: Mapped[Optional[str]] = mapped_column(String(1024))

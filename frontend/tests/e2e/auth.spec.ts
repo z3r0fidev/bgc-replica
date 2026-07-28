@@ -16,8 +16,11 @@ test.describe("Authentication", () => {
   test("register page loads correctly", async ({ page }) => {
     await page.goto("/register");
 
-    // Check registration form elements
-    await expect(page.getByLabel(/name/i)).toBeVisible();
+    // Check registration form elements. "Name" is matched with an anchored
+    // regex since "Username" also contains "name" and would otherwise match
+    // both labels (a strict-mode violation for getByLabel).
+    await expect(page.getByLabel(/^name$/i)).toBeVisible();
+    await expect(page.getByLabel(/username/i)).toBeVisible();
     await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByLabel(/password/i)).toBeVisible();
     await expect(

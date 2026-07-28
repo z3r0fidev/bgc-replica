@@ -2,6 +2,140 @@
 
 ---
 
+## Session: 2026-07-27 — next-auth/next CVE Patch (PR #143), P0 Production Auth Outage Fix (PR #145), Gallery Add-to-Album (PR #146)
+
+### Session Information
+- **Date**: 2026-07-27
+- **Duration**: Three merged PRs, including an unplanned P0 production incident found and fixed
+  mid-session
+- **Branch**: `main` (reviewed from `security/next-auth-critical-cve-141`,
+  `fix/nextauth-rewrite-shadowing-144`, `feat/gallery-add-to-album-142`)
+- **PRs Merged**: #143 (`591c99e`, squash), #145 (`a6e90b5`, squash), #146 (`3a9c0b5`, squash)
+- **Issues Opened and Closed (same session)**: #141, #144, #142
+- **HEAD after session**: `3a9c0b5`
+- **Focus**: Fresh discovery sweep → dependency-CVE patch → an unplanned P0 production auth outage
+  found while verifying the patch → a previously-lower-priority frontend gallery stub
+
+### High-Level Summary
+
+Picked up from the 2026-07-26 close-out's zero-open-issues/zero-open-PRs baseline. A fresh discovery
+sweep (backend `ruff check`, frontend `eslint`/`tsc`, `npm audit --omit=dev`, `pip-audit`, TODO/FIXME
+grep, and a manual re-audit of query-param validation coverage that turned out to be a false lead —
+already fully covered) surfaced two real findings, filed as Issues #141 (next-auth/next critical CVEs,
+P1) and #142 (gallery "Add to Album" dead stub, P3).
+
+**PR #143** (Issue #141) patched `next-auth` `5.0.0-beta.30` → `beta.32` (2 critical + 1 high + 1
+moderate live Auth.js CVEs: auth fail-open on config errors, homoglyph-email uniqueness bypass,
+uncaught exception on malformed Bearer headers, OAuth state/nonce/PKCE cookies not bound to their
+provider) and `next` `16.1.0` → `16.2.12` (high-severity request-smuggling-in-rewrites CVE, non-major
+bump), plus `@auth/prisma-adapter` → `2.11.3`. CI then failed on `npm ci`'s postinstall step: `npm
+audit fix` had bumped the `prisma` CLI to `7.9.1` (a real DoS-class CVE fix) but left `@prisma/client`
+at `7.2.0` — a version-skew landmine where the newer CLI's `prisma generate` expects a client layout
+the older `@prisma/client` package doesn't provide. Fixed by bumping `@prisma/client`/
+`@prisma/adapter-pg` to `7.9.1` to match and regenerating the client; re-verified with a clean `npm ci`
+in a scratch dir matching CI exactly, plus full tsc/test/build. All CI green, merged. **Issue #141
+closed.**
+
+**P0 production incident (Issue #144), discovered mid-verification, not part of the original
+backlog**: while smoke-testing #141's fix, found `/api/auth/providers` returning a genuine 404 both
+locally and live in production (`curl https://www.bgclive.online/api/auth/providers`). Root cause:
+`next.config.ts`'s `/api/:path*` → backend rewrite was a plain array — Next.js's implicit
+**"afterFiles"** phase, resolved *before* dynamic routes — so every request to the dynamic
+`[...nextauth]` catch-all was shadowed and proxied to the backend instead of reaching NextAuth. Google
+OAuth and Passkey sign-in were completely broken in production for an unknown duration; email/password
+login was unaffected (posts directly to the backend), presumably why this went unnoticed. **PR #145**
+fixed the phasing (switched to the **`fallback`** phase) and added `tests/e2e/nextauth-routing.spec.ts`
+as a real, unmocked response-status regression guard — the pre-existing `auth-google.spec.ts`/
+`auth-passkey.spec.ts` had only ever asserted a request was *made*, never inspecting the response,
+which is exactly why they'd passed throughout this bug's entire lifetime. A second root cause then
+surfaced only against the live Vercel preview: `vercel.json` had its own duplicate, unphased copy of
+the same rewrite, still shadowing the route at Vercel's actual routing layer regardless of
+`next.config.ts`'s phase — confirmed via the Vercel MCP tools (`get_deployment`,
+`get_deployment_build_logs`) and downloaded Playwright trace.zip artifacts, not assumed. Fixed by
+removing `vercel.json`'s rewrite entirely. The routing fix then correctly broke two pre-existing
+`auth-passkey.spec.ts` assertions that had encoded the *old broken* behavior (asserting a landing on
+`/login`/`/api/auth/error`); fixed both to accept NextAuth's real, graceful `/api/auth/signin` outcome
+for an unrecognized provider ("passkey" was never actually configured). All CI green including all 4
+live-preview Playwright shards, merged. **Issue #144 closed.** Verified live in production afterward.
+
+**PR #146** (Issue #142) wired up `gallery/page.tsx`'s bulk "Add to Album" button, previously a
+`toast.info("Add to album coming soon")` stub despite the backend having full album support since
+Spec 010. New `frontend/src/components/gallery/AddToAlbumDialog.tsx` (lists albums, adds media,
+handles loading/empty/error/already-in-album states, "New Album" quick-create flow), 9 new unit tests,
+1 stale test replaced. Manual browser verification hit a sandbox limitation, not an app bug — the MCP
+browser tool can't resolve `localhost` to the host machine, and this app's CSP
+`upgrade-insecure-requests` directive exempts `localhost` but not a raw IP, breaking every JS chunk
+with `ERR_SSL_PROTOCOL_ERROR`. Worked around by verifying the exact request/response contract directly
+via `curl` against the real local backend; disclosed both this and the Vercel-preview-SSO-wall
+limitation transparently in the PR description. All CI green, merged. **Issue #142 closed.**
+
+### Files Modified/Created
+
+| File | Change |
+|------|--------|
+| `frontend/package.json`, `frontend/package-lock.json` | Modified (PR #143) — `next-auth`, `next`, `@auth/prisma-adapter`, `@prisma/client`, `@prisma/adapter-pg`, `prisma` version bumps |
+| `frontend/next.config.ts` | Modified (PR #145) — `/api/:path*` rewrite moved from implicit `afterFiles` to explicit `fallback` phase |
+| `frontend/vercel.json` | Modified (PR #145) — removed duplicate, unphased `/api/:path*` rewrite |
+| `frontend/tests/e2e/nextauth-routing.spec.ts` | New (PR #145) — real response-status regression guard |
+| `frontend/tests/e2e/auth-passkey.spec.ts` | Modified (PR #145) — fixed two assertions that had encoded pre-fix broken behavior |
+| `frontend/src/components/gallery/AddToAlbumDialog.tsx` | New (PR #146) |
+| `frontend/src/app/(protected)/gallery/page.tsx` | Modified (PR #146) — stub replaced with real dialog |
+| `frontend/tests/unit/gallery-add-to-album-dialog.test.tsx` | New (PR #146), 9 tests |
+| `frontend/tests/unit/app-gallery-page.test.tsx` | Modified (PR #146) — stale "coming soon" test replaced |
+| `session-context.md`, `project-context.md`, `conversation-context.md`, `session-summary.md` | This session's doc-close update |
+
+### Key Decisions and Rationale
+
+1. **Fix the `@prisma/client`/`prisma` CLI version skew rather than revert the CLI's CVE fix**:
+   `npm audit fix`'s partial bump left a broken pairing; matching versions and regenerating was the
+   correct fix, not reverting security work.
+2. **Treat the production auth outage as P0 and interrupt the planned backlog order**: a live,
+   silent production outage on real user-facing OAuth/Passkey login outranks a pre-planned P3 gallery
+   stub, regardless of original filing order.
+3. **Use the `fallback` rewrite phase, not `afterFiles`, for generic backend-proxy rewrites**: the
+   `fallback` phase is checked only after Next's own routes (static and dynamic) fail to match — the
+   correct semantics for "proxy anything my app itself doesn't handle."
+4. **Remove `vercel.json`'s duplicate rewrite rather than rely on documented precedence**: empirical
+   evidence via a live preview deployment showed `next.config.ts`'s precedence claim didn't hold here;
+   deleting the duplicate removes the ambiguity entirely rather than depending on undocumented
+   platform behavior.
+5. **Disclose manual-verification limitations rather than claim full visual verification**: the
+   `localhost`/CSP browser-tool sandbox issue and the Vercel deployment-protection SSO wall were both
+   stated plainly in PR #146's description; the request/response contract was verified via `curl`
+   instead as the closest available substitute.
+
+### Outstanding Tasks / Follow-Up Items
+
+None identified this session. Full verification pass found zero open issues, zero open PRs, and no
+other unchecked items across any `specs/*/tasks.md`.
+
+### Blockers / Challenges
+
+None left unresolved. Two real CI failures were hit and fixed within the same session each: PR #143's
+`prisma`/`@prisma/client` version-skew postinstall failure, and PR #145's two-stage root cause
+(rewrite phasing, then the `vercel.json` duplicate) plus the two pre-existing `auth-passkey.spec.ts`
+assertions that needed correcting once the real bug was fixed.
+
+### Session Statistics
+
+- **PRs merged this session**: 3 (#143, #145, #146)
+- **Issues opened and closed this session**: 3 (#141, #144, #142)
+- **New files**: `frontend/src/components/gallery/AddToAlbumDialog.tsx`,
+  `frontend/tests/e2e/nextauth-routing.spec.ts`,
+  `frontend/tests/unit/gallery-add-to-album-dialog.test.tsx`
+- **Real bugs found and fixed**: 2 live Auth.js CVEs plus a Next.js CVE (dependency-level), a
+  `prisma`/`@prisma/client` version-skew CI break, a P0 production outage (Google OAuth + Passkey
+  sign-in completely broken via a two-part rewrite-shadowing bug), 2 stale E2E assertions encoding
+  pre-fix broken behavior, 1 dead frontend stub (gallery "Add to Album")
+- **Context files updated**: 4 (`session-context.md`, `project-context.md`,
+  `conversation-context.md`, `session-summary.md`)
+- **Obsidian vault**: updated — `Roadmap.md` (session entry), `Security Auditor - Vulnerability
+  Assessment.md` (CVE patch writeup), `Authentication/Auth-Implementation.md` (production incident
+  writeup)
+- **Final repo state**: zero open issues, zero open PRs, `main`-only branch state, all CI green
+
+---
+
 ## Session: 2026-07-26 — CSP Phase 2 (PR #128), Distributed Tracing via Sentry (PR #129), Spec 015 Phase 7 Verification (PR #130), Full Repo Cleanup
 
 ### Session Information

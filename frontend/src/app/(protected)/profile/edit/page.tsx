@@ -37,6 +37,7 @@ import { LifestyleTab } from "@/components/profile/edit/tabs/LifestyleTab";
 import { ProfessionalTab } from "@/components/profile/edit/tabs/ProfessionalTab";
 import { SocialLinksTab } from "@/components/profile/edit/tabs/SocialLinksTab";
 import { ProfileCompletionMeter } from "@/components/profile/ProfileCompletionMeter";
+import { UsernameCard } from "@/components/profile/UsernameCard";
 import { profileService } from "@/services/profileService";
 import { profileUpdateSchema } from "@/lib/validations/profile";
 import { Profile, PrivacyLevel, PrivacySettings, CompletionTip } from "@/types/profile";
@@ -261,6 +262,8 @@ export default function ProfileEditPage() {
           onSuggestionClick={handleSuggestionClick}
         />
       )}
+
+      <UsernameCard />
 
       <Card className="mt-6">
         <CardHeader>

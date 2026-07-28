@@ -16,6 +16,13 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+// Fires its own independent /api/auth/me fetch; separately unit-tested in
+// profile-username-card.test.tsx. Stub it so it doesn't consume this file's
+// mocked global.fetch queue meant for the profile-form flow.
+vi.mock("../../src/components/profile/UsernameCard", () => ({
+  UsernameCard: () => <div data-testid="username-card">username-card</div>,
+}));
+
 // These tab components are separately unit-tested elsewhere; stub them so this
 // suite can focus on the edit page's own state machine (fetch/reset/submit/
 // tab switching), not their internals.

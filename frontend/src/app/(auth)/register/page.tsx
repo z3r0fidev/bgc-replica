@@ -21,6 +21,11 @@ import { toast } from "sonner"
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  username: z
+    .string()
+    .regex(/^[a-zA-Z][a-zA-Z0-9_]{2,29}$/, {
+      message: "3-30 characters, must start with a letter, letters/numbers/underscores only.",
+    }),
   email: z.string().email({ message: "Invalid email address." }),
   password: z
     .string()
@@ -39,6 +44,7 @@ export default function RegisterPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      username: "",
       email: "",
       password: "",
     },
@@ -88,6 +94,19 @@ export default function RegisterPage() {
                     <FormLabel>Name</FormLabel>
                     <FormControl>
                       <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="johndoe" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

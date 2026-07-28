@@ -1,11 +1,15 @@
 import socketio
 from jose import jwt, JWTError
+from sqlalchemy import select
 from app.core.config import settings
 from app.services.chat import chat_service
 from app.services.presence import presence_service
 from app.services.block_service import block_service
+from app.services.notification_prefs import should_send_email
+from app.services.tasks import send_new_message_email_task
 from app.core.database import SessionLocal
 from app.core.redis_config import get_redis
+from app.models.user import User
 import uuid
 from datetime import datetime
 
@@ -237,6 +241,24 @@ async def send_dm(sid, data):
 
         await sio.emit("new_dm", msg_data, room=str(recipient_id))
         await sio.emit("new_dm", msg_data, room=str(sender_id))
+
+        # Notify the recipient by email if they're not connected right now -
+        # only DMs get this (not room messages, which have no single
+        # "recipient" and would just be spam).
+        if not await presence_service.is_user_online(recipient_id):
+            recipient_result = await db.execute(
+                select(User).where(User.id == recipient_id)
+            )
+            recipient = recipient_result.scalars().first()
+            if recipient and should_send_email(recipient, "email_messages"):
+                sender_result = await db.execute(select(User).where(User.id == sender_id))
+                sender = sender_result.scalars().first()
+                send_new_message_email_task.delay(
+                    to_email=recipient.email,
+                    sender_name=(sender.name if sender else None) or "Someone",
+                    message_preview=content,
+                    to_user_name=recipient.name,
+                )
 
 
 @sio.event

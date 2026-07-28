@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
@@ -239,3 +240,108 @@ class TestCreatePost:
         )
 
         assert response.status_code == 401
+
+
+class TestCreatePostMentions:
+    @pytest.mark.asyncio
+    async def test_mentioning_a_user_queues_an_email(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        author = await _make_user(db_session, username="theauthor")
+        mentioned = await _make_user(db_session, username="mentioned_one")
+        category = await _make_category(db_session)
+        thread = await _make_thread(db_session, category, author, title="A great thread")
+
+        with patch("app.api.forums.send_mention_email_task") as mock_task:
+            response = await client.post(
+                "/api/forums/posts",
+                json={"thread_id": str(thread.id), "content": "hey @mentioned_one check this"},
+                headers=_headers_for(author.id),
+            )
+
+        assert response.status_code == 200
+        mock_task.delay.assert_called_once_with(
+            to_email=mentioned.email,
+            mentioner_name=author.name or "Someone",
+            thread_title="A great thread",
+            content_preview="hey @mentioned_one check this",
+            thread_id=str(thread.id),
+            to_user_name=mentioned.name,
+        )
+
+    @pytest.mark.asyncio
+    async def test_mentioning_yourself_does_not_email_yourself(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        author = await _make_user(db_session, username="selfmentioner")
+        category = await _make_category(db_session)
+        thread = await _make_thread(db_session, category, author)
+
+        with patch("app.api.forums.send_mention_email_task") as mock_task:
+            response = await client.post(
+                "/api/forums/posts",
+                json={"thread_id": str(thread.id), "content": "note to @selfmentioner"},
+                headers=_headers_for(author.id),
+            )
+
+        assert response.status_code == 200
+        mock_task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_mentioned_user_with_email_mentions_disabled_is_not_emailed(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        author = await _make_user(db_session, username="poster")
+        await _make_user(
+            db_session,
+            username="quietuser",
+            notification_preferences={"email_mentions": False},
+        )
+        category = await _make_category(db_session)
+        thread = await _make_thread(db_session, category, author)
+
+        with patch("app.api.forums.send_mention_email_task") as mock_task:
+            response = await client.post(
+                "/api/forums/posts",
+                json={"thread_id": str(thread.id), "content": "hi @quietuser"},
+                headers=_headers_for(author.id),
+            )
+
+        assert response.status_code == 200
+        mock_task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_mentioning_a_nonexistent_username_is_a_noop(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        author = await _make_user(db_session, username="lonelyposter")
+        category = await _make_category(db_session)
+        thread = await _make_thread(db_session, category, author)
+
+        with patch("app.api.forums.send_mention_email_task") as mock_task:
+            response = await client.post(
+                "/api/forums/posts",
+                json={"thread_id": str(thread.id), "content": "hi @nobodywiththisname"},
+                headers=_headers_for(author.id),
+            )
+
+        assert response.status_code == 200
+        mock_task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_post_with_no_mentions_does_not_queue_email(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        author = await _make_user(db_session, username="plainposter")
+        category = await _make_category(db_session)
+        thread = await _make_thread(db_session, category, author)
+
+        with patch("app.api.forums.send_mention_email_task") as mock_task:
+            response = await client.post(
+                "/api/forums/posts",
+                json={"thread_id": str(thread.id), "content": "just a normal reply"},
+                headers=_headers_for(author.id),
+            )
+
+        assert response.status_code == 200
+        mock_task.delay.assert_not_called()

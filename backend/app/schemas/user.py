@@ -4,10 +4,24 @@ import uuid
 import re
 
 
+_USERNAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{2,29}$")
+
+
+def validate_username(username: str) -> str:
+    """Validate username format: starts with a letter, 3-30 chars, alphanumeric/underscore only."""
+    if not _USERNAME_RE.match(username):
+        raise ValueError(
+            "Username must be 3-30 characters, start with a letter, and contain "
+            "only letters, numbers, and underscores"
+        )
+    return username.lower()
+
+
 class UserBase(BaseModel):
     model_config = {"from_attributes": True}
 
     email: Optional[EmailStr] = None
+    username: Optional[str] = None
     name: Optional[str] = None
     image: Optional[str] = None
 
@@ -29,7 +43,13 @@ def validate_password_strength(password: str) -> str:
 
 class UserCreate(UserBase):
     email: EmailStr
+    username: str
     password: str = Field(min_length=12)
+
+    @field_validator("username")
+    @classmethod
+    def username_format(cls, v: str) -> str:
+        return validate_username(v)
 
     @field_validator("password")
     @classmethod
@@ -46,6 +66,15 @@ class UserUpdate(UserBase):
         if v is not None:
             return validate_password_strength(v)
         return v
+
+
+class UsernameUpdate(BaseModel):
+    username: str
+
+    @field_validator("username")
+    @classmethod
+    def username_format(cls, v: str) -> str:
+        return validate_username(v)
 
 
 class UserInDB(UserBase):
