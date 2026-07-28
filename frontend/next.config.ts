@@ -59,20 +59,40 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   async rewrites() {
-    // Mirrors vercel.json's rewrite (same source, same env var) so both
-    // mechanisms agree regardless of which one actually handles a given
-    // request on Vercel. This was previously hardcoded to
-    // http://127.0.0.1:8000 unconditionally - correct for local `next dev`,
-    // but unreachable from Vercel's infrastructure in any deployed
-    // environment, and a real source of divergence from vercel.json's
-    // rewrite for requests that don't go through Vercel's edge rewrite.
+    // This was previously hardcoded to http://127.0.0.1:8000 unconditionally
+    // - correct for local `next dev`, but unreachable from Vercel's
+    // infrastructure in any deployed environment.
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiUrl}/api/:path*`,
-      },
-    ];
+    // `fallback`, not a plain array (Issue #144). A plain-array return is
+    // Next's implicit "afterFiles" phase, which is checked before dynamic
+    // routes are resolved - that shadowed this app's own dynamic API routes
+    // (src/app/api/auth/[...nextauth]/route.ts) behind this catch-all,
+    // sending NextAuth's own /api/auth/* traffic to the backend (which has
+    // no such routes) and 404ing Google OAuth/Passkey sign-in in
+    // production. `fallback` rewrites only run after Next has tried and
+    // failed to resolve the request against its own routes (static AND
+    // dynamic), so real app routes now win and only genuinely
+    // backend-owned /api/* paths get proxied.
+    //
+    // vercel.json used to carry an identical rewrite "so both mechanisms
+    // agree regardless of which one actually handles a given request on
+    // Vercel" - that hedge turned out to be load-bearing in the wrong
+    // direction: a live Vercel preview deployment of this exact fix still
+    // 404'd on /api/auth/providers even though the build output confirmed
+    // the [...nextauth] route compiled correctly, meaning vercel.json's
+    // flat (equivalent-to-afterFiles) rewrite was still shadowing it on
+    // Vercel's actual routing layer regardless of this file's `fallback`
+    // phase. Removed vercel.json's copy so this is the single source of
+    // truth for the /api/* proxy - see vercel.json's git history and the
+    // Issue #144 PR for the full investigation.
+    return {
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: `${apiUrl}/api/:path*`,
+        },
+      ],
+    };
   },
   async headers() {
     // Content-Security-Policy and Content-Security-Policy-Report-Only are

@@ -375,9 +375,17 @@ test.describe('Passkey Authentication', () => {
     });
 
     test('should handle passkey login attempt gracefully', async ({ page }) => {
-      // Note: Currently the passkey provider is not fully configured in NextAuth,
-      // so clicking the button triggers NextAuth's built-in error handling.
-      // This test verifies the UI handles the click without crashing.
+      // Note: "passkey" isn't a provider ID next-auth/src/lib/auth.ts actually
+      // configures (only Google and Credentials are) - signIn("passkey", ...)
+      // is calling NextAuth with an unrecognized provider. Before Issue #144's
+      // fix, next.config.ts's rewrite shadowed NextAuth's own /api/auth/*
+      // routes entirely, so this click's fetch to those routes 404'd and
+      // next-auth's client bailed out, leaving the URL at /login (or, once,
+      // /api/auth/error) - this test's old assertion encoded that broken
+      // state, not real NextAuth behavior. With the routing fix, the click
+      // correctly reaches NextAuth's own generic sign-in page
+      // (/api/auth/signin) for the unrecognized provider, which is standard
+      // next-auth behavior, not an error state.
       await injectWebAuthnMocks(page, {
         shouldSucceed: false,
         errorType: 'NotAllowedError'
@@ -391,10 +399,11 @@ test.describe('Passkey Authentication', () => {
       // Wait for navigation/error handling
       await page.waitForTimeout(2000);
 
-      // Should navigate to error page or show error (NextAuth behavior when provider not configured)
-      // The key assertion is that the app doesn't crash
+      // The key assertion is that the app doesn't crash - any of these three
+      // destinations (stayed on /login, NextAuth's own signin page for the
+      // unrecognized provider, or NextAuth's error page) are graceful.
       const currentUrl = page.url();
-      expect(currentUrl).toMatch(/\/(login|api\/auth\/error)/);
+      expect(currentUrl).toMatch(/\/(login|api\/auth\/signin|api\/auth\/error)/);
     });
 
     test('should show passkey button even without WebAuthn support', async ({ page }) => {
@@ -424,9 +433,11 @@ test.describe('Passkey Authentication', () => {
       // Wait for any error handling
       await page.waitForTimeout(2000);
 
-      // App should still be functional (either on login or error page)
+      // App should still be functional. See the previous test for why
+      // /api/auth/signin is a valid destination too, not just /login or
+      // /api/auth/error.
       const currentUrl = page.url();
-      expect(currentUrl).toMatch(/\/(login|api\/auth\/error)/);
+      expect(currentUrl).toMatch(/\/(login|api\/auth\/signin|api\/auth\/error)/);
     });
   });
 
