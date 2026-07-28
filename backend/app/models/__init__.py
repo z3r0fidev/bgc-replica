@@ -12,6 +12,7 @@ from app.models.community import (
 from app.models.chat import ChatRoom, Conversation, Message
 from app.models.gallery import GalleryMedia, Album, AlbumMedia
 from app.models.moderation import Warning
+from app.models.email_event import EmailEvent
 
 __all__ = [
     "User",
@@ -34,4 +35,5 @@ __all__ = [
     "Album",
     "AlbumMedia",
     "Warning",
+    "EmailEvent",
 ]

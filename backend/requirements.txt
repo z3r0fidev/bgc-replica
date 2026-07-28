@@ -28,5 +28,6 @@ bleach
 celery
 sentry-sdk[fastapi]
 resend
+svix
 pyotp
 qrcode[pil]
