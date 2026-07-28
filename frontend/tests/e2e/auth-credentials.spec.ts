@@ -26,6 +26,7 @@ test.describe('Credentials Auth', () => {
 
     // Use name-based selectors for better stability
     const nameInput = page.locator('input[name="name"]');
+    const usernameInput = page.locator('input[name="username"]');
     const emailInput = page.locator('input[name="email"]');
     const passwordInput = page.locator('input[name="password"]');
 
@@ -37,6 +38,10 @@ test.describe('Credentials Auth', () => {
     await page.waitForTimeout(50);
     await nameInput.fill('Test User');
 
+    await usernameInput.click();
+    await page.waitForTimeout(50);
+    await usernameInput.fill('testuser');
+
     await emailInput.click();
     await page.waitForTimeout(50);
     await emailInput.fill('test-register@example.com');
@@ -47,6 +52,7 @@ test.describe('Credentials Auth', () => {
 
     // Ensure all values are set before clicking
     await expect(nameInput).toHaveValue('Test User');
+    await expect(usernameInput).toHaveValue('testuser');
     await expect(emailInput).toHaveValue('test-register@example.com');
     await expect(passwordInput).toHaveValue('Password123!');
 
@@ -159,6 +165,7 @@ test.describe('Credentials Auth', () => {
     await page.waitForLoadState('domcontentloaded');
 
     const nameInput = page.locator('input[name="name"]');
+    const usernameInput = page.locator('input[name="username"]');
     const emailInput = page.locator('input[name="email"]');
     const passwordInput = page.locator('input[name="password"]');
 
@@ -169,6 +176,10 @@ test.describe('Credentials Auth', () => {
     await nameInput.click();
     await page.waitForTimeout(50);
     await nameInput.fill('Test User');
+
+    await usernameInput.click();
+    await page.waitForTimeout(50);
+    await usernameInput.fill('existinguser');
 
     await emailInput.click();
     await page.waitForTimeout(50);
