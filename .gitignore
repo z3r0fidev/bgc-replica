@@ -46,6 +46,12 @@ sentry-wizard.exe
 # env files (can opt-in for committing if needed)
 .env*
 .env.sentry-build-plugin
+# ...except template/example files (placeholder values only, no real
+# secrets) - these document required env vars for setup/deployment and are
+# meant to be committed. Matches backend/.env.production.example,
+# frontend/.env.production.example, bgc-personals/backend/.env.example,
+# bgc-personals/frontend/.env.local.example.
+!.env*.example
 
 # vercel
 .vercel
