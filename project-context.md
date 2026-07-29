@@ -671,12 +671,11 @@ discovery sweep independently re-confirmed the query-param validation gap (the o
 concern) is fully closed — no remaining gap found. As of this session's close: **zero open issues,
 zero open PRs**, nothing carried forward. The numbered list below is kept for historical reference
 only; do not treat any item in it as currently open without checking `gh issue list` first.
-0. **Tracked as Issue #132.** `GET /api/moderation/stats`'s `resolved_today` field filters
-   `ContentReport.created_at`, not an actual resolution timestamp (no `resolved_at`/`reviewed_at`
-   column exists), so a report created yesterday and genuinely resolved today via `POST /resolve`
-   is not counted. Needs either a schema change (add `resolved_at`) or a docs/UI fix acknowledging
-   the narrower meaning. Demonstrated by
-   `tests/test_moderation_api.py::TestGetModerationStats::test_resolved_today_counts_by_created_at_not_actual_resolution_time`.
+0. ~~**Tracked as Issue #132.** `GET /api/moderation/stats`'s `resolved_today` field filters
+   `ContentReport.created_at`, not an actual resolution timestamp~~ — **fixed, commit `5f67012`
+   (PR #138, closes #132)**. Added a real `resolved_at` column to `ContentReport`
+   (`app/models/community.py:212`), set on resolution; `resolved_today` now filters on
+   `ContentReport.resolved_at`. Verified directly in code as of 2026-07-28.
 1. ~~**deploy PR #115 to production**~~ — **confirmed deployed 2026-07-16**. `Deploy Backend`'s
    auto-deploy job (triggered by the PR #115/#116 merges touching `backend/**`) succeeded per
    GitHub Actions run history, and a direct read-only production query confirmed
@@ -902,12 +901,11 @@ only; do not treat any item in it as currently open without checking `gh issue l
 5. **Schema Coverage**:
    - Any new write schemas must inherit `SafeBaseModel` from `backend/app/schemas/base.py`
    - Any new endpoints writing `Dict` fields to JSONB must add inline key/value validation
-   - NUL-byte/surrogate query-param validation gap: `chat.py` (`category`), `admin.py`
-     (`query`/`action`), `groups.py` (`query`), `moderation.py` (`status_filter`/`content_type`)
-     likely have the same bug fixed in `search.py` this session — query params bypass
-     `SafeBaseModel` unless explicitly validated. Needs a dedicated audit pass. **Not addressed by
-     the 2026-07-13/14 coverage initiative or PR #116 (2026-07-16)** — that work added tests for
-     existing behavior, not a validation audit; still open as of 2026-07-16.
+   - ~~NUL-byte/surrogate query-param validation gap~~ — **fixed, commit `7a13d86` (PR #58)**. Added
+     a shared `validate_query_params()` helper (`app/core/validation.py`, checks NUL bytes + lone
+     surrogates, raises 422) and wired it into `chat.py` (`category`, `cursor`), `admin.py` (`query`,
+     `sort_by`/`sort_order`, `status`, `action`), `groups.py` (`query`), and `moderation.py`
+     (`status_filter`, `content_type`). Verified directly in code as of 2026-07-28.
    - E2E tests run against the same production Railway/Supabase backend real users hit — flagged
      twice now (this session's production-DB-never-migrated incident is the strongest argument yet
      for a dedicated non-production E2E environment)
