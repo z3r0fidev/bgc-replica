@@ -16,11 +16,11 @@ export function ThreadRow({ thread }: ThreadRowProps) {
       {/* Status Icon */}
       <div className="w-6 h-6 flex-shrink-0 relative opacity-60 group-hover:opacity-100 transition-opacity">
         {thread.is_sticky ? (
-          <Image src="/assets/forums/icons/sticky.svg" alt="Sticky" fill />
+          <Image src="/assets/forums/icons/sticky.svg" alt="Sticky" width={24} height={24} />
         ) : isHot ? (
-          <Image src="/assets/forums/icons/hot.svg" alt="Hot" fill />
+          <Image src="/assets/forums/icons/hot.svg" alt="Hot" width={24} height={24} />
         ) : (
-          <Image src="/assets/forums/icons/unread.svg" alt="Unread" fill />
+          <Image src="/assets/forums/icons/unread.svg" alt="Unread" width={24} height={24} />
         )}
       </div>
 

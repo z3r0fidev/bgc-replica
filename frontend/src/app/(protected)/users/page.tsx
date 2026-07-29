@@ -391,8 +391,9 @@ export default function SearchPage() {
                         src={profile.user?.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
                         alt={profile.user?.name || "Avatar"}
                         fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                        unoptimized
+                        {...(index < 3 ? { priority: true } : {})}
                       />
                       {/* Gradient overlay on hover */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

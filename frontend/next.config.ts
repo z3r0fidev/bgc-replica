@@ -28,9 +28,9 @@ const nextConfig: NextConfig = {
     optimizeCss: true,
     optimizePackageImports: [
       'lucide-react',
-      '@radix-ui/react-icons',
-      'date-fns',
-      'lodash',
+      'radix-ui',
+      '@tanstack/react-virtual',
+      'recharts',
     ],
   },
 
@@ -48,6 +48,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
       },
     ],
   },

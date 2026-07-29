@@ -103,6 +103,7 @@ function SortableItem({
         src={item.thumbnail_url || item.url}
         alt={item.filename || "Gallery item"}
         fill
+        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw"
         className="object-cover transition-transform group-hover:scale-105"
         draggable={false}
       />
@@ -146,6 +147,7 @@ function MediaItemOverlay({ item }: { item: GalleryMedia }) {
         src={item.thumbnail_url || item.url}
         alt={item.filename || "Gallery item"}
         fill
+        sizes="150px"
         className="object-cover"
       />
       {item.type === "VIDEO" && (

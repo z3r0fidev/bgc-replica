@@ -63,8 +63,9 @@ export default function PublicProfilePage() {
             src={(!imgError && profile.user?.image) ? profile.user.image : `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}&gender=male`}
             alt={profile.user?.name || "User"}
             fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            priority
             className="object-cover"
-            unoptimized
             onError={() => setImgError(true)}
           />
         </div>

@@ -206,6 +206,7 @@ export function GalleryGrid({
                       src={item.thumbnail_url || item.url}
                       alt={item.filename || "Gallery item"}
                       fill
+                      sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                       className="object-cover transition-transform group-hover:scale-105"
                     />
 
