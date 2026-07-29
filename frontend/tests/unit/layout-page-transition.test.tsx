@@ -1,26 +1,16 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { PageTransition } from "../../src/components/layout/PageTransition";
 
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
-      <div data-testid="motion-div" {...props}>
-        {children}
-      </div>
-    ),
-  },
-}));
-
 describe("PageTransition", () => {
-  it("renders its children through the motion.div wrapper", () => {
+  it("renders its children through a CSS-animated wrapper", () => {
     render(
       <PageTransition>
         <p>Page content</p>
       </PageTransition>
     );
     expect(screen.getByText("Page content")).toBeDefined();
-    expect(screen.getByTestId("motion-div")).toBeDefined();
+    expect(screen.getByText("Page content").parentElement).toHaveClass("animate-in");
   });
 
   it("renders multiple children", () => {

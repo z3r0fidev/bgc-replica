@@ -42,6 +42,7 @@ export function ForumHeader() {
             src={activeCategory.banner_path}
             alt={activeCategory.name}
             fill
+            sizes="100vw"
             className="object-cover opacity-40 mix-blend-multiply"
           />
         ) : (

@@ -128,6 +128,7 @@ export function AddToAlbumDialog({
                           src={album.cover_url}
                           alt=""
                           fill
+                          sizes="40px"
                           className="object-cover"
                         />
                       ) : (

@@ -4,7 +4,11 @@ import type { NextRequest } from 'next/server'
 // Shared origin allowlists, kept as single sources of truth so the
 // enforcing and report-only policies below can't drift from each other.
 const IMG_SRC = "'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://*.sentry.io"
-const CONNECT_SRC = "'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.up.railway.app wss://*.up.railway.app https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:"
+// https://vitals.vercel-insights.com is only reached under `next dev`; real
+// Vercel deployments beacon to the same-origin /_vercel/speed-insights/*
+// path instead, already covered by 'self'.
+const CONNECT_SRC_BASE = "'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 https://*.up.railway.app wss://*.up.railway.app https://*.supabase.co wss://*.supabase.co https://*.sentry.io blob:"
+const CONNECT_SRC_DEV_EXTRA = " https://vitals.vercel-insights.com"
 const FRAME_SRC = "'self' https://accounts.google.com"
 
 // Static `<style>` elements that a handful of dependencies inject via JS at
@@ -63,7 +67,6 @@ const STYLE_ELEM_HASHES = [
 const BASE_DIRECTIVES = [
   `img-src ${IMG_SRC}`,
   `font-src 'self' data:`,
-  `connect-src ${CONNECT_SRC}`,
   `frame-src ${FRAME_SRC}`,
   `worker-src 'self' blob:`,
   `object-src 'none'`,
@@ -87,7 +90,13 @@ function buildCsp(nonce: string) {
   // the browser - documented Next.js behavior, not a workaround. Neither
   // React nor Next.js use eval in production.
   const isDev = process.env.NODE_ENV === 'development'
-  const scriptSrc = `'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com${isDev ? " 'unsafe-eval'" : ''}`
+  // @vercel/speed-insights loads via a script its own nonced Next.js chunk
+  // inserts through the DOM, so 'strict-dynamic' propagates trust to it
+  // automatically in production - no extra script-src entry needed there.
+  // It only needs an explicit allowlist entry under `next dev` (not `vercel
+  // dev`), where it falls back to Vercel's external domains instead of the
+  // same-origin /_vercel/speed-insights/* paths used in real deployments.
+  const scriptSrc = `'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com${isDev ? " 'unsafe-eval' https://va.vercel-scripts.com" : ''}`
 
   // style-src is split (Issue #68, Phase 2): style-src-elem is
   // nonce-restricted like script-src, but style-src-attr stays permissive
@@ -98,12 +107,14 @@ function buildCsp(nonce: string) {
   // reasoning and the Report-Only baseline data that shaped this split.
   const styleSrcElem = `style-src-elem 'self' 'nonce-${nonce}' ${STYLE_ELEM_HASHES.join(' ')}`
   const styleSrcAttr = `style-src-attr 'unsafe-inline'`
+  const connectSrc = `connect-src ${CONNECT_SRC_BASE}${isDev ? CONNECT_SRC_DEV_EXTRA : ''}`
 
   const enforced = [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
     styleSrcElem,
     styleSrcAttr,
+    connectSrc,
     ...BASE_DIRECTIVES,
   ].join('; ')
 
@@ -116,6 +127,7 @@ function buildCsp(nonce: string) {
     `script-src ${scriptSrc}`,
     styleSrcElem,
     styleSrcAttr,
+    connectSrc,
     ...BASE_DIRECTIVES,
   ].join('; ')
 
