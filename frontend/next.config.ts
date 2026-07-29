@@ -40,6 +40,15 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1440, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+    // The dicebear avatar fallback (see remotePatterns below) is served as
+    // .../svg - Next's optimizer 400s on SVG sources unless explicitly
+    // allowed. contentSecurityPolicy/contentDispositionType are Next's own
+    // documented mitigation: forces the optimizer's SVG response to render
+    // sandboxed with no script execution and download-only if navigated to
+    // directly, since dicebear's SVGs are untrusted third-party content.
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: 'https',
