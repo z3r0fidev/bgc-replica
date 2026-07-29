@@ -2,6 +2,88 @@
 
 ---
 
+## Session: 2026-07-28 (Final Closure) — `api.bgclive.online` DNS Confirmed Live, Multi-Session Saga Closed
+
+### Session Information
+- **Date**: 2026-07-28 (a third, separate conversation, following the correction session below whose
+  own doc-close landed as PR #152, `0baeedb`)
+- **Duration**: Short, verification-only closure session
+- **Branch**: `main` (reviewed from this session's own doc-close branch)
+- **PRs Merged**: 1, this session's own doc-only PR (number assigned by GitHub at creation time),
+  landed via branch → PR → CI-green → squash-merge, per `main_branch_protected_requires_pr.md`
+- **HEAD before this session**: `0baeedb` (PR #152)
+- **Focus**: close the single item left queued across three consecutive sessions — the
+  `api.bgclive.online` DNS record change at the external provider
+
+### High-Level Summary
+
+This session closes a backlog item that had narrowed steadily across two prior sessions: the
+PR #147-#150 session added the Railway-side custom domain for `api.bgclive.online` but left the DNS
+record change itself queued (outside what's actionable without external DNS-provider access); the
+correction session that followed (PR #151/#152) re-verified that queue and found nothing more to do on
+this specific item beyond waiting for the user to make the external change.
+
+The user confirmed they added the DNS records — a CNAME `api` → `ei00i992.up.railway.app` and a TXT
+verification record `_railway-verify.api` → `railway-verify=e46e98e55ef27fd9ee2fbc569328e1508fb0b2ad5217ca60b13b8a7c3a353970`.
+Rather than accept that at face value, independently verified end-to-end with 4 checks, all passing:
+
+1. `dig +short CNAME api.bgclive.online` → `ei00i992.up.railway.app.`
+2. `dig +short TXT _railway-verify.api.bgclive.online` → exact match on the expected value
+3. `railway domain` (from `backend/`) → `api.bgclive.online` listed as a custom domain, sync status
+   `ACTIVE`
+4. `curl https://api.bgclive.online/health` → `HTTP 200`, live
+
+This closes the entire Resend-webhook/DNS saga that spanned three sessions with no remaining
+"next session" item tied to it. No application code changed this session — a pure doc-close verifying
+and recording the external change, landed the same way as PR #151/#152 (branch → PR → CI green →
+squash-merge, since `main` is GitHub-protected and rejects direct pushes even for doc-only commits).
+
+No new persistent-memory entry was created for the DNS confirmation itself: it was a planned, expected
+external step with an outcome matching exactly what was expected — not a landmine, not a surprising
+discovery, nothing reusable to preserve.
+
+### Files Modified/Created
+
+| File | Change |
+|------|--------|
+| (none — application code) | Pure docs/verification session |
+| `session-context.md`, `project-context.md`, `conversation-context.md`, `session-summary.md` | This session's doc-close update — marks the `api.bgclive.online` DNS item fully resolved, removed from every "queued for next session" list |
+
+### Key Decisions and Rationale
+
+1. **Independently verify the user's confirmation rather than trust it outright**: consistent with
+   this saga's own established "verify before trusting a prior close" pattern from the correction
+   session — 4 concrete checks rather than a single spot-check.
+2. **No new memory entry for the DNS confirmation**: it was a planned, expected step with a
+   non-surprising outcome, not a landmine or reusable lesson.
+3. **Land via branch → PR → merge, never a direct push**: per `main_branch_protected_requires_pr.md`,
+   now standing practice for every change to this repo, including doc-only ones.
+
+### Outstanding Tasks / Follow-Up Items
+
+None tied to the Resend-webhook/`api.bgclive.online` saga — fully closed. Two smaller, unrelated items
+remain queued, unchanged from the prior session:
+- [ ] If `GET /metrics`'s schemathesis case ever fails in real CI (hasn't so far) — pin
+      `schemathesis`/`hypothesis` in `backend/requirements.txt` and re-diagnose.
+- [ ] Consider formalizing the alembic env-var-prefix wrapper script as a checked-in
+      `scripts/test-alembic.sh` or Makefile target rather than an ad hoc scratchpad mitigation.
+
+### Blockers / Challenges
+
+None. The cleanest of the three sessions in this saga — a single confirmed external change, verified,
+documented, and landed.
+
+### Session Statistics
+
+- **PRs merged this session**: 1 (doc-only)
+- **New memory saved**: none (deliberately — see rationale above)
+- **Context files updated**: 4 (`session-context.md`, `project-context.md`,
+  `conversation-context.md`, `session-summary.md`)
+- **Final repo state**: zero open issues, zero open PRs, `main`-only branch state (local and remote),
+  all required CI green — no remaining "next session" item tied to the Resend-webhook/DNS saga
+
+---
+
 ## Session: 2026-07-28 (Correction) — Verify-Before-Trust Follow-Up: Webhook Registration, api.bgclive.online, PR #151
 
 ### Session Information
