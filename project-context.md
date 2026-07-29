@@ -538,8 +538,10 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
 45. **Backend `pytest` (no `--ignore`) reliably failed 7 tests locally — fixed** (PR #150, squash `014db4e`), also found while wrapping up and fixed immediately at explicit user request, following a requested process (senior agents, a `gemini-research` spawn, Plan mode with approval before implementation). Root cause confirmed three independent ways (local repro, `gemini-research`'s static analysis, real GitHub Actions run history): `tests/test_api_contract.py`'s schemathesis-fuzzed `TestClient` never gets `dependency_overrides[get_db]` applied, so its fuzzed requests make real, committed writes through the real DB session — breaking `test_moderation_api.py`'s exact-row-count assertions when both files share one pytest process. **Key discovery**: `deploy-backend.yml`'s actual CI run history showed contract tests already run as a fully separate `pytest` process there — so there was never any real CI risk, only a local-ergonomics gap. Fix: one line, `addopts = --ignore=tests/test_api_contract.py` in `backend/pytest.ini` (the same flag CI's own steps already use). Verified: bare `pytest` 3x clean (711 passed / 1 xfail / 0 failures), plus live confirmation in the PR's own CI run that both the ignoring and non-ignoring CI steps still pass independently. A secondary, deliberately-not-chased finding: `GET /metrics`'s schemathesis case fails locally with an unpinned schemathesis/hypothesis install but passes in real CI — documented as a likely local dependency-version artifact, not a live bug (fix if it ever recurs: pin versions in `requirements.txt`).
 46. **Final repo state**: zero open issues, zero open PRs, `main`-only, all CI green. **Resend webhook registration (see #43) and the Railway custom-domain work below were both completed later the same session**, after this numbered list was first drafted — see `session-context.md`'s "Queued for next session" list for the current, accurate set: (1) the `api.bgclive.online` DNS record change (delete stale A records, add a CNAME + TXT verification record — outside what can be done without DNS-provider access), (2) pin `schemathesis`/`hypothesis` if the `/metrics` contract-test failure ever recurs in real CI, (3) consider formalizing the alembic env-var-prefix wrapper script as a checked-in `scripts/`/Makefile fix rather than an ad hoc scratchpad mitigation.
 47. **`api.bgclive.online` custom domain investigation** (discovered while verifying the above "queued" list was still accurate, before accepting it as this session's final state). DNS resolved this custom domain to stale Vercel IPs with no matching deployment (`DEPLOYMENT_NOT_FOUND`), and Railway had no custom domain entry for it. Confirmed this is **not a live bug** — production's real frontend (`www.bgclive.online`) works fine regardless, via whatever `NEXT_PUBLIC_API_URL` Vercel actually has configured. Added the custom domain on Railway's side (`railway domain api.bgclive.online`, additive/safe); the DNS record change itself needs the external DNS provider, which is outside what's directly actionable here — handed to the user with exact record values (CNAME `api` → `ei00i992.up.railway.app`, TXT `_railway-verify.api` → `railway-verify=e46e98e55ef27fd9ee2fbc569328e1508fb0b2ad5217ca60b13b8a7c3a353970`).
+48. **Correction session (same 2026-07-28, follow-up conversation) — PR #151** (squash `0758813`, closes out the doc-correction work described in items 43/47 above). The user asked to verify items 42-47's "next session" queue before accepting it, rather than trust the prior close blindly — that verification is what found the webhook (item 43) still actually unregistered and completed it, plus the `api.bgclive.online` gap (item 47). Both were done and the 4 context docs corrected (commit `f754b87` on top of `390d50f`) **before** this correction session started; this session's own job was purely to land those 2 already-written commits onto `main`, which surfaced a new discovery: `main` is a GitHub-protected branch requiring the `quality-check` PR status check — a direct `git push origin main` was rejected outright (`GH006: Protected branch update failed`), the first time this project had ever attempted a direct push (every prior session always used `gh pr merge`). Opened PR #151 (`docs/fix-stale-webhook-status`) containing exactly `390d50f`+`f754b87`. `gh pr checks 151 --watch` showed `quality-check` passing on both instances it ran ("Docs PR" and "Frontend CI" workflows); the only failure was a non-required `playwright (4)` shard hitting a transient `npm ci` `ECONNRESET` network error during dependency install, confirmed unrelated to this docs-only PR. Confirmed via `gh api .../branches/main/protection` that `quality-check` is the *only* required context, then squash-merged past the non-required flake (matching this repo's own established precedent — see items 34/PR #122 and the PR #85 session above for the same pattern). Synced local `main` to `origin/main` via `git fetch` + `git reset --hard` (clean working tree, nothing to stash) and pruned several already-stale local remote-tracking refs. Saved a new memory, `main_branch_protected_requires_pr.md`, so no future session attempts a direct push to `main` again. **Final state: zero open issues, zero open PRs, only `main` anywhere.**
 
 ### Recent Commits (chronological, newest first)
+- **0758813** (2026-07-28): docs: close session — PR #147-#150 merged + correct stale webhook status (#151, squash-merged; squashes `390d50f`+`f754b87`)
 - **014db4e** (2026-07-28): fix(tests): exclude schemathesis contract tests from bare `pytest` by default (#150, squash-merged)
 - **024d90f** (2026-07-28): chore: track .env*.example template files, previously silently gitignored (#149, squash-merged)
 - **67495ca** (2026-07-28): feat: add Resend bounce/complaint webhook (#148, squash-merged)
@@ -619,24 +621,28 @@ nonce-based `script-src`, Issue #68) — shipped without a project-context.md up
 
 ### Active Branch
 - **Branch**: `main`, local in sync with `origin/main`.
-- **HEAD**: `014db4e` (PR #150, on top of `024d90f` for PR #149, `67495ca` for PR #148, `1fe9120` for
-  PR #147) as of 2026-07-28.
+- **HEAD**: `0758813` (PR #151, squash of `390d50f`+`f754b87`, on top of `014db4e` for PR #150,
+  `024d90f` for PR #149, `67495ca` for PR #148, `1fe9120` for PR #147) as of 2026-07-28.
 - **Status**: 2026-07-28 session merged four PRs: **PR #147** (unique usernames + 3 new Resend
   notification emails), **PR #148** (Resend bounce/complaint webhook), **PR #149** (`.env*.example`
   template files un-gitignored), **PR #150** (backend bare-`pytest` flakiness fix). Zero open issues,
   zero open PRs, `main`-only branch state, all CI green. **Also done, later the same session**: the
   Resend webhook from PR #148 was registered against production and verified end-to-end, and a Railway
   custom domain was added for `api.bgclive.online` (DNS record change still needed at the external
-  provider — see item 47). See items 42-47 above and `session-context.md`'s "Latest Session" entry for
-  full detail.
+  provider — see item 47). **A follow-up correction session** then landed the resulting doc corrections
+  via **PR #151** (squash `0758813`) after discovering `main` requires PRs (direct push rejected,
+  `GH006`) — see item 48. See items 42-48 above and `session-context.md`'s "Latest Session" entry
+  (including its "Correction session" subsection) for full detail.
 
 ### Next Priorities
 
-**Updated 2026-07-28 (end of session)**: zero open GitHub issues, zero open PRs — **three concrete
-action items are queued for next session**, none of them filed as GitHub issues (all surfaced/decided
-within this same session). The Resend webhook item that was originally item 1 here has since been
-completed (registered against production, verified end-to-end) and is replaced below by the DNS
-follow-up it left behind:
+**Updated 2026-07-28 (end of correction session, PR #151 merged)**: zero open GitHub issues, zero open
+PRs — **three concrete action items are queued for next session**, none of them filed as GitHub issues
+(all surfaced/decided within this same session). The Resend webhook item that was originally item 1
+here has since been completed (registered against production, verified end-to-end) and is replaced
+below by the DNS follow-up it left behind. This list is unchanged by the correction session (PR #151,
+item 48) — that session was pure doc-correction/branch-protection process work, it didn't add or
+resolve any of the 3 items below:
 1. **Add the DNS records for `api.bgclive.online`** at the external DNS provider (outside what's
    directly actionable without provider access): delete the stale A records, add a CNAME (`api` →
    `ei00i992.up.railway.app`) and a TXT verification record (`_railway-verify.api` →
