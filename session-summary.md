@@ -2,6 +2,97 @@
 
 ---
 
+## Session: 2026-07-28 (Correction) — Verify-Before-Trust Follow-Up: Webhook Registration, api.bgclive.online, PR #151
+
+### Session Information
+- **Date**: 2026-07-28 (a separate, later conversation than the PR #147-#150 session below, which had
+  already closed and committed its docs as `390d50f`)
+- **Duration**: A short, focused correction session
+- **Branch**: `main` (reviewed from `docs/fix-stale-webhook-status`)
+- **PRs Merged**: #151 (`0758813`, squash — contains exactly commits `390d50f` and `f754b87`)
+- **HEAD after session**: `0758813`
+- **Focus**: Verify the prior session's "next session" queue rather than accept it blindly, complete
+  what verification found still open, correct the already-committed docs, and land those corrections
+  onto a `main` that turned out to require a PR
+
+### High-Level Summary
+
+Instructed explicitly to verify the prior close-out's (`390d50f`) "next session" list before accepting
+it — that list's top item was "register the Resend webhook." Checking Resend's own API directly
+confirmed it genuinely was still unregistered. At the user's explicit request (`AskUserQuestion`, "do
+both now"), two items were completed immediately: (1) the webhook was registered against production
+(`https://bgc-live-production.up.railway.app/api/webhooks/resend`), `RESEND_WEBHOOK_SECRET` set in
+Railway, verified end-to-end with a real signed request (`200 {"received":true}`) plus a read-only DB
+check confirming the row landed in `email_events`; (2) a related gap found along the way —
+`api.bgclive.online` resolved via DNS to stale Vercel IPs with no matching deployment, and Railway had
+no custom domain entry for it — confirmed not a live bug (the real production frontend works fine
+regardless), fixed on Railway's side (`railway domain api.bgclive.online`), with the DNS record change
+itself left queued for the external DNS provider (outside what's directly actionable here).
+
+Both were completed and the 4 context docs corrected (`f754b87` on top of `390d50f`, removing the now-
+stale "webhook pending" language) **before** this correction-session conversation began. This session's
+own job was to land those 2 already-written commits onto `main`, which surfaced a new discovery:
+**`main` is GitHub-protected, requiring the `quality-check` PR status check** — a direct `git push
+origin main` was rejected outright (`GH006: Protected branch update failed`), the first time this
+project had ever attempted a direct push (every prior session always used `gh pr merge`). Saved as a
+new memory, `main_branch_protected_requires_pr.md`.
+
+Opened **PR #151** (containing exactly `390d50f`+`f754b87`). Watched its checks rather than assuming:
+`gh pr checks 151 --watch` showed the required `quality-check` context passing on both instances it ran
+in; the only failure, `playwright (4)`, was a transient `npm ci` `ECONNRESET` network error during
+dependency install — confirmed unrelated to this docs-only PR and not a required check (confirmed via
+`gh api .../branches/main/protection` that `quality-check` is the *only* required context). Squash-
+merged past the non-required flake — matching this repo's own established precedent (PR #122/#85
+sessions) — deleted the branch, and synced local `main` to `origin/main` (`git fetch` + `git reset
+--hard`, clean working tree, nothing to stash). `git remote prune origin` cleaned up several already-
+stale local tracking refs.
+
+### Files Modified/Created
+
+| File | Change |
+|------|--------|
+| (none — application code) | Pure docs/process session; PR #151 contained only the pre-written `390d50f`+`f754b87` doc commits |
+| `session-context.md`, `project-context.md`, `conversation-context.md`, `session-summary.md` | This correction session's own doc-close update, on top of `f754b87`'s content |
+
+### Key Decisions and Rationale
+
+1. **Verify a prior session's "next session" queue before accepting it**: the entire reason this
+   session exists — verification found a genuinely stale item within minutes.
+2. **Do both newly-found items immediately rather than defer**: user's explicit choice via
+   `AskUserQuestion`.
+3. **Never attempt a direct `git push origin main` again**: requires a passing `quality-check` PR
+   status check; all future changes go through `gh pr create`/`gh pr merge`.
+4. **Merge PR #151 past one non-required failing check**: confirmed via the branch protection API
+   which context is actually required, and root-caused the failure as unrelated network flakiness.
+
+### Outstanding Tasks / Follow-Up Items
+
+- [ ] **Add the DNS records for `api.bgclive.online`** at the external DNS provider (delete stale A
+      records, add CNAME `api` → `ei00i992.up.railway.app` and TXT `_railway-verify.api` →
+      `railway-verify=e46e98e55ef27fd9ee2fbc569328e1508fb0b2ad5217ca60b13b8a7c3a353970`). Railway's
+      side is already done. Not a live bug — the main actionable item for next session.
+- [ ] If `GET /metrics`'s schemathesis case ever fails in real CI (hasn't so far) — pin
+      `schemathesis`/`hypothesis` in `backend/requirements.txt` and re-diagnose.
+- [ ] Consider formalizing the alembic env-var-prefix wrapper script as a checked-in
+      `scripts/test-alembic.sh` or Makefile target rather than an ad hoc scratchpad mitigation.
+
+### Blockers / Challenges
+
+The `main`-branch-protection discovery (`GH006` on direct push) was the only real friction, resolved
+within the same session by opening PR #151 instead. No data loss, no destructive actions.
+
+### Session Statistics
+
+- **PRs merged this session**: 1 (#151, squash, containing 2 pre-written commits)
+- **New memory saved**: `main_branch_protected_requires_pr.md`
+- **Context files updated**: 4 (`session-context.md`, `project-context.md`,
+  `conversation-context.md`, `session-summary.md`)
+- **Final repo state**: zero open issues, zero open PRs, `main`-only branch state (local and remote),
+  all required CI green — exactly 3 action items queued for next session (DNS record change,
+  schemathesis/hypothesis pin-if-ever-needed, alembic wrapper-script formalization consideration)
+
+---
+
 ## Session: 2026-07-28 — Resend Email Expansion (PR #147), Bounce/Complaint Webhook (PR #148), `.env*.example` Gitignore Fix (PR #149), Backend Test-Suite Flakiness Fix (PR #150)
 
 ### Session Information
